@@ -491,7 +491,10 @@ body {
   line-height: 1.6;
 }
 
-.kuds-shell .site-footer div {
+/* `:not(.lang-switch)` vacibdir: dil keçidi də alt hissədə <div>-dir və bu qayda
+   (spesifiklik 0,2,1) onun `inline-flex`-ini əvəz edib düymələri tam enli
+   sütuna çevirirdi. */
+.kuds-shell .site-footer div:not(.lang-switch) {
   display: grid;
   gap: 4px;
   text-align: right;
@@ -4199,6 +4202,9 @@ body {
    bir toxunuşla dəyişir, aktiv dil dərhal görünür. */
 .kuds-shell .lang-switch {
   display: inline-flex;
+  /* Grid sütununda dartılmasın — həb yalnız öz məzmunu qədər olsun. */
+  width: max-content;
+  justify-self: end;
   align-items: center;
   gap: 2px;
   padding: 3px 4px 3px 8px;
@@ -4208,6 +4214,7 @@ body {
 }
 .kuds-shell .lang-switch > svg { margin-right: 3px; color: var(--kuds-muted, #64748b); }
 .kuds-shell .lang-switch button {
+  flex: 0 0 auto;
   min-width: 34px;
   min-height: 30px;
   padding: 0 8px;

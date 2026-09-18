@@ -101,7 +101,10 @@ export function mapApiEvent(event: ApiEvent): Event {
     date: new Intl.DateTimeFormat("az-AZ", { day: "2-digit", timeZone: "Asia/Baku" }).format(start),
     month: monthCodes[Number(new Intl.DateTimeFormat("en-US", { month: "2-digit", timeZone: "Asia/Baku" }).format(start)) - 1] ?? "JAN",
     time: new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Baku" }).format(start),
-    capacity: `${event.capacity} iştirakçı`,
+    // Bu sahə TUTUMDUR, qeydiyyatdan keçənlərin sayı deyil. Əvvəl "iştirakçı"
+    // yazılırdı və drawer-də "50 iştirakçı · 50 boş yer" kimi ziddiyyətli
+    // cümlə çıxırdı (tutum 50, qeydiyyat 0 olduğu halda).
+    capacity: `${event.capacity} nəfərlik tutum`,
   };
 }
 
@@ -121,7 +124,7 @@ export const events: Event[] = [
     accent: "#c8ff4d",
     glow: "rgba(200, 255, 77, 0.28)",
     speakers: ["Ləman Həsənli", "Nihad Əlizadə", "Aytac Hüseynova"],
-    capacity: "180 iştirakçı",
+    capacity: "180 nəfərlik tutum",
     startAt: "2026-09-18T18:30:00+04:00",
     endAt: "2026-09-18T20:00:00+04:00",
     registrationDeadline: "2026-09-17T23:59:59+04:00",
@@ -143,7 +146,7 @@ export const events: Event[] = [
     accent: "#b9a7ff",
     glow: "rgba(185, 167, 255, 0.3)",
     speakers: ["İradə Babayeva", "Kamran Məmmədli", "Aysu Quliyeva"],
-    capacity: "120 iştirakçı",
+    capacity: "120 nəfərlik tutum",
     startAt: "2026-09-22T19:00:00+04:00",
     endAt: "2026-09-22T20:30:00+04:00",
     registrationDeadline: "2026-09-21T23:59:59+04:00",
@@ -165,7 +168,7 @@ export const events: Event[] = [
     accent: "#ff9e7a",
     glow: "rgba(255, 158, 122, 0.3)",
     speakers: ["Xəzər Studiyası", "Elvin Vəliyev", "Aynur Rəhimli"],
-    capacity: "350 iştirakçı",
+    capacity: "350 nəfərlik tutum",
     startAt: "2026-09-28T21:00:00+04:00",
     endAt: "2026-09-28T23:00:00+04:00",
     registrationDeadline: "2026-09-27T23:59:59+04:00",
@@ -187,7 +190,7 @@ export const events: Event[] = [
     accent: "#7de5d1",
     glow: "rgba(125, 229, 209, 0.28)",
     speakers: ["Nərmin Əliyeva", "Mahir Soltanlı", "Sakit Studiyası"],
-    capacity: "48 iştirakçı",
+    capacity: "48 nəfərlik tutum",
     startAt: "2026-10-04T09:30:00+04:00",
     endAt: "2026-10-04T12:30:00+04:00",
     registrationDeadline: "2026-10-02T18:00:00+04:00",
@@ -209,7 +212,7 @@ export const events: Event[] = [
     accent: "#77b8ff",
     glow: "rgba(119, 184, 255, 0.3)",
     speakers: ["Sıra Laboratoriyası", "Mələk Cəfərova", "Tural Qarayev"],
-    capacity: "220 iştirakçı",
+    capacity: "220 nəfərlik tutum",
     startAt: "2026-10-11T17:45:00+04:00",
     endAt: "2026-10-11T20:00:00+04:00",
     registrationDeadline: "2026-10-10T23:59:59+04:00",
@@ -231,7 +234,7 @@ export const events: Event[] = [
     accent: "#f7d56f",
     glow: "rgba(247, 213, 111, 0.28)",
     speakers: ["Nərgiz Vəlizadə", "Səhər Bürosu", "Rauf İsmayılov"],
-    capacity: "95 iştirakçı",
+    capacity: "95 nəfərlik tutum",
     startAt: "2026-10-16T18:00:00+04:00",
     endAt: "2026-10-16T19:30:00+04:00",
     registrationDeadline: "2026-10-15T18:00:00+04:00",
