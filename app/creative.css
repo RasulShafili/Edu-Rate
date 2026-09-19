@@ -890,7 +890,7 @@
 /* Həftəlik grid */
 .week-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  grid-template-columns: repeat(7, minmax(148px, 1fr));
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 4px;
@@ -914,6 +914,7 @@
 
 .lesson {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
@@ -922,14 +923,15 @@
   border-radius: 10px;
   background: var(--tone-soft, rgb(158 207 143 / 14%));
 }
-.lesson div { display: grid; gap: 1px; min-width: 0; }
+.lesson__body { display: grid; gap: 1px; min-width: 0; }
 .lesson strong { font-size: 12.5px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .lesson small { color: var(--kuds-muted, #64748b); font-size: 10.5px; }
 .lesson em { color: var(--kuds-muted, #64748b); font-size: 10px; font-style: normal; }
-.lesson button {
+.lesson__tools { display: flex; flex: none; gap: 2px; }
+.lesson__tools button {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   flex: none;
   place-items: center;
   color: var(--kuds-muted, #64748b);
@@ -937,11 +939,56 @@
   border-radius: 50%;
   background: transparent;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity 180ms ease, color 180ms ease, background 180ms ease;
 }
-.lesson:hover button, .lesson button:focus-visible { opacity: 1; }
-.lesson button:hover { color: var(--kuds-danger, #ef4444); background: rgb(239 68 68 / 10%); }
+.lesson:hover .lesson__tools button,
+.lesson__tools button:focus-visible { opacity: 1; }
+.lesson__tools button:hover { color: var(--ku-dark-green, #16423c); background: rgb(22 66 60 / 8%); }
+.lesson__tools button:last-child:hover { color: var(--kuds-danger, #ef4444); background: rgb(239 68 68 / 10%); }
+
+/* Silmə təsdiqi kartın içində açılır — sistem dialoqu mobil app hissini pozur. */
+.lesson__confirm { display: grid; gap: 6px; flex: 1 1 100%; }
+.lesson__confirm p { margin: 0; color: var(--kuds-text, #1e293b); font-size: 11.5px; font-weight: 650; }
+.lesson__confirm div { display: flex; flex-wrap: wrap; gap: 6px; }
+.lesson__confirm button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--kuds-border, #e2e8f0);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--kuds-muted, #64748b);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.lesson__confirm button:first-child {
+  color: #fff;
+  border-color: var(--kuds-danger, #ef4444);
+  background: var(--kuds-danger, #ef4444);
+}
+
+/* Xəbərdarlıq sətri: üst-üstə düşən dərs və silinməyən dərs üçün. */
+.schedule-warning {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid rgb(223 180 95 / 45%);
+  border-radius: 11px;
+  background: rgb(223 180 95 / 12%);
+  color: #7a5b12;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.schedule-warning svg { flex: none; }
+.schedule-warning.is-error {
+  border-color: rgb(239 68 68 / 40%);
+  background: rgb(239 68 68 / 9%);
+  color: #9b1c1c;
+}
 
 /* Rəng tonları */
 .tone-mint { --tone-accent: #6fc79a; --tone-soft: rgb(111 199 154 / 14%); }
@@ -967,9 +1014,40 @@
 .schedule-empty h2 { margin: 4px 0 0; color: var(--kuds-text, #1e293b); font-size: 17px; }
 .schedule-empty p { max-width: 46ch; margin: 0 0 6px; font-size: 13px; line-height: 1.6; }
 
-@media (max-width: 860px) {
-  .week-grid { grid-template-columns: repeat(6, minmax(146px, 1fr)); }
-  .lesson button { opacity: 1; }
+/* Orta ekranlarda günlər sətirlərə bölünür — üfüqi sürüşdürmə olmur. */
+@media (max-width: 1180px) {
+  .week-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    overflow-x: visible;
+  }
+}
+
+/*
+ * Telefonda əvvəl 936px enində 6 sütun üfüqi sürüşürdü: bugünkü gün ekrandan
+ * kənarda qalırdı və sürüşdürmə işarəsi yox idi. İndi günlər alt-alta düzülür.
+ */
+@media (max-width: 720px) {
+  .week-grid { grid-template-columns: 1fr; }
+  .week-day { min-height: 0; }
+  .week-day > header { display: flex; align-items: baseline; gap: 8px; }
+  .week-day > header span { margin-left: auto; }
+}
+
+/* Toxunma ekranı: WCAG 2.5.5 üçün ən az 44px hədəf sahəsi. */
+@media (pointer: coarse) {
+  .lesson__tools { gap: 4px; }
+  .lesson__tools button { width: 44px; height: 44px; opacity: 1; }
+  .schedule-form__tones { gap: 18px; }
+  .tone-chip { position: relative; }
+  .tone-chip::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    translate: -50% -50%;
+  }
 }
 
 /* ============================================================

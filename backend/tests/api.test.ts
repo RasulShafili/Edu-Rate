@@ -1134,3 +1134,58 @@ describe("EduRate API", () => {
     assert.equal(mine.body.data.find((item:{id:string})=>item.id===stored.id).status,"resolved");
   });
 });
+
+describe("Dərs cədvəli", () => {
+  it("qeyd yaradır, hissə-hissə redaktə edir və sahibliyi qoruyur", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const owner = await createUser({ name: "Cədvəl Sahibi", email: "timetable.owner@example.az", passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
+    const other = await createUser({ name: "Cədvəl Yadı", email: "timetable.other@example.az", passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
+    const ownerAuth = `Bearer ${createAccessToken(owner)}`;
+    const otherAuth = `Bearer ${createAccessToken(other)}`;
+
+    await request(app).get("/api/timetable").expect(401);
+
+    const created = await request(app).post("/api/timetable").set("Authorization", ownerAuth)
+      .send({ subject: "Riyazi analiz", teacher: "Aygün Məmmədova", room: "204", dayOfWeek: 6, startMinute: 840, endMinute: 930, tone: "blue" })
+      .expect(201);
+    const id = created.body.data.id as string;
+
+    // Reqressiya: `entrySchema.partial()` refinement daşıyan sxemdə atırdı və
+    // PATCH hər sorğuda 500 qaytarırdı. Tək sahəli yeniləmə işləməlidir.
+    const patched = await request(app).patch(`/api/timetable/${id}`).set("Authorization", ownerAuth)
+      .send({ room: "305" }).expect(200);
+    assert.equal(patched.body.data.room, "305");
+    assert.equal(patched.body.data.startMinute, 840);
+    // Hissəvi redaktə qalan sahələri silməməlidir: `.partial()` sahəni optional
+    // etsə də `default()` yenə işləyir və müəllim adı ilə rəngi sıfırlayırdı.
+    assert.equal(patched.body.data.teacher, "Aygün Məmmədova");
+    assert.equal(patched.body.data.tone, "blue");
+
+    // Tək vaxt sahəsi göndəriləndə də nəticə etibarlı qalmalıdır.
+    await request(app).patch(`/api/timetable/${id}`).set("Authorization", ownerAuth)
+      .send({ startMinute: 1000 }).expect(422);
+    await request(app).patch(`/api/timetable/${id}`).set("Authorization", ownerAuth)
+      .send({ endMinute: 600 }).expect(422);
+
+    // Bazar günü (7) qəbul olunur — interfeys də yeddi gün göstərir.
+    await request(app).post("/api/timetable").set("Authorization", ownerAuth)
+      .send({ subject: "Bazar məşğələsi", dayOfWeek: 7, startMinute: 600, endMinute: 700 })
+      .expect(201);
+    await request(app).post("/api/timetable").set("Authorization", ownerAuth)
+      .send({ subject: "Yanlış gün", dayOfWeek: 8, startMinute: 600, endMinute: 700 })
+      .expect(422);
+
+    // Başqasının qeydi nə görünür, nə dəyişdirilir, nə də silinir.
+    const foreign = await request(app).get("/api/timetable").set("Authorization", otherAuth).expect(200);
+    assert.equal(foreign.body.data.length, 0);
+    await request(app).patch(`/api/timetable/${id}`).set("Authorization", otherAuth).send({ room: "999" }).expect(404);
+    await request(app).delete(`/api/timetable/${id}`).set("Authorization", otherAuth).expect(404);
+
+    await request(app).delete(`/api/timetable/${id}`).set("Authorization", ownerAuth).expect(204);
+    await request(app).delete(`/api/timetable/${id}`).set("Authorization", ownerAuth).expect(404);
+  });
+});
