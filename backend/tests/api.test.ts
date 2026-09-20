@@ -1189,3 +1189,56 @@ describe("Dərs cədvəli", () => {
     await request(app).delete(`/api/timetable/${id}`).set("Authorization", ownerAuth).expect(404);
   });
 });
+
+describe("Klub görünürlüyü və silmə səlahiyyəti", () => {
+  it("yoxlanışdakı klubu yalnız yaradana və rəhbərliyə göstərir", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const teacher = await createUser({ ...base, name: "Klub Müəllimi", email: "club.teacher@example.az", role: "teacher" });
+    const student = await createUser({ ...base, name: "Klub Tələbəsi", email: "club.student@example.az", role: "student" });
+    const owner = await createUser({ ...base, name: "Klub Sahibi", email: "club.owner@example.az", role: "owner_admin" });
+    const assistant = await createUser({ ...base, name: "Klub Köməkçisi", email: "club.assistant@example.az", role: "assistant_admin" });
+    const teacherAuth = `Bearer ${createAccessToken(teacher)}`;
+    const studentAuth = `Bearer ${createAccessToken(student)}`;
+    const ownerAuth = `Bearer ${createAccessToken(owner)}`;
+    const assistantAuth = `Bearer ${createAccessToken(assistant)}`;
+
+    const created = await request(app).post("/api/clubs").set("Authorization", teacherAuth)
+      .send({ name: "Yoxlanış Klubu", category: "Texnologiya", tagline: "Yoxlanış üçün yaradılmış klub.", about: ["Bu klub avtomatik testdə yaradılıb."], meeting: { cadence: "Həftəlik", day: "Çərşənbə", time: "18:00", place: "B 204" } })
+      .expect(201);
+    const slug = created.body.data.slug as string;
+    assert.equal(created.body.data.status, "Gözləmədə");
+
+    // Kataloq yalnız təsdiqlənmiş klubları göstərir.
+    const catalog = await request(app).get("/api/clubs").expect(200);
+    assert.equal(catalog.body.data.some((club: { slug: string }) => club.slug === slug), false);
+
+    // Reqressiya: əvvəl bu səhifə HAMI üçün 404 idi, yəni yaradan öz klubunu
+    // heç yerdə aça bilmirdi.
+    await request(app).get(`/api/clubs/${slug}`).set("Authorization", teacherAuth).expect(200);
+    await request(app).get(`/api/clubs/${slug}`).set("Authorization", ownerAuth).expect(200);
+    await request(app).get(`/api/clubs/${slug}`).expect(404);
+    await request(app).get(`/api/clubs/${slug}`).set("Authorization", studentAuth).expect(404);
+
+    // Yaradan onu öz üzvlüklərində görür — interfeys "yoxlanışda" blokunu buradan qurur.
+    const mine = await request(app).get("/api/clubs/memberships/me").set("Authorization", teacherAuth).expect(200);
+    assert.equal(mine.body.data.some((club: { slug: string }) => club.slug === slug), true);
+
+    // Təsdiqlənməmiş kluba qoşulmaq olmur.
+    await request(app).post(`/api/clubs/${slug}/memberships`).set("Authorization", studentAuth).expect(404);
+
+    // Reqressiya: silmə yoxlaması yalnız `role === "admin"` idi, yəni ən yüksək
+    // rol olan `owner_admin` özünün yaratmadığı klubu silə bilmirdi.
+    const seeded = await request(app).post("/api/admin/clubs").set("Authorization", ownerAuth)
+      .send({ name: "Silinəcək Klub", slug: "silinecek-klub", category: "Akademik", coordinatorInitials: "SK", status: "Aktiv" })
+      .expect(201);
+    assert.ok(seeded.body.data);
+    await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", studentAuth).expect(403);
+    await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", assistantAuth).expect(403);
+    await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", ownerAuth).expect(204);
+  });
+});

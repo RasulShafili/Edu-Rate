@@ -1,14 +1,15 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { ArrowLeft, CalendarDays, Clock3, Crown, MapPin, Save, Settings2, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock3, Crown, MapPin, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Club, ClubTabId } from "../data/clubs";
-import { clubTabIds, clubTabLabels } from "../data/clubs";
+import { clubTabIds } from "../data/clubs";
 import { MagneticJoinButton } from "./MagneticJoinButton";
 import { SecureImagePicker } from "./SecureImagePicker";
 import { useAuth } from "./AuthProvider";
+import { useT } from "../i18n/LanguageProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -21,6 +22,7 @@ type ClubManagement={members:ManagedMember[];canManage:boolean;canDelete:boolean
 
 export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   const { user } = useAuth();
+  const t = useT();
   const [activeTab, setActiveTab] = useState<ClubTabId>("about");
   const [editable, setEditable] = useState(club);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -30,6 +32,12 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   const [memberBusy,setMemberBusy]=useState("");
   const [deleteConfirm,setDeleteConfirm]=useState(false);
   const [deleting,setDeleting]=useState(false);
+  /**
+   * Yoxlanışdakı klub: kataloqda görünmür və üzv qəbul etmir. Səhifə yalnız
+   * yaradan, klub liderləri və rəhbərlik üçün açılır, ona görə vəziyyəti açıq
+   * yazmaq lazımdır — əks halda istifadəçi klubunun niyə tapılmadığını bilmir.
+   */
+  const isPending = Boolean(club.status && club.status !== "Aktiv");
   const initialManage = Boolean(user && (user.id === club.createdBy || user.accessRole === "owner_admin" || user.accessRole === "admin" || user.accessRole === "assistant_admin"));
   const canManage=management?.canManage??initialManage;
   const reduceMotion = Boolean(useReducedMotion());
@@ -60,17 +68,17 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   async function changeLeader(member:ManagedMember){
     if(!club.id)return;setMemberBusy(member.id);setSaveMessage("");
     try{const response=await fetch(`/api/clubs/${encodeURIComponent(club.id)}/leaders/${encodeURIComponent(member.id)}`,{method:member.role==="leader"?"DELETE":"PATCH"});
-      const payload=await response.json().catch(()=>null) as {data?:ManagedMember;error?:{message?:string}}|null;if(!response.ok||!payload?.data)throw new Error(payload?.error?.message||"Liderlik dəyişdirilmədi.");
+      const payload=await response.json().catch(()=>null) as {data?:ManagedMember;error?:{message?:string}}|null;if(!response.ok||!payload?.data)throw new Error(payload?.error?.message||t("club.leaderFailed"));
       setManagement((current)=>current?{...current,members:current.members.map((item)=>item.id===member.id?payload.data!:item)}:current);
-      setSaveMessage(member.role==="leader"?"Liderlik səlahiyyəti götürüldü.":"Yeni lider təyin edildi.");
-    }catch(error){setSaveMessage(error instanceof Error?error.message:"Liderlik dəyişdirilmədi.");}finally{setMemberBusy("");}
+      setSaveMessage(t(member.role==="leader"?"club.leaderRemoved":"club.leaderChanged"));
+    }catch(error){setSaveMessage(error instanceof Error?error.message:t("club.leaderFailed"));}finally{setMemberBusy("");}
   }
 
   async function removeClub(){
     if(!club.id)return;setDeleting(true);setSaveMessage("");
-    try{const response=await fetch(`/api/clubs/${encodeURIComponent(club.id)}`,{method:"DELETE"});if(!response.ok){const payload=await response.json().catch(()=>null) as {error?:{message?:string}}|null;throw new Error(payload?.error?.message||"Klub silinmədi.");}
+    try{const response=await fetch(`/api/clubs/${encodeURIComponent(club.id)}`,{method:"DELETE"});if(!response.ok){const payload=await response.json().catch(()=>null) as {error?:{message?:string}}|null;throw new Error(payload?.error?.message||t("club.deleteFailed"));}
       window.location.assign("/clubs");
-    }catch(error){setSaveMessage(error instanceof Error?error.message:"Klub silinmədi.");setDeleting(false);setDeleteConfirm(false);}
+    }catch(error){setSaveMessage(error instanceof Error?error.message:t("club.deleteFailed"));setDeleting(false);setDeleteConfirm(false);}
   }
 
   async function saveClub(event: FormEvent<HTMLFormElement>) {
@@ -83,9 +91,9 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
         about:editable.about,focusTags:editable.focusTags,meeting:editable.meeting,
       }) });
       const payload=await response.json().catch(()=>null) as {error?:{message?:string}}|null;
-      if(!response.ok)throw new Error(payload?.error?.message||"Dəyişiklik saxlanmadı.");
-      setSaveMessage("Klub səhifəsi yeniləndi.");
-    } catch(error) { setSaveMessage(error instanceof Error?error.message:"Dəyişiklik saxlanmadı."); }
+      if(!response.ok)throw new Error(payload?.error?.message||t("club.saveFailed"));
+      setSaveMessage(t("club.saved"));
+    } catch(error) { setSaveMessage(error instanceof Error?error.message:t("club.saveFailed")); }
     finally { setSaving(false); }
   }
 
@@ -134,55 +142,71 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
         <div className="club-detail-hero__topline">
           <Link href="/clubs" className="club-detail-back-link">
             <ArrowLeft size={16} aria-hidden="true" />
-            Bütün klublar
+            {t("club.back")}
           </Link>
-          <div className="club-detail-owner-actions"><span className="club-detail-category">{editable.category}</span>{canManage?<button type="button" onClick={()=>setSettingsOpen((value)=>!value)}><Settings2 size={15}/>{settingsOpen?"Önizləməni bağla":"Klubu tənzimlə"}</button>:null}</div>
+          <div className="club-detail-owner-actions"><span className="club-detail-category">{t(`clubCategory.${editable.category}`)}</span>{canManage?<button type="button" onClick={()=>setSettingsOpen((value)=>!value)}><Settings2 size={15}/>{t(settingsOpen?"club.settingsClose":"club.settingsOpen")}</button>:null}</div>
         </div>
 
         <motion.div className="club-detail-hero__content" style={{ y: copyY }}>
-          <span className="club-detail-eyebrow">EduRate klub şəbəkəsi</span>
+          <span className="club-detail-eyebrow">{t("club.network")}</span>
           <h1 id="club-detail-title">{editable.name}</h1>
           <p className="club-detail-tagline">{editable.tagline}</p>
           <p className="club-detail-description">{editable.description}</p>
 
           <div className="club-detail-hero__footer">
-            <dl className="club-detail-stats" aria-label="Klub göstəriciləri">
+            <dl className="club-detail-stats" aria-label={t("club.stats")}>
               {club.stats.map((stat) => (
                 <div key={stat.label}>
-                  <dt>{stat.label}</dt>
+                  <dt>{t(stat.label)}</dt>
                   <dd>{stat.value}</dd>
                 </div>
               ))}
             </dl>
-            <MagneticJoinButton clubId={club.slug} clubName={editable.name} />
+            {isPending ? (
+              <p className="club-pending-note">
+                <ShieldAlert size={15} aria-hidden="true" />
+                {t("club.pendingJoin")}
+              </p>
+            ) : (
+              <MagneticJoinButton clubId={club.slug} clubName={editable.name} />
+            )}
           </div>
         </motion.div>
       </header>
 
       <div className="club-detail-body">
+        {isPending ? (
+          <p className="club-pending-banner" role="status">
+            <ShieldAlert size={17} aria-hidden="true" />
+            <span>
+              <strong>{t("club.pendingTitle")}</strong>
+              {t("club.pendingBody")}
+            </span>
+          </p>
+        ) : null}
         <AnimatePresence>
           {settingsOpen ? <motion.form className="club-owner-editor" onSubmit={saveClub} initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}>
-            <header><div><small>CANLI ÖNİZLƏMƏ</small><h2>Klub səhifəsini tənzimlə</h2><p>Yazdığın mətn yuxarıdakı klub səhifəsində dərhal görünür.</p></div><button type="button" onClick={()=>setSettingsOpen(false)} aria-label="Bağla"><X size={18}/></button></header>
-            {club.id?<div className="club-owner-cover"><span>Örtük şəkli</span><SecureImagePicker kind="club" ownerId={club.id} currentUrl={editable.coverUrl} onChange={(asset)=>setEditable((current)=>({...current,coverUrl:asset?.secureUrl}))}/></div>:null}
+            <header><div><small>{t("club.editorEyebrow")}</small><h2>{t("club.editorTitle")}</h2><p>{t("club.editorBody")}</p></div><button type="button" onClick={()=>setSettingsOpen(false)} aria-label={t("club.close")}><X size={18}/></button></header>
+            {club.id?<div className="club-owner-cover"><span>{t("clubs.cover")}</span><SecureImagePicker kind="club" ownerId={club.id} currentUrl={editable.coverUrl} onChange={(asset)=>setEditable((current)=>({...current,coverUrl:asset?.secureUrl}))}/></div>:null}
             <div className="club-owner-fields">
-              <label><span>Klubun adı</span><input value={editable.name} onChange={(e)=>setEditable({...editable,name:e.target.value})} minLength={3} maxLength={140} required/></label>
-              <label><span>Kateqoriya</span><select value={editable.category} onChange={(e)=>setEditable({...editable,category:e.target.value as Club["category"]})}><option>Texnologiya</option><option>Akademik</option><option>Yaradıcılıq</option><option>Sosial təsir</option><option>Mədəniyyət</option></select></label>
-              <label className="is-wide"><span>Qısa şüar</span><input value={editable.tagline} onChange={(e)=>setEditable({...editable,tagline:e.target.value})} minLength={5} maxLength={220} required/></label>
-              <label className="is-wide"><span>Açıqlama</span><textarea value={editable.description} onChange={(e)=>setEditable({...editable,description:e.target.value})} minLength={10} maxLength={800} rows={3} required/></label>
-              <label className="is-wide"><span>Haqqında</span><textarea value={editable.about.join("\n")} onChange={(e)=>setEditable({...editable,about:e.target.value.split(/\n/).filter(Boolean)})} minLength={10} maxLength={3000} rows={4} required/></label>
-              <label><span>Görüş günü</span><input value={editable.meeting.day} onChange={(e)=>setEditable({...editable,meeting:{...editable.meeting,day:e.target.value}})} required/></label>
-              <label><span>Görüş saatı</span><input value={editable.meeting.time} onChange={(e)=>setEditable({...editable,meeting:{...editable.meeting,time:e.target.value}})} required/></label>
-              <label className="is-wide"><span>Görüş yeri</span><input value={editable.meeting.place} onChange={(e)=>setEditable({...editable,meeting:{...editable.meeting,place:e.target.value}})} required/></label>
+              <label><span>{t("clubs.fieldName")}</span><input value={editable.name} onChange={(e)=>setEditable({...editable,name:e.target.value})} minLength={3} maxLength={140} required/></label>
+              <label><span>{t("clubs.fieldCategory")}</span><select value={editable.category} onChange={(e)=>setEditable({...editable,category:e.target.value as Club["category"]})}>{(["Texnologiya","Akademik","Yaradıcılıq","Sosial təsir","Mədəniyyət"] as const).map((item)=><option key={item} value={item}>{t(`clubCategory.${item}`)}</option>)}</select></label>
+              <label className="is-wide"><span>{t("clubs.fieldTagline")}</span><input value={editable.tagline} onChange={(e)=>setEditable({...editable,tagline:e.target.value})} minLength={5} maxLength={220} required/></label>
+              <label className="is-wide"><span>{t("club.fieldDescription")}</span><textarea value={editable.description} onChange={(e)=>setEditable({...editable,description:e.target.value})} minLength={10} maxLength={800} rows={3} required/></label>
+              <label className="is-wide"><span>{t("clubs.fieldAbout")}</span><textarea value={editable.about.join("\n")} onChange={(e)=>setEditable({...editable,about:e.target.value.split(/\n/).filter(Boolean)})} minLength={10} maxLength={3000} rows={4} required/></label>
+              <label><span>{t("clubs.fieldMeetingDay")}</span><input value={editable.meeting.day} onChange={(e)=>setEditable({...editable,meeting:{...editable.meeting,day:e.target.value}})} required/></label>
+              <label><span>{t("clubs.fieldMeetingTime")}</span><input value={editable.meeting.time} onChange={(e)=>setEditable({...editable,meeting:{...editable.meeting,time:e.target.value}})} required/></label>
+              <label className="is-wide"><span>{t("clubs.fieldMeetingPlace")}</span><input value={editable.meeting.place} onChange={(e)=>setEditable({...editable,meeting:{...editable.meeting,place:e.target.value}})} required/></label>
             </div>
-            {canManage?<section className="club-leader-manager"><header><div><small>KLUB RƏHBƏRLİYİ</small><h3>Liderləri idarə et</h3><p>Klubu yaradan şəxs daimi liderdir. Üzvlər arasından əlavə liderlər təyin et və ya liderliyi geri götür.</p></div><Crown size={22}/></header><div>{management?management.members.length?management.members.map((member)=><article key={member.id}><span className={`club-leader-avatar${member.avatarUrl?" has-image":""}`} style={member.avatarUrl?{backgroundImage:`url("${member.avatarUrl}")`}:undefined}>{member.avatarUrl?null:member.name.split(/\s+/).slice(0,2).map((part)=>part[0]).join("")}</span><div><strong>{member.name}</strong><small>{member.isCreator?"Klubun yaradıcısı · Lider":member.role==="leader"?"Lider":"Üzv"}</small></div>{!member.isCreator?<button type="button" disabled={memberBusy===member.id} onClick={()=>void changeLeader(member)}>{member.role==="leader"?<><Trash2 size={14}/>Liderlikdən çıxar</>:<><UserPlus size={14}/>Lider et</>}</button>:<Crown size={17} aria-label="Lider"/>}</article>):<p className="club-leader-empty">Hələ üzv yoxdur — üzvlər qoşulduqca burada görünəcək və lider təyin edə biləcəksən.</p>:<p className="club-leader-empty">Üzvlər yüklənir…</p>}</div></section>:null}
-            {management?.canDelete?<section className="club-danger-zone"><div><strong>Klubu sil</strong><p>Klub, üzvlüklər və klub söhbəti birdəfəlik silinəcək.</p></div>{deleteConfirm?<div className="club-delete-confirm"><span>Bu əməliyyat geri qaytarılmır.</span><button type="button" onClick={()=>setDeleteConfirm(false)}>İmtina et</button><button type="button" disabled={deleting} onClick={()=>void removeClub()}><Trash2 size={14}/>{deleting?"Silinir…":"Bəli, klubu sil"}</button></div>:<button type="button" onClick={()=>setDeleteConfirm(true)}><Trash2 size={15}/>Klubu sil</button>}</section>:null}
-            <footer>{saveMessage?<p role="status">{saveMessage}</p>:<span/>}<button type="submit" disabled={saving}><Save size={15}/>{saving?"Saxlanılır…":"Dəyişiklikləri saxla"}</button></footer>
+            {canManage?<section className="club-leader-manager"><header><div><small>{t("club.leadersEyebrow")}</small><h3>{t("club.leadersTitle")}</h3><p>{t("club.leadersBody")}</p></div><Crown size={22}/></header><div>{management?management.members.length?management.members.map((member)=><article key={member.id}><span className={`club-leader-avatar${member.avatarUrl?" has-image":""}`} style={member.avatarUrl?{backgroundImage:`url("${member.avatarUrl}")`}:undefined}>{member.avatarUrl?null:member.name.split(/\s+/).slice(0,2).map((part)=>part[0]).join("")}</span><div><strong>{member.name}</strong><small>{t(member.isCreator?"club.roleCreator":member.role==="leader"?"club.roleLeader":"club.roleMember")}</small></div>{!member.isCreator?<button type="button" disabled={memberBusy===member.id} onClick={()=>void changeLeader(member)}>{member.role==="leader"?<><Trash2 size={14}/>{t("club.demote")}</>:<><UserPlus size={14}/>{t("club.promote")}</>}</button>:<Crown size={17} aria-label={t("club.roleLeader")}/>}</article>):<p className="club-leader-empty">{t("club.membersNone")}</p>:<p className="club-leader-empty">{t("club.membersLoading")}</p>}</div></section>:null}
+            {management?.canDelete?<section className="club-danger-zone"><div><strong>{t("club.dangerTitle")}</strong><p>{t("club.dangerBody")}</p></div>{deleteConfirm?<div className="club-delete-confirm"><span>{t("club.dangerWarning")}</span><button type="button" onClick={()=>setDeleteConfirm(false)}>{t("club.dangerCancel")}</button><button type="button" disabled={deleting} onClick={()=>void removeClub()}><Trash2 size={14}/>{deleting?t("club.deleting"):t("club.dangerConfirm")}</button></div>:<button type="button" onClick={()=>setDeleteConfirm(true)}><Trash2 size={15}/>{t("club.dangerTitle")}</button>}</section>:null}
+            <footer>{saveMessage?<p role="status">{saveMessage}</p>:<span/>}<button type="submit" disabled={saving}><Save size={15}/>{saving?t("club.saving"):t("club.save")}</button></footer>
           </motion.form>:null}
         </AnimatePresence>
         <div
           className="club-detail-tabs"
           role="tablist"
-          aria-label={`${club.shortName} klub məlumatları`}
+          aria-label={t("club.tabsLabel", { name: club.shortName })}
         >
           {clubTabIds.map((tab) => {
             const selected = activeTab === tab;
@@ -205,7 +229,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                 onClick={() => selectTab(tab)}
                 onKeyDown={(event) => handleTabKeyDown(event, tab)}
               >
-                <span>{clubTabLabels[tab]}</span>
+                <span>{t(`club.tab.${tab}`)}</span>
                 {selected && (
                   <motion.i
                     className="club-detail-tab__indicator"
@@ -235,22 +259,22 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
             {activeTab === "about" && (
               <div className="club-about-layout">
                 <article className="club-about-copy">
-                  <span className="club-panel-kicker">Klubun ruhu</span>
-                  <h2>Birlikdə öyrənmək üçün açıq məkan.</h2>
+                  <span className="club-panel-kicker">{t("club.aboutKicker")}</span>
+                  <h2>{t("club.aboutTitle")}</h2>
                   {editable.about.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                  <ul className="club-focus-list" aria-label="Klubun əsas mövzuları">
+                  <ul className="club-focus-list" aria-label={t("club.focusLabel")}>
                     {editable.focusTags.map((tag) => <li key={tag}>{tag}</li>)}
                   </ul>
                 </article>
 
                 <aside className="club-meeting-card" aria-labelledby="club-meeting-title">
                   <span className="club-meeting-icon" aria-hidden="true"><Sparkles size={18} /></span>
-                  <span className="club-panel-kicker">Növbəti ritm</span>
-                  <h2 id="club-meeting-title">Görüş məlumatı</h2>
+                  <span className="club-panel-kicker">{t("club.meetingKicker")}</span>
+                  <h2 id="club-meeting-title">{t("club.meetingTitle")}</h2>
                   <dl>
-                    <div><dt><CalendarDays size={15} aria-hidden="true" /> Tezlik</dt><dd>{editable.meeting.cadence}</dd></div>
-                    <div><dt><Clock3 size={15} aria-hidden="true" /> Vaxt</dt><dd>{editable.meeting.day} · {editable.meeting.time}</dd></div>
-                    <div><dt><MapPin size={15} aria-hidden="true" /> Məkan</dt><dd>{editable.meeting.place}</dd></div>
+                    <div><dt><CalendarDays size={15} aria-hidden="true" /> {t("club.meetingCadence")}</dt><dd>{editable.meeting.cadence}</dd></div>
+                    <div><dt><Clock3 size={15} aria-hidden="true" /> {t("club.meetingTime")}</dt><dd>{editable.meeting.day} · {editable.meeting.time}</dd></div>
+                    <div><dt><MapPin size={15} aria-hidden="true" /> {t("club.meetingPlace")}</dt><dd>{editable.meeting.place}</dd></div>
                   </dl>
                 </aside>
               </div>
@@ -259,8 +283,8 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
             {activeTab === "events" && (
               <div className="club-events-section">
                 <div className="club-panel-heading">
-                  <div><span className="club-panel-kicker">Yaxın proqram</span><h2>İdeyadan görüşə.</h2></div>
-                  <p>Klubun açıq sessiya, emalatxana və təqdimatlarını bir axında izlə.</p>
+                  <div><span className="club-panel-kicker">{t("club.eventsKicker")}</span><h2>{t("club.eventsTitle")}</h2></div>
+                  <p>{t("club.eventsBody")}</p>
                 </div>
                 <ol className="club-event-list">
                   {club.events.map((event) => (
@@ -280,7 +304,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                 {club.events.length === 0 && (
                   <div className="club-tab-empty">
                     <CalendarDays size={22} aria-hidden="true" />
-                    <div><h3>Hələ tədbir əlavə edilməyib</h3><p>Klubun növbəti tədbiri yayımlandıqda burada görünəcək.</p></div>
+                    <div><h3>{t("club.eventsEmptyTitle")}</h3><p>{t("club.eventsEmptyBody")}</p></div>
                   </div>
                 )}
               </div>
@@ -289,8 +313,8 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
             {activeTab === "members" && (
               <div className="club-members-section">
                 <div className="club-panel-heading">
-                  <div><span className="club-panel-kicker">İcma</span><h2>Fərqli bacarıqlar, ortaq niyyət.</h2></div>
-                  <p><UsersRound size={15} aria-hidden="true" /> Üzvlər məxfiliyi qoruyan inisiallarla göstərilir.</p>
+                  <div><span className="club-panel-kicker">{t("club.membersKicker")}</span><h2>{t("club.membersTitle")}</h2></div>
+                  <p><UsersRound size={15} aria-hidden="true" /> {t("club.membersPrivacy")}</p>
                 </div>
                 <ul className="club-member-grid">
                   {club.members.map((member) => (
@@ -303,7 +327,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                 {club.members.length === 0 && (
                   <div className="club-tab-empty">
                     <UsersRound size={22} aria-hidden="true" />
-                    <div><h3>Üzv siyahısı hələ formalaşır</h3><p>Kluba qoşulan üzvlər məxfilik qorunmaqla burada göstəriləcək.</p></div>
+                    <div><h3>{t("club.membersEmptyTitle")}</h3><p>{t("club.membersEmptyBody")}</p></div>
                   </div>
                 )}
               </div>
@@ -312,8 +336,8 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
             {activeTab === "history" && (
               <div className="club-history-section">
                 <div className="club-panel-heading">
-                  <div><span className="club-panel-kicker">Yaddaş</span><h2>Kiçik addımlardan davamlı ənənəyə.</h2></div>
-                  <p>Klubun formalaşmasına istiqamət verən əsas mərhələlər.</p>
+                  <div><span className="club-panel-kicker">{t("club.historyKicker")}</span><h2>{t("club.historyTitle")}</h2></div>
+                  <p>{t("club.historyBody")}</p>
                 </div>
                 <ol className="club-history-list">
                   {club.history.map((milestone) => (
@@ -327,7 +351,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                 {club.history.length === 0 && (
                   <div className="club-tab-empty">
                     <Clock3 size={22} aria-hidden="true" />
-                    <div><h3>Tarixçə məlumatı əlavə edilməyib</h3><p>Klubun əsas mərhələləri təsdiqləndikdən sonra burada görünəcək.</p></div>
+                    <div><h3>{t("club.historyEmptyTitle")}</h3><p>{t("club.historyEmptyBody")}</p></div>
                   </div>
                 )}
               </div>

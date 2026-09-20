@@ -1,22 +1,27 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ImagePlus, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { Clock3, ImagePlus, Plus, Sparkles, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Club } from "../data/clubs";
 import { uploadSecureImage } from "../lib/media-upload";
 import { useAuth } from "./AuthProvider";
+import { useT } from "../i18n/LanguageProvider";
 import { ClubCard } from "./ClubCard";
 
 type ClubsExperienceProps = {
   clubs: readonly Club[];
   failed?:boolean;
+  /** İstifadəçinin üzvü olduğu, amma hələ təsdiqlənməmiş klublar. */
+  pendingClubs?: readonly Club[];
 };
 
-export function ClubsExperience({ clubs, failed=false }: ClubsExperienceProps) {
+export function ClubsExperience({ clubs, failed=false, pendingClubs=[] }: ClubsExperienceProps) {
   const reducedMotion = useReducedMotion();
   const router = useRouter();
+  const t = useT();
   const { user } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -39,8 +44,8 @@ export function ClubsExperience({ clubs, failed=false }: ClubsExperienceProps) {
     setCoverPreview("");
     if(!file&&coverInputRef.current)coverInputRef.current.value="";
     if(!file)return;
-    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setError("Yalnız JPG, PNG və WebP şəkilləri qəbul olunur.");return;}
-    if(file.size>5*1024*1024){setError("Klub şəkli 5 MB-dan böyük ola bilməz.");return;}
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){setError(t("clubs.imageType"));return;}
+    if(file.size>5*1024*1024){setError(t("clubs.imageSize"));return;}
     coverPreviewRef.current=URL.createObjectURL(file);
     setCoverFile(file);
     setCoverPreview(coverPreviewRef.current);
@@ -72,7 +77,7 @@ export function ClubsExperience({ clubs, failed=false }: ClubsExperienceProps) {
         }),
       });
       const payload = await response.json().catch(() => null) as { data?: { id?: string }; error?: { message?: string } } | null;
-      if (!response.ok) throw new Error(payload?.error?.message || "Klub müraciəti göndərilmədi.");
+      if (!response.ok) throw new Error(payload?.error?.message || t("clubs.createFailed"));
       let imageWarning="";
       if(coverFile&&payload?.data?.id){
         try{await uploadSecureImage(coverFile,"club",payload.data.id);}catch(uploadError){imageWarning=uploadError instanceof Error?uploadError.message:"Şəkil yüklənmədi.";}
@@ -80,10 +85,10 @@ export function ClubsExperience({ clubs, failed=false }: ClubsExperienceProps) {
       form.reset();
       setCreateDraft({name:"",category:"",tagline:"",about:"",meetingDay:"",meetingTime:"",meetingPlace:""});
       selectCover();
-      setSuccess(imageWarning?`Klub yaradıldı, amma şəkil yüklənmədi: ${imageWarning}`:"Klub və örtük şəkli təsdiq üçün göndərildi.");
+      setSuccess(imageWarning?t("clubs.createdNoImage",{reason:imageWarning}):t("clubs.created"));
       router.refresh();
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : "Klub müraciəti göndərilmədi.");
+      setError(submissionError instanceof Error ? submissionError.message : t("clubs.createFailed"));
     } finally {
       setPending(false);
     }
@@ -104,30 +109,51 @@ export function ClubsExperience({ clubs, failed=false }: ClubsExperienceProps) {
         >
           <span className="clubs-hero-eyebrow">
             <Sparkles size={13} strokeWidth={1.8} aria-hidden="true" />
-            Tələbə birlikləri
+            {t("clubs.eyebrow")}
           </span>
           <h1 id="clubs-directory-title" className="module-page-title">
-            Klublar və icmalar
+            {t("clubs.title")}
           </h1>
         </motion.div>
       </section>
 
+      {pendingClubs.length ? (
+        <section className="clubs-pending" aria-labelledby="clubs-pending-title">
+          <header>
+            <h2 id="clubs-pending-title"><Clock3 size={16} aria-hidden="true" /> {t("clubs.pendingTitle")}</h2>
+            <p>{t("clubs.pendingBody")}</p>
+          </header>
+          <ul>
+            {pendingClubs.map((club) => (
+              <li key={club.slug}>
+                <span className="clubs-pending__mark" aria-hidden="true">{club.visualMark}</span>
+                <div>
+                  <strong>{club.name}</strong>
+                  <small>{t(`clubCategory.${club.category}`)}{club.status ? ` · ${t(`clubStatus.${club.status}`)}` : ""}</small>
+                </div>
+                <Link href={`/clubs/${club.slug}`}>{t("clubs.pendingOpen")}</Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="clubs-directory" aria-labelledby="clubs-list-title">
         <header className="clubs-section-heading">
           <div>
-            <span>Klublar və təşkilatlar</span>
-            <h2 id="clubs-list-title">Klub kataloqu</h2>
+            <span>{t("clubs.sectionEyebrow")}</span>
+            <h2 id="clubs-list-title">{t("clubs.catalog")}</h2>
           </div>
           {canCreate ? (
             <button type="button" className="club-create-trigger" onClick={() => { setError(""); setSuccess(""); setCreateOpen(true); }}>
               <Plus size={18} aria-hidden="true" />
-              Klub yarat
+              {t("clubs.create")}
             </button>
           ) : null}
         </header>
 
-        {failed ? <div className="clubs-catalog-state" role="alert"><strong>Klub kataloqu yüklənmədi.</strong><p>Bağlantını yoxlayıb səhifəni yenidən açın.</p></div>
-        : clubs.length===0 ? <div className="clubs-catalog-state"><strong>Aktiv klub yoxdur.</strong><p>Yeni klublar təsdiqləndikdə burada görünəcək.</p></div>
+        {failed ? <div className="clubs-catalog-state" role="alert"><strong>{t("clubs.loadFailedTitle")}</strong><p>{t("clubs.loadFailedBody")}</p></div>
+        : clubs.length===0 ? <div className="clubs-catalog-state"><strong>{t("clubs.emptyTitle")}</strong><p>{t("clubs.emptyBody")}</p></div>
         : <div className="clubs-directory-grid">
           {clubs.map((club, index) => (
             <ClubCard key={club.slug} club={club} index={index} />
@@ -148,23 +174,23 @@ export function ClubsExperience({ clubs, failed=false }: ClubsExperienceProps) {
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
             >
               <header>
-                <div><small>YENİ KLUB</small><h2 id="club-create-title">Klub yarat</h2></div>
-                <button type="button" onClick={() => setCreateOpen(false)} aria-label="Pəncərəni bağla"><X size={19} /></button>
+                <div><small>{t("clubs.dialogEyebrow")}</small><h2 id="club-create-title">{t("clubs.create")}</h2></div>
+                <button type="button" onClick={() => setCreateOpen(false)} aria-label={t("clubs.dialogClose")}><X size={19} /></button>
               </header>
-              <p className="club-create-intro">Əsas məlumatları yaz. Klub yoxlanıldıqdan sonra kataloqda görünəcək.</p>
-              <div className={`club-create-preview${coverPreview?" has-cover":""}`} aria-label="Klub kartının canlı önizləməsi"><div style={coverPreview?{backgroundImage:`linear-gradient(135deg,rgba(8,37,31,.12),rgba(8,37,31,.62)),url("${coverPreview}")`}:undefined}><span>{coverPreview?"Seçilmiş örtük şəkli":"Örtük şəkli burada görünəcək"}</span></div><small>{createDraft.category||"KATEQORİYA"}</small><h3>{createDraft.name||"Klubun adı burada görünəcək"}</h3><p>{createDraft.tagline||createDraft.about||"Klub haqqında məlumat burada yerləşəcək."}</p></div>
+              <p className="club-create-intro">{t("clubs.dialogIntro")}</p>
+              <div className={`club-create-preview${coverPreview?" has-cover":""}`} aria-label={t("clubs.previewLabel")}><div style={coverPreview?{backgroundImage:`linear-gradient(135deg,rgba(8,37,31,.12),rgba(8,37,31,.62)),url("${coverPreview}")`}:undefined}><span>{coverPreview?t("clubs.coverSelected"):t("clubs.coverEmpty")}</span></div><small>{createDraft.category?t(`clubCategory.${createDraft.category}`):t("clubs.previewCategory")}</small><h3>{createDraft.name||t("clubs.previewName")}</h3><p>{createDraft.tagline||createDraft.about||t("clubs.previewAbout")}</p></div>
               <form onSubmit={createClub} className="club-create-form">
-                <label className="is-wide club-create-cover-picker"><span>Örtük şəkli</span><span className="club-create-cover-actions"><span className="club-create-cover-action"><ImagePlus size={17}/>{coverPreview?"Şəkli dəyiş":"Şəkil seç"}<input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event)=>selectCover(event.target.files?.[0])}/></span>{coverPreview?<button type="button" className="club-create-cover-remove" onClick={()=>selectCover()}><Trash2 size={16}/>Şəkli sil</button>:null}</span><small>JPG, PNG və ya WebP · maksimum 5 MB</small></label>
-                <label><span>Klubun adı</span><input name="name" value={createDraft.name} onChange={(e)=>setCreateDraft({...createDraft,name:e.target.value})} minLength={3} maxLength={100} required autoFocus placeholder="Məsələn, Proqramlaşdırma klubu" /></label>
-                <label><span>Kateqoriya</span><select name="category" required value={createDraft.category} onChange={(e)=>setCreateDraft({...createDraft,category:e.target.value})}><option value="" disabled>Kateqoriya seç</option><option>Texnologiya</option><option>Akademik</option><option>Yaradıcılıq</option><option>Sosial təsir</option><option>Mədəniyyət</option><option>İdman</option></select></label>
-                <label className="is-wide"><span>Qısa şüar</span><input name="tagline" value={createDraft.tagline} onChange={(e)=>setCreateDraft({...createDraft,tagline:e.target.value})} minLength={5} maxLength={220} required placeholder="Klubun əsas fikrini bir cümlə ilə yaz" /></label>
-                <label className="is-wide"><span>Haqqında</span><textarea name="about" value={createDraft.about} onChange={(e)=>setCreateDraft({...createDraft,about:e.target.value})} minLength={10} maxLength={3000} rows={4} required placeholder="Klubun fəaliyyəti və üzvlərə verdiyi imkanlar" /></label>
-                <label><span>Görüş günü</span><input name="meetingDay" value={createDraft.meetingDay} onChange={(e)=>setCreateDraft({...createDraft,meetingDay:e.target.value})} required placeholder="Məsələn, Çərşənbə"/></label>
-                <label><span>Görüş saatı</span><input name="meetingTime" type="time" value={createDraft.meetingTime} onChange={(e)=>setCreateDraft({...createDraft,meetingTime:e.target.value})} required/></label>
-                <label className="is-wide"><span>Görüş yeri</span><input name="meetingPlace" value={createDraft.meetingPlace} onChange={(e)=>setCreateDraft({...createDraft,meetingPlace:e.target.value})} minLength={2} maxLength={180} required placeholder="Məsələn, B korpusu, 204-cü otaq"/></label>
+                <label className="is-wide club-create-cover-picker"><span>{t("clubs.cover")}</span><span className="club-create-cover-actions"><span className="club-create-cover-action"><ImagePlus size={17}/>{coverPreview?t("clubs.coverChange"):t("clubs.coverPick")}<input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event)=>selectCover(event.target.files?.[0])}/></span>{coverPreview?<button type="button" className="club-create-cover-remove" onClick={()=>selectCover()}><Trash2 size={16}/>{t("clubs.coverRemove")}</button>:null}</span><small>{t("clubs.coverHint")}</small></label>
+                <label><span>{t("clubs.fieldName")}</span><input name="name" value={createDraft.name} onChange={(e)=>setCreateDraft({...createDraft,name:e.target.value})} minLength={3} maxLength={100} required autoFocus placeholder={t("clubs.fieldNamePlaceholder")} /></label>
+                <label><span>{t("clubs.fieldCategory")}</span><select name="category" required value={createDraft.category} onChange={(e)=>setCreateDraft({...createDraft,category:e.target.value})}><option value="" disabled>{t("clubs.fieldCategoryPick")}</option><option>Texnologiya</option><option>Akademik</option><option>Yaradıcılıq</option><option>Sosial təsir</option><option>Mədəniyyət</option><option>İdman</option></select></label>
+                <label className="is-wide"><span>{t("clubs.fieldTagline")}</span><input name="tagline" value={createDraft.tagline} onChange={(e)=>setCreateDraft({...createDraft,tagline:e.target.value})} minLength={5} maxLength={220} required placeholder={t("clubs.fieldTaglinePlaceholder")} /></label>
+                <label className="is-wide"><span>{t("clubs.fieldAbout")}</span><textarea name="about" value={createDraft.about} onChange={(e)=>setCreateDraft({...createDraft,about:e.target.value})} minLength={10} maxLength={3000} rows={4} required placeholder={t("clubs.fieldAboutPlaceholder")} /></label>
+                <label><span>{t("clubs.fieldMeetingDay")}</span><input name="meetingDay" value={createDraft.meetingDay} onChange={(e)=>setCreateDraft({...createDraft,meetingDay:e.target.value})} required placeholder={t("clubs.fieldMeetingDayPlaceholder")}/></label>
+                <label><span>{t("clubs.fieldMeetingTime")}</span><input name="meetingTime" type="time" value={createDraft.meetingTime} onChange={(e)=>setCreateDraft({...createDraft,meetingTime:e.target.value})} required/></label>
+                <label className="is-wide"><span>{t("clubs.fieldMeetingPlace")}</span><input name="meetingPlace" value={createDraft.meetingPlace} onChange={(e)=>setCreateDraft({...createDraft,meetingPlace:e.target.value})} minLength={2} maxLength={180} required placeholder={t("clubs.fieldMeetingPlacePlaceholder")}/></label>
                 {error ? <p className="club-create-message is-error" role="alert">{error}</p> : null}
                 {success ? <p className="club-create-message is-success" role="status">{success}</p> : null}
-                <footer><button type="button" onClick={() => setCreateOpen(false)}>Ləğv et</button><button type="submit" disabled={pending}>{pending ? "Göndərilir…" : "Təsdiqə göndər"}</button></footer>
+                <footer><button type="button" onClick={() => setCreateOpen(false)}>{t("clubs.cancel")}</button><button type="submit" disabled={pending}>{pending ? t("clubs.submitting") : t("clubs.submit")}</button></footer>
               </form>
             </motion.section>
           </motion.div>

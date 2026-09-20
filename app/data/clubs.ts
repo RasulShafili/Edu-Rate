@@ -57,6 +57,8 @@ export type ClubHistoryMilestone = {
 export type Club = {
   id?: string;
   createdBy?: string | null;
+  /** "Aktiv" | "Gözləmədə" | "Məhdudlaşdırılıb" — yoxlanışdakı klubu göstərmək üçün lazımdır. */
+  status?: string;
   slug: string;
   name: string;
   shortName: string;
@@ -627,8 +629,8 @@ export type ClubApiRecord={
 };
 
 export function clubFromApi(record:ClubApiRecord):Club {
-  return {id:record.id,createdBy:record.createdBy,slug:record.slug,name:record.name,shortName:record.shortName,category:normalizeClubCategory(record.category),tagline:record.tagline,
-    description:record.description,about:record.about,stats:[{label:"Üzv",value:String(record.memberCount)},{label:"Tədbir",value:String(record.events.length)}],
+  return {id:record.id,createdBy:record.createdBy,status:record.status,slug:record.slug,name:record.name,shortName:record.shortName,category:normalizeClubCategory(record.category),tagline:record.tagline,
+    description:record.description,about:record.about,stats:[{label:"club.statMembers",value:String(record.memberCount)},{label:"club.statEvents",value:String(record.events.length)}],
     tone:record.tone,visualMark:record.visualMark,meeting:record.meeting,focusTags:record.focusTags,events:record.events,members:record.members,history:record.history,coverUrl:record.coverUrl};
 }
 

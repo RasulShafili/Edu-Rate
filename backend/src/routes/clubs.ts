@@ -16,9 +16,30 @@ import {
 import { ApiError } from "../lib/api-error.js";
 import { addClubConversationMember, ensureClubConversation, removeClubConversationMember } from "../db/messaging.js";
 import { findUserById } from "../db/database.js";
-import { authenticate } from "../middleware/authenticate.js";
+import { authenticate, optionalAuthenticate } from "../middleware/authenticate.js";
 
 export const clubsRouter = Router();
+
+/** Klub məzmununu idarə edə bilən platforma rolları. */
+const CLUB_LEADERSHIP = ["owner_admin", "admin", "assistant_admin"] as const;
+
+/**
+ * Klubu silə bilən platforma rolları.
+ *
+ * Əvvəl burada yalnız `role === "admin"` yoxlanılırdı, yəni platformanın ƏN
+ * YÜKSƏK rolu olan `owner_admin` özünün yaratmadığı klubu silə bilmirdi, adi
+ * `admin` isə bilirdi — səlahiyyət pilləsi tərsinə işləyirdi. Silmə dağıdıcı
+ * əməliyyat olduğu üçün `assistant_admin` bilərəkdən kənarda saxlanılır.
+ */
+const CLUB_DELETERS = ["owner_admin", "admin"] as const;
+
+function isLeadershipRole(role: string) {
+  return (CLUB_LEADERSHIP as readonly string[]).includes(role);
+}
+
+function canDeleteClub(role: string | undefined, createdBy: string | null, userId: string) {
+  return (role ? (CLUB_DELETERS as readonly string[]).includes(role) : false) || createdBy === userId;
+}
 
 const statusSchema = z.enum(["Aktiv", "Gözləmədə", "Məhdudlaşdırılıb"]);
 const clubSchema = z.object({
@@ -58,9 +79,25 @@ clubsRouter.get("/memberships/me", authenticate, async (request, response) => {
   response.json({ data: await listMyClubMemberships(request.auth!.userId) });
 });
 
-clubsRouter.get("/:clubId", async (request, response) => {
+/**
+ * Klub səhifəsi.
+ *
+ * Əvvəl `status !== "Aktiv"` olan hər klub hamı üçün 404 idi. Nəticədə müəllim
+ * klub yaradırdı (klub "Gözləmədə" statusu ilə açılır), sonra onu heç yerdə
+ * tapa bilmirdi: kataloqda yoxdur, öz səhifəsi 404, admin belə açıb baxa
+ * bilmirdi. İndi yoxlanışdakı klubu yaradanı, klub liderlərini və rəhbərliyi
+ * görə bilir; kənar istifadəçi üçün davranış dəyişməyib.
+ */
+clubsRouter.get("/:clubId", optionalAuthenticate, async (request, response) => {
   const club = await findClub(z.string().parse(request.params.clubId));
-  if (!club || club.status !== "Aktiv") throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  if (!club) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  if (club.status !== "Aktiv") {
+    const viewer = request.auth;
+    const allowed = Boolean(
+      viewer && (isLeadershipRole(viewer.role) || (await isClubLeader(club.id, viewer.userId))),
+    );
+    if (!allowed) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  }
   response.json({ data: club });
 });
 
@@ -105,7 +142,7 @@ clubsRouter.patch("/:clubId", authenticate, async (request, response) => {
   const clubId = z.string().parse(request.params.clubId);
   const current = await findClub(clubId);
   if (!current) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
-  const isLeadership = ["owner_admin", "admin", "assistant_admin"].includes(request.auth!.role);
+  const isLeadership = isLeadershipRole(request.auth!.role);
   const isLeader = await isClubLeader(clubId, request.auth!.userId);
   if (!isLeadership && !isLeader) {
     throw new ApiError(403, "CLUB_LEADER_REQUIRED", "Yalnız klub lideri və ya rəhbərlik məlumatları dəyişə bilər.");
@@ -120,7 +157,7 @@ clubsRouter.delete("/:clubId", authenticate, async (request, response) => {
   const clubId=z.string().parse(request.params.clubId);
   const current=await findClub(clubId);
   if(!current)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
-  const canDelete=request.auth!.role==="admin"||current.createdBy===request.auth!.userId;
+  const canDelete=canDeleteClub(request.auth!.role,current.createdBy,request.auth!.userId);
   if(!canDelete)throw new ApiError(403,"CLUB_DELETE_FORBIDDEN","Klubu yalnız onu yaradan şəxs və ya əsas admin silə bilər.");
   const deleted = await deleteClub(clubId);
   if (!deleted) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
@@ -130,16 +167,15 @@ clubsRouter.delete("/:clubId", authenticate, async (request, response) => {
 clubsRouter.get("/:clubId/members", authenticate, async (request,response)=>{
   const clubId=z.string().parse(request.params.clubId);
   const club=await findClub(clubId);if(!club)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
-  const isPlatformLeadership=["admin","assistant_admin","owner_admin"].includes(request.auth!.role);
-  const canManage=isPlatformLeadership||await isClubLeader(clubId,request.auth!.userId);
-  response.json({data:{members:await listClubMembers(clubId),canManage,canDelete:request.auth!.role==="admin"||club.createdBy===request.auth!.userId}});
+  const canManage=isLeadershipRole(request.auth!.role)||await isClubLeader(clubId,request.auth!.userId);
+  response.json({data:{members:await listClubMembers(clubId),canManage,canDelete:canDeleteClub(request.auth!.role,club.createdBy,request.auth!.userId),status:club.status}});
 });
 
 clubsRouter.patch("/:clubId/leaders/:userId",authenticate,async(request,response)=>{
   const clubId=z.string().parse(request.params.clubId);const userId=z.string().uuid().parse(request.params.userId);
   const club=await findClub(clubId);if(!club)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
   // Yeni lideri admin (istənilən admin rolu) və ya klubun mövcud liderləri təyin edə bilər.
-  const isPlatformAdmin=["admin","assistant_admin","owner_admin"].includes(request.auth!.role);
+  const isPlatformAdmin=isLeadershipRole(request.auth!.role);
   const canAssign=isPlatformAdmin||await isClubLeader(clubId,request.auth!.userId);
   if(!canAssign)throw new ApiError(403,"CLUB_LEADER_REQUIRED","Yeni lideri yalnız klub lideri və ya admin təyin edə bilər.");
   response.json({data:await setClubLeader(club.id,userId,true)});
@@ -148,7 +184,7 @@ clubsRouter.patch("/:clubId/leaders/:userId",authenticate,async(request,response
 clubsRouter.delete("/:clubId/leaders/:userId",authenticate,async(request,response)=>{
   const clubId=z.string().parse(request.params.clubId);const userId=z.string().uuid().parse(request.params.userId);
   const club=await findClub(clubId);if(!club)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
-  const isPlatformAdmin=["admin","assistant_admin","owner_admin"].includes(request.auth!.role);
+  const isPlatformAdmin=isLeadershipRole(request.auth!.role);
   const canAssign=isPlatformAdmin||await isClubLeader(clubId,request.auth!.userId);
   if(!canAssign)throw new ApiError(403,"CLUB_LEADER_REQUIRED","Lideri yalnız klub lideri və ya admin götürə bilər.");
   // Klubu yaradan şəxs daimi liderdir — bunu setClubLeader özü 409 ilə qoruyur.
