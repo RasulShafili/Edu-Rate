@@ -184,6 +184,27 @@ curl -s https://edu-rate-nu.vercel.app/<yol> | grep -c '<yeni-class-ve-ya-metn>'
   uğurlu deployment ondan əvvəlki rədd edilmiş commit-lərin işini özü ilə aparır
   — iş deploy olunmuş kimi görünür. Bu, səhvin uzun müddət gizli qalmasının səbəbidir.
 
+### Marker özü düzgün seçilməlidir
+
+Bir dəfə `/community` səhifəsində `peer-card-topline` sinfini marker seçdim və
+**ilk cəhddə "deploy oldu"** nəticəsi aldım. Yanlış idi: o sinif yalnız daxil
+olmuş istifadəçiyə render olunur, anonim sorğuda heç vaxt görünmür — yəni
+marker həm köhnə, həm yeni kodda "tapılmadı" verirdi.
+
+**Qayda:** marker **hər iki halı ayırd etməlidir**. Etibarlı üsul: köhnə koda
+xas mətnin **getdiyini** və yeni koda xas açarın **gəldiyini** eyni anda yoxla:
+
+```bash
+JS=$(curl -s "$URL/<yol>" | grep -o '/_next/static/chunks/[^"]*\.js' | sort -u)
+for f in $JS; do B=$(curl -s "$URL$f")
+  echo "$B" | grep -q '<KOHNE METN>' && OLD=$((OLD+1))
+  echo "$B" | grep -q '<YENI ACAR>'  && NEW=$((NEW+1)); done
+# gozlenilen: OLD=0, NEW>0
+```
+
+Anonim `curl` istifadəçiyə bağlı interfeysi görmür — markeri ya ictimai
+hissədən, ya da JS/CSS paketindən seç.
+
 ---
 
 ## 9. Lokal məlumat ≠ canlı məlumat
