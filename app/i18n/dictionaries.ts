@@ -453,6 +453,11 @@ const az = {
   "ann.sending": "Göndərilir…",
   "ann.sendForReview": "Admin yoxlanışına göndər",
 
+  "rating.averageAria": "Orta qiymət: {score} bal",
+  "rating.noScore": "Qiymət seçilməyib",
+  "rating.dotAria": "{criterion}: {rating} bal ({label})",
+  "rating.dotAriaTeacher": "{teacher} — {criterion}: {rating} bal ({label})",
+
   "footer.rights": "Bütün hüquqlar qorunur.",
   "footer.legal": "Əlaqə və məxfilik sorğusu",
 } as const;
@@ -888,6 +893,11 @@ const en: Partial<Record<TranslationKey, string>> = {
   "ann.sending": "Sending…",
   "ann.sendForReview": "Send for admin review",
 
+  "rating.averageAria": "Average score: {score} points",
+  "rating.noScore": "No score chosen",
+  "rating.dotAria": "{criterion}: {rating} points ({label})",
+  "rating.dotAriaTeacher": "{teacher} — {criterion}: {rating} points ({label})",
+
   "footer.rights": "All rights reserved.",
   "footer.legal": "Contact and privacy request",
 };
@@ -1322,6 +1332,11 @@ const ru: Partial<Record<TranslationKey, string>> = {
   "ann.cancel": "Отмена",
   "ann.sending": "Отправляем…",
   "ann.sendForReview": "Отправить на проверку",
+
+  "rating.averageAria": "Средний балл: {score}",
+  "rating.noScore": "Балл не выбран",
+  "rating.dotAria": "{criterion}: {rating} баллов ({label})",
+  "rating.dotAriaTeacher": "{teacher} — {criterion}: {rating} баллов ({label})",
 
   "footer.rights": "Все права защищены.",
   "footer.legal": "Связь и запрос по конфиденциальности",

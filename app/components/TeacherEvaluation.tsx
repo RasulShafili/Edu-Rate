@@ -165,7 +165,14 @@ export function TeacherEvaluation() {
     return [...filtered].sort((left, right) => teacherSort === "reviews" ? right.reviewCount - left.reviewCount : right.rating - left.rating);
   }, [availableTeacherIds, languageFilter, modeFilter, subjectFilter, teacherQuery, teacherSort, teachers]);
   const rating = calculateCriteriaAverage(criteriaRatings);
+  /**
+   * Qiymətləndirməni yalnız tələbə hesabı göndərə bilər (`reviews.ts:68`).
+   * Əvvəl interfeys bunu nəzərə almırdı: müəllim və ya admin bütün formanı
+   * görür, dörd meyarı doldurur, "göndər" basır və yalnız onda 403 alırdı.
+   */
+  const canReview = user?.accessRole === "student";
   const canSubmit = Boolean(selectedTeacher)
+    && canReview
     && areCriteriaComplete(criteriaRatings)
     && !selectedSemesterReview
     && !semesterReviewsLoading
@@ -433,7 +440,20 @@ export function TeacherEvaluation() {
             </div>
           </div>
 
-          {user ? selectedSemesterReview && !reviewSent ? (
+          {!user ? (
+            <div className="rating-auth-required">
+              <span>Rəylərin etibarlılığını qoruyuruq</span>
+              <h3>Qiymətləndirmək üçün hesabına daxil ol.</h3>
+              <p>Hər tələbə eyni müəllim üçün semestr ərzində yalnız bir qiymətləndirmə göndərə bilər.</p>
+              <Link href="/auth?returnTo=%2Fteachers">Daxil ol <ArrowRight size={15} /></Link>
+            </div>
+          ) : !canReview ? (
+            <div className="rating-auth-required">
+              <span>Qiymətləndirmə tələbə hesabları üçündür</span>
+              <h3>Bu hesabla qiymətləndirmə göndərilə bilməz.</h3>
+              <p>Müəllim qiymətləndirməsini yalnız tələbə hesabı göndərir. Profilləri nəzərdən keçirə və dərc olunmuş nəticələri izləyə bilərsən.</p>
+            </div>
+          ) : selectedSemesterReview && !reviewSent ? (
             <div className="teacher-review-existing" role="status">
               <i><Check size={22} aria-hidden="true" /></i>
               <span>Cari semestr qiymətləndirməsi</span>
@@ -474,7 +494,11 @@ export function TeacherEvaluation() {
               )}
             </AnimatePresence>
             <div className="rating-form-footer">
-              <small>{rating === 0 ? "Dörd meyarı tamamla" : `Orta qiymət: ${formatDecimalScore(rating)} / 5`}</small>
+              <small>
+                {areCriteriaComplete(criteriaRatings)
+                  ? `Orta qiymət: ${formatDecimalScore(rating)} / 5`
+                  : "Dörd meyarı tamamla"}
+              </small>
               <motion.button type="submit" disabled={!canSubmit} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
                 {reviewSent ? <Check size={15} /> : reviewChecking ? <i className="review-check-spinner" /> : <Send size={14} />}
                 {reviewSent ? "Qiymət göndərildi" : reviewChecking ? "Qiymət saxlanılır" : "Qiyməti göndər"}
@@ -511,14 +535,7 @@ export function TeacherEvaluation() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </form> : (
-            <div className="rating-auth-required">
-              <span>Rəylərin etibarlılığını qoruyuruq</span>
-              <h3>Qiymətləndirmək üçün hesabına daxil ol.</h3>
-              <p>Hər tələbə eyni müəllim üçün semestr ərzində yalnız bir qiymətləndirmə göndərə bilər.</p>
-              <Link href="/auth?returnTo=%2Fteachers">Daxil ol <ArrowRight size={15} /></Link>
-            </div>
-          )}
+          </form>}
         </motion.div>
       ) : (
         <motion.div

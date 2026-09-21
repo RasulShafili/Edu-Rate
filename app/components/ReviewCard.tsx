@@ -5,6 +5,7 @@ import { Star } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { TeacherReview } from "../types/professionals";
 import { criteriaLabels, type ReviewCriterionKey } from "./CriteriaRating";
+import { useT } from "../i18n/LanguageProvider";
 import { formatDecimalScore } from "../lib/number-format";
 
 type ReviewCardProps = {
@@ -13,6 +14,7 @@ type ReviewCardProps = {
 };
 
 export function ReviewCard({ review, index }: ReviewCardProps) {
+  const t = useT();
   const reduceMotion = useReducedMotion();
   const criterionScores = review.criteria
     ? (Object.entries(review.criteria) as Array<[ReviewCriterionKey, number]>)
@@ -40,7 +42,7 @@ export function ReviewCard({ review, index }: ReviewCardProps) {
         <dl className="review-criteria" aria-label="Qiymətləndirmə meyarları">
           {criterionScores.map(([criterion, score]) => (
             <div key={criterion}>
-              <dt>{criteriaLabels[criterion]}</dt>
+              <dt>{t(criteriaLabels[criterion])}</dt>
               <dd>{score}/5</dd>
             </div>
           ))}

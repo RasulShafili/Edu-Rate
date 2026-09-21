@@ -39,6 +39,8 @@ export function TeacherCompare() {
   const reduceMotion = Boolean(useReducedMotion());
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Xəta ilə boş nəticəni ayırmaq üçün: əvvəl hər ikisi "müəllim tapılmadı" idi. */
+  const [failed, setFailed] = useState(false);
   const [subject, setSubject] = useState("all");
   const [picked, setPicked] = useState<string[]>([]);
 
@@ -47,10 +49,12 @@ export function TeacherCompare() {
     void (async () => {
       try {
         const response = await fetch("/api/catalog/teachers", { cache: "no-store" });
-        const payload = await response.json() as { data?: Teacher[] };
-        if (!cancelled && response.ok) setTeachers(payload.data ?? []);
+        const payload = await response.json().catch(() => null) as { data?: Teacher[] } | null;
+        if (cancelled) return;
+        if (!response.ok || !payload?.data) setFailed(true);
+        else setTeachers(payload.data);
       } catch {
-        // Kataloq yüklənmədisə boş vəziyyət göstərilir.
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -123,6 +127,10 @@ export function TeacherCompare() {
 
       {loading ? (
         <p className="chat-state">Müəllimlər yüklənir…</p>
+      ) : failed ? (
+        <p className="compare-load-error" role="alert">
+          Müəllim kataloqu yüklənmədi. Server cavab vermədi — bir qədər sonra yenidən yoxla.
+        </p>
       ) : (
         <div className="compare-picker">
           {visible.map((teacher) => {

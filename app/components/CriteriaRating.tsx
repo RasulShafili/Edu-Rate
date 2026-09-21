@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useT } from "../i18n/LanguageProvider";
 import {
   useId,
   useRef,
@@ -30,11 +31,12 @@ export type CriterionRating = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type CriteriaRatings = Record<ReviewCriterionKey, CriterionRating>;
 
+/** Dəyərlər tərcümə açarıdır — istifadə yerində `t()` ilə açılır. */
 export const criteriaLabels: Record<ReviewCriterionKey, string> = {
-  clarity: "İzahın aydınlığı",
-  subjectKnowledge: "Fənn biliyi",
-  objectivity: "Obyektivlik",
-  communication: "Ünsiyyət və dəstək",
+  clarity: "rating.clarity",
+  subjectKnowledge: "rating.subjectKnowledge",
+  objectivity: "rating.objectivity",
+  communication: "rating.communication",
 };
 
 export const defaultCriteriaRatings: Readonly<CriteriaRatings> = Object.freeze({
@@ -45,19 +47,19 @@ export const defaultCriteriaRatings: Readonly<CriteriaRatings> = Object.freeze({
 });
 
 const criteriaDescriptions: Record<ReviewCriterionKey, string> = {
-  clarity: "Mövzunu anlaşılan şəkildə izah etməsi",
-  subjectKnowledge: "Məzmunu dəqiq və dolğun bilməsi",
-  objectivity: "Ədalətli və qərəzsiz yanaşması",
-  communication: "Dinləmə və cavab vermə üslubu",
+  clarity: "rating.clarityHint",
+  subjectKnowledge: "rating.subjectKnowledgeHint",
+  objectivity: "rating.objectivityHint",
+  communication: "rating.communicationHint",
 };
 
 /** Hər bal üçün emoji + söz. Emoji bəzəkdir (aria-hidden), mənanı söz daşıyır. */
 const ratingFeedback: Record<Exclude<CriterionRating, 0>, { emoji: string; label: string }> = {
-  1: { emoji: "😕", label: "Zəif" },
-  2: { emoji: "🙂", label: "Kafi" },
-  3: { emoji: "😊", label: "Yaxşı" },
-  4: { emoji: "😃", label: "Çox yaxşı" },
-  5: { emoji: "🤩", label: "Əla" },
+  1: { emoji: "😕", label: "rating.score1" },
+  2: { emoji: "🙂", label: "rating.score2" },
+  3: { emoji: "😊", label: "rating.score3" },
+  4: { emoji: "😃", label: "rating.score4" },
+  5: { emoji: "🤩", label: "rating.score5" },
 };
 
 const criterionKeys = Object.keys(criteriaLabels) as ReviewCriterionKey[];
@@ -119,6 +121,7 @@ function CriterionRow({
   rowId,
   reduceMotion,
 }: CriterionRowProps) {
+  const t = useT();
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const legendId = `${rowId}-legend`;
   const descriptionId = `${rowId}-description`;
@@ -143,12 +146,12 @@ function CriterionRow({
   return (
     <fieldset className="criteria-row" disabled={disabled}>
       <legend id={legendId} className="criteria-row__label">
-        {criteriaLabels[criterion]}
+        {t(criteriaLabels[criterion])}
       </legend>
 
       <div className="criteria-row__body">
         <p id={descriptionId} className="criteria-row__hint">
-          {criteriaDescriptions[criterion]}
+          {t(criteriaDescriptions[criterion])}
         </p>
 
         <div className="criteria-row__scale">
@@ -160,9 +163,12 @@ function CriterionRow({
           >
             {ratingOptions.map((rating) => {
               const selected = value === rating;
-              const buttonLabel = teacherName
-                ? `${teacherName} — ${criteriaLabels[criterion]}: ${rating} bal (${ratingFeedback[rating].label})`
-                : `${criteriaLabels[criterion]}: ${rating} bal (${ratingFeedback[rating].label})`;
+              const buttonLabel = t(teacherName ? "rating.dotAriaTeacher" : "rating.dotAria", {
+                teacher: teacherName ?? "",
+                criterion: t(criteriaLabels[criterion]),
+                rating,
+                label: t(ratingFeedback[rating].label),
+              });
 
               return (
                 <motion.button
@@ -178,9 +184,10 @@ function CriterionRow({
                   disabled={disabled}
                   className={`criteria-dot${selected ? " is-selected" : ""}`}
                   animate={selected && !reduceMotion ? { scale: [1, 1.22, 1] } : { scale: 1 }}
+                  // Eyni sebeb: uc kadr spring qebul etmir.
                   whileHover={disabled || reduceMotion ? undefined : { scale: 1.12, y: -2 }}
                   whileTap={disabled || reduceMotion ? undefined : { scale: 0.9 }}
-                  transition={pop}
+                  transition={selected && !reduceMotion ? { duration: 0.26, ease: "easeOut" } : pop}
                   onClick={() => onChange(rating)}
                   onKeyDown={(event) => handleKeyboard(event, rating)}
                 >
@@ -202,7 +209,7 @@ function CriterionRow({
                   transition={pop}
                 >
                   <i aria-hidden="true">{feedback.emoji}</i>
-                  {feedback.label}
+                  {t(feedback.label)}
                 </motion.span>
               ) : null}
             </AnimatePresence>
@@ -220,6 +227,7 @@ export function CriteriaRating({
   disabled = false,
   className = "",
 }: CriteriaRatingProps) {
+  const t = useT();
   const id = useId().replace(/:/gu, "");
   const reduceMotion = Boolean(useReducedMotion());
   const average = calculateCriteriaAverage(value);
@@ -238,18 +246,21 @@ export function CriteriaRating({
     <section className={`criteria-rating-shell ${className}`.trim()} aria-labelledby={`${id}-title`}>
       <header className="criteria-head">
         <div>
-          <p className="criteria-head__eyebrow">Meyarlar üzrə</p>
-          <h3 id={`${id}-title`}>Tədris təcrübəsini qiymətləndir</h3>
+          <p className="criteria-head__eyebrow">{t("rating.eyebrow")}</p>
+          <h3 id={`${id}-title`}>{t("rating.title")}</h3>
         </div>
 
         <motion.output
           className={`criteria-score${complete ? " is-complete" : ""}`}
           aria-label={
-            average > 0 ? `Orta qiymət: ${formatDecimalScore(average)} bal` : "Qiymət seçilməyib"
+            average > 0
+              ? t("rating.averageAria", { score: formatDecimalScore(average) })
+              : t("rating.noScore")
           }
           aria-live="polite"
           animate={complete && !reduceMotion ? { scale: [1, 1.1, 1] } : { scale: 1 }}
-          transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 22 }}
+          // Cox kadrli scale spring ile islemir (motion runtime-da atir), ona gore tween.
+          transition={reduceMotion ? { duration: 0 } : { duration: 0.34, ease: "easeOut" }}
         >
           <span className="criteria-score__emoji" aria-hidden="true">
             <AnimatePresence mode="wait" initial={false}>
@@ -265,7 +276,7 @@ export function CriteriaRating({
             </AnimatePresence>
           </span>
           <strong>{average > 0 ? formatDecimalScore(average) : "—"}</strong>
-          <small>{selectedCount}/4 meyar</small>
+          <small>{t("rating.criteriaCount", { count: selectedCount })}</small>
         </motion.output>
       </header>
 
@@ -294,7 +305,7 @@ export function CriteriaRating({
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0 }}
           >
-            <i aria-hidden="true">✅</i> Hazırdır — rəyini göndərə bilərsən.
+            <i aria-hidden="true">✅</i> {t("rating.ready")}
           </motion.p>
         ) : (
           <motion.p
@@ -304,7 +315,7 @@ export function CriteriaRating({
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
           >
-            Göndərmək üçün daha {criterionKeys.length - selectedCount} meyar qalıb.
+            {t("rating.remaining", { count: criterionKeys.length - selectedCount })}
           </motion.p>
         )}
       </AnimatePresence>
