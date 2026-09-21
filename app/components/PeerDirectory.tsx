@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Ban, Check, MapPin, MessageCircle, RefreshCw, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { Peer } from "../data/peers";
+import { useT } from "../i18n/LanguageProvider";
 
 type Props = { canInteract: boolean; currentUserId?: string; onMessage: (peer: Peer) => void; onRequireAuth: () => void };
 type ApiUser = { id: string; name: string; role: string; faculty: string; program: string; city: string; avatarUrl?:string };
@@ -27,15 +28,17 @@ function toPeer(user: ApiUser, index: number): Peer {
     id: user.id,
     name: user.name,
     initials: user.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join(""),
-    role: roleLabel(user.role),
+    role: roleLabelKey(user.role),
     focus: user.program,
     bio: user.faculty,
     city: user.city,
+    // Serverdə iştirak məlumatı yoxdur; `Peer` tipi sahəni tələb etdiyi üçün
+    // saxlanılır, amma interfeysdə GÖSTƏRİLMİR — əks halda uydurma olardı.
     status: "online",
     accent,
     glow,
     mutuals: 0,
-    tags: [user.faculty, user.program].filter(Boolean).slice(0, 2),
+    tags: [],
     openingMessage: "",
     reply: "",
     avatarUrl:user.avatarUrl,
@@ -43,6 +46,7 @@ function toPeer(user: ApiUser, index: number): Peer {
 }
 
 export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequireAuth }: Props) {
+  const t = useT();
   const [loading, setLoading] = useState(true);
   const [directory, setDirectory] = useState<Peer[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -67,12 +71,12 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
       const users = await usersResponse.json() as { data?: ApiUser[]; error?: { message?: string } };
       const links = await connectionsResponse.json() as { data?: Connection[]; error?: { message?: string } };
       if (!usersResponse.ok || !connectionsResponse.ok) {
-        throw new Error(users.error?.message || links.error?.message || "İcma yüklənmədi.");
+        throw new Error(users.error?.message || links.error?.message || t("peers.loadFailed"));
       }
       setDirectory((users.data ?? []).map(toPeer));
       setConnections(links.data ?? []);
     } catch (value) {
-      setError(value instanceof Error ? value.message : "İcma yüklənmədi.");
+      setError(value instanceof Error ? value.message : t("peers.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -102,11 +106,11 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
       });
       if (!response.ok) {
         const failed = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-        throw new Error(failed?.error?.message ?? "Əlaqə yenilənmədi.");
+        throw new Error(failed?.error?.message ?? t("peers.connectionFailed"));
       }
       if (method === "DELETE") {
         setConnections((items) => items.filter((item) => item.id !== current?.id));
-        setNotice(blockedByMe ? "İstifadəçi blokdan çıxarıldı. İstəsən, yenidən əlaqə sorğusu göndərə bilərsən." : "Əlaqə sorğusu geri çəkildi.");
+        setNotice(t(blockedByMe ? "peers.unblocked" : "peers.requestWithdrawn"));
         window.dispatchEvent(new CustomEvent("edurate:connections-changed"));
         return;
       }
@@ -114,7 +118,7 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
       setConnections((items) => [...items.filter((item) => item.id !== payload.data.id), payload.data]);
       window.dispatchEvent(new CustomEvent("edurate:connections-changed"));
     } catch (value) {
-      setError(value instanceof Error ? value.message : "Əlaqə yenilənmədi.");
+      setError(value instanceof Error ? value.message : t("peers.connectionFailed"));
     } finally {
       setActionPeerId(null);
     }
@@ -123,14 +127,14 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
   return (
     <section id="peers" className="peers-section route-module-section" aria-labelledby="peers-title">
       <motion.div className="peers-heading" initial={reduceMotion ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}>
-        <div><span className="section-kicker section-kicker-dark">Tələbə şəbəkəsi</span><h1 id="peers-title" className="module-page-title">İcma</h1></div>
-        <div className="peers-heading-aside"><button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} className={loading ? "is-spinning" : ""} /> Yenilə</button></div>
+        <div><span className="section-kicker section-kicker-dark">{t("peers.eyebrow")}</span><h1 id="peers-title" className="module-page-title">{t("peers.title")}</h1></div>
+        <div className="peers-heading-aside"><button type="button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} className={loading ? "is-spinning" : ""} /> {t("peers.refresh")}</button></div>
       </motion.div>
 
-      <div className="directory-meta"><span><i />{directory.length} aktiv istifadəçi</span></div>
+      <div className="directory-meta"><span><i />{t("peers.activeUsers", { count: directory.length })}</span></div>
       {error ? <p className="form-error" role="alert">{error}</p> : null}
       {notice ? <p className="form-success" role="status">{notice}</p> : null}
-      {!canInteract && !loading ? <div className="empty-state"><h2>İcmaya qoşul</h2><p>Real istifadəçiləri görmək və əlaqə qurmaq üçün hesabına daxil ol.</p><button type="button" className="kuds-primary-button" onClick={onRequireAuth}>Daxil ol</button></div> : null}
+      {!canInteract && !loading ? <div className="empty-state"><h2>{t("peers.joinTitle")}</h2><p>{t("peers.joinBody")}</p><button type="button" className="kuds-primary-button" onClick={onRequireAuth}>{t("peers.signIn")}</button></div> : null}
       <div className="peers-grid" aria-busy={loading}>
         <AnimatePresence mode="popLayout">
           {loading ? Array.from({ length: 4 }, (_, index) => <PeerSkeleton key={index} />) : directory.map((peer, index) => {
@@ -143,17 +147,15 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
             const actionPending = actionPeerId === peer.id;
             return (
               <motion.article layout key={peer.id} className="peer-card" style={{ "--peer-accent": peer.accent, "--peer-glow": peer.glow } as CSSProperties} initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.42, delay: index * 0.03 }}>
-                <div className="peer-card-topline"><span className="peer-status online"><i />onlayn</span><span>Real hesab</span></div>
                 <div className={`peer-avatar${peer.avatarUrl?" has-image":""}`} style={peer.avatarUrl?{"--avatar-image":`url("${peer.avatarUrl}")`} as CSSProperties:undefined} aria-hidden="true"><span>{peer.avatarUrl?null:peer.initials}</span><i className="peer-avatar-orbit" /></div>
-                <div className="peer-identity"><h3>{peer.name}</h3><p>{peer.role} · {peer.focus}</p></div>
+                <div className="peer-identity"><h3>{peer.name}</h3><p>{t(peer.role)} · {peer.focus}</p></div>
                 <p className="peer-bio">{peer.bio}</p>
-                <div className="peer-tags">{peer.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
                 <div className="peer-location"><MapPin size={12} />{peer.city}</div>
                 <div className="peer-actions">
-                  <button type="button" className={accepted || outgoing ? "is-connected" : blockedByMe ? "is-unblock" : ""} disabled={accepted || (blocked && !blockedByMe) || actionPending} aria-busy={actionPending} title={outgoing ? "Sorğunu geri çək" : blockedByMe ? "İstifadəçini blokdan çıxar" : undefined} onClick={() => void updateConnection(peer.id)}>
-                    {blockedByMe ? <Ban size={14} /> : accepted ? <Check size={14} /> : <UserPlus size={14} />}{actionPending ? blockedByMe ? "Blok açılır…" : outgoing ? "Geri çəkilir…" : "Göndərilir…" : accepted ? "Əlaqədəsiniz" : blockedByMe ? "Blokdan çıxar" : blocked ? "Sizi bloklayıb" : incoming ? "Qəbul et" : outgoing ? "Sorğunu geri çək" : "Əlaqə qur"}
+                  <button type="button" className={accepted || outgoing ? "is-connected" : blockedByMe ? "is-unblock" : ""} disabled={accepted || (blocked && !blockedByMe) || actionPending} aria-busy={actionPending} title={outgoing ? t("peers.withdraw") : blockedByMe ? t("peers.unblockTitle") : undefined} onClick={() => void updateConnection(peer.id)}>
+                    {blockedByMe ? <Ban size={14} /> : accepted ? <Check size={14} /> : <UserPlus size={14} />}{t(actionPending ? blockedByMe ? "peers.unblocking" : outgoing ? "peers.withdrawing" : "peers.sending" : accepted ? "peers.connected" : blockedByMe ? "peers.unblock" : blocked ? "peers.blockedYou" : incoming ? "peers.accept" : outgoing ? "peers.withdraw" : "peers.connect")}
                   </button>
-                  <button type="button" className="peer-message" disabled={!accepted} title={!accepted ? "Əvvəlcə əlaqə qəbul edilməlidir" : undefined} onClick={() => onMessage(peer)}><MessageCircle size={14} />Mesaj yaz</button>
+                  <button type="button" className="peer-message" disabled={!accepted} title={!accepted ? t("peers.needAccepted") : undefined} onClick={() => onMessage(peer)}><MessageCircle size={14} />{t("peers.message")}</button>
                 </div>
               </motion.article>
             );
@@ -164,6 +166,9 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
   );
 }
 
-function roleLabel(role: string) {
-  return ({ student: "Tələbə", teacher: "Müəllim", mentor: "Mentor", assistant_admin: "Admin köməkçisi", admin: "Administrator", owner_admin: "Platforma sahibi" } as Record<string, string>)[role] ?? role;
+/** Rol adı tərcümə açarı kimi saxlanılır; göstərilən yerdə `t()` ilə açılır. */
+export function roleLabelKey(role: string) {
+  return ["student", "teacher", "mentor", "assistant_admin", "admin", "owner_admin"].includes(role)
+    ? `role.${role}`
+    : role;
 }

@@ -3,6 +3,8 @@
 
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Ban, BellOff, Check, CheckCheck, ChevronDown, Crown, Flag, MessageCircle, MessagesSquare, MoreVertical, Pencil, Plus, Reply, Send, SmilePlus, Trash2, UsersRound, Volume2, X } from "lucide-react";
+import { useT } from "../i18n/LanguageProvider";
+import { roleLabelKey } from "./PeerDirectory";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { Peer } from "../data/peers";
@@ -29,6 +31,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
   const [active, setActive] = useState<ActiveChat | null>(null);
   const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const t = useT();
   const [typing, setTyping] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -114,7 +117,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
         if (!id && active.kind === "direct") {
           const response = await fetch("/api/community/conversations", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ peerId: active.peer.id }) });
           const payload = await response.json() as { data?: { id: string }; error?: { message?: string } };
-          if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Söhbət açılmadı.");
+          if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? t("chat.loadFailed"));
           id = payload.data.id;
           if (!cancelled) setActive((current) => current?.kind === "direct" ? { ...current, conversationId: id } : current);
         }
@@ -124,7 +127,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
         ]);
         const messagePayload = await messageResponse.json() as { data?: ApiMessage[]; error?: { message?: string } };
         const ticketPayload = await ticketResponse.json() as { data?: { ticket: string; socketUrl: string } };
-        if (!messageResponse.ok) throw new Error(messagePayload.error?.message ?? "Mesajlar yüklənmədi.");
+        if (!messageResponse.ok) throw new Error(messagePayload.error?.message ?? t("chat.messagesFailed"));
         if (cancelled) return;
         setMessages(messagePayload.data ?? []);
         void fetch(`/api/community/conversations/${id}/read`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
@@ -144,7 +147,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
           socket.on("typing", (payload: { conversationId: string; userId: string; active: boolean }) => payload.conversationId === id && payload.userId !== user.id && setTyping(payload.active));
         }
       } catch (value) {
-        if (!cancelled) setError(value instanceof Error ? value.message : "Söhbət açılmadı.");
+        if (!cancelled) setError(value instanceof Error ? value.message : t("chat.loadFailed"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -184,7 +187,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
     socketRef.current?.emit("typing", { conversationId: id, active: false });
     const response = await fetch(`/api/community/conversations/${id}/messages`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ body, ...(pendingReply ? { replyToId: pendingReply.id } : {}) }) });
     const payload = await response.json() as { data?: ApiMessage; error?: { message?: string } };
-    if (!response.ok || !payload.data) { setDraft(body); setReplyTo(pendingReply); setError(payload.error?.message ?? "Mesaj göndərilmədi."); return; }
+    if (!response.ok || !payload.data) { setDraft(body); setReplyTo(pendingReply); setError(payload.error?.message ?? t("chat.sendFailed")); return; }
     setMessages((current) => current.some((item) => item.id === payload.data!.id) ? current : [...current, payload.data!]);
     setAtBottom(true);
     void refreshDirectory();
@@ -198,7 +201,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
     setEditing(null);
     const response = await fetch(`/api/community/conversations/${id}/messages/${target.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ body }) });
     const payload = await response.json() as { data?: ApiMessage; error?: { message?: string } };
-    if (!response.ok || !payload.data) { setError(payload.error?.message ?? "Mesaj redaktə edilmədi."); return; }
+    if (!response.ok || !payload.data) { setError(payload.error?.message ?? t("chat.editFailed")); return; }
     setMessages((current) => current.map((item) => item.id === target.id ? { ...item, body: payload.data!.body, editedAt: payload.data!.editedAt } : item));
   }
 
@@ -207,7 +210,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
     if (!id) return;
     setActionsFor(null);
     const response = await fetch(`/api/community/conversations/${id}/messages/${messageId}`, { method: "DELETE" });
-    if (!response.ok) { setError("Mesaj silinmədi."); return; }
+    if (!response.ok) { setError(t("chat.deleteFailed")); return; }
     setMessages((current) => current.map((message) => message.id === messageId ? { ...message, body: "Mesaj silindi", deleted: true, reactions: undefined } : message));
     void refreshDirectory();
   }
@@ -219,7 +222,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
     setMessages((current) => current.map((item) => item.id === messageId ? { ...item, reactions: applyOwnReaction(item.reactions, emoji) } : item));
     const response = await fetch(`/api/community/conversations/${id}/messages/${messageId}/reactions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ emoji }) });
     const payload = await response.json() as { data?: { reactions: ApiReaction[] }; error?: { message?: string } };
-    if (!response.ok || !payload.data) { setError(payload.error?.message ?? "Reaksiya əlavə edilmədi."); void refreshActiveMessages(); return; }
+    if (!response.ok || !payload.data) { setError(payload.error?.message ?? t("chat.reactionFailed")); void refreshActiveMessages(); return; }
     setMessages((current) => current.map((item) => item.id === messageId ? { ...item, reactions: payload.data!.reactions.length ? payload.data!.reactions : undefined } : item));
   }
 
@@ -251,9 +254,9 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
     if (editing) { setEditing(null); setDraft(""); }
   }
 
-  async function report(entityType: "message" | "profile" | "club", entityId: string) { setMenuOpen(false); setActionsFor(null); setError(""); const response = await fetch("/api/community/reports", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entityType, entityId, reason: "abuse", details: "İstifadəçi tərəfindən yoxlanılması istənildi." }) }); if (response.ok) setFeedback("Şikayət moderasiya komandasına göndərildi."); else setError("Şikayət göndərilmədi."); }
-  async function mute() { if (!active?.conversationId) return; setMenuOpen(false); setError(""); const muted = !active.muted; const response = await fetch(`/api/community/conversations/${active.conversationId}/mute`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ muted }) }); if (!response.ok) { setError("Bildiriş seçimi dəyişdirilmədi."); return; } setActive((current) => current ? { ...current, muted } : current); setConversations((items) => items.map((item) => item.id === active.conversationId ? { ...item, muted } : item)); setGroups((items) => items.map((item) => item.id === active.conversationId ? { ...item, muted } : item)); setFeedback(muted ? "Söhbətin bildirişləri səssizə alındı." : "Söhbətin bildirişləri yenidən aktiv edildi."); }
-  async function block() { if (!active || active.kind !== "direct") return; setMenuOpen(false); setError(""); const blockedConversationId = active.conversationId; const response = await fetch("/api/community/blocks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: active.peer.id }) }); if (!response.ok) { setError("İstifadəçi bloklanmadı."); return; } if (blockedConversationId) setConversations((items) => items.filter((item) => item.id !== blockedConversationId)); setActive(null); setMessages([]); setFeedback("İstifadəçi bloklandı və söhbət siyahıdan çıxarıldı."); void refreshDirectory(); }
+  async function report(entityType: "message" | "profile" | "club", entityId: string) { setMenuOpen(false); setActionsFor(null); setError(""); const response = await fetch("/api/community/reports", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ entityType, entityId, reason: "abuse", details: t("chat.reportDetails") }) }); if (response.ok) setFeedback(t("chat.reportSent")); else setError(t("chat.reportFailed")); }
+  async function mute() { if (!active?.conversationId) return; setMenuOpen(false); setError(""); const muted = !active.muted; const response = await fetch(`/api/community/conversations/${active.conversationId}/mute`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ muted }) }); if (!response.ok) { setError(t("chat.muteFailed")); return; } setActive((current) => current ? { ...current, muted } : current); setConversations((items) => items.map((item) => item.id === active.conversationId ? { ...item, muted } : item)); setGroups((items) => items.map((item) => item.id === active.conversationId ? { ...item, muted } : item)); setFeedback(t(muted ? "chat.muted" : "chat.unmuted")); }
+  async function block() { if (!active || active.kind !== "direct") return; setMenuOpen(false); setError(""); const blockedConversationId = active.conversationId; const response = await fetch("/api/community/blocks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userId: active.peer.id }) }); if (!response.ok) { setError(t("chat.blockFailed")); return; } if (blockedConversationId) setConversations((items) => items.filter((item) => item.id !== blockedConversationId)); setActive(null); setMessages([]); setFeedback(t("chat.blocked")); void refreshDirectory(); }
 
   async function openContacts() {
     setContactsOpen(true); setContactsLoading(true); setError("");
@@ -261,17 +264,17 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
       const [usersResponse, connectionsResponse] = await Promise.all([fetch("/api/community/users", { cache: "no-store" }), fetch("/api/community/connections", { cache: "no-store" })]);
       const usersPayload = await usersResponse.json() as { data?: ApiContact[]; error?: { message?: string } };
       const connectionsPayload = await connectionsResponse.json() as { data?: ApiConnection[]; error?: { message?: string } };
-      if (!usersResponse.ok || !connectionsResponse.ok) throw new Error(usersPayload.error?.message ?? connectionsPayload.error?.message ?? "Əlaqələr yüklənmədi.");
+      if (!usersResponse.ok || !connectionsResponse.ok) throw new Error(usersPayload.error?.message ?? connectionsPayload.error?.message ?? t("chat.contactsFailed"));
       const accepted = new Set((connectionsPayload.data ?? []).filter((item) => item.status === "accepted").map((item) => item.requesterId === user?.id ? item.recipientId : item.requesterId));
       setContacts((usersPayload.data ?? []).filter((item) => accepted.has(item.id)));
-    } catch (value) { setError(value instanceof Error ? value.message : "Əlaqələr yüklənmədi."); setContacts([]); } finally { setContactsLoading(false); }
+    } catch (value) { setError(value instanceof Error ? value.message : t("chat.contactsFailed")); setContacts([]); } finally { setContactsLoading(false); }
   }
 
   async function startContactChat(contact: ApiContact) {
     setError("");
     const response = await fetch("/api/community/conversations", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ peerId: contact.id }) });
     const payload = await response.json() as { data?: { id: string }; error?: { message?: string } };
-    if (!response.ok || !payload.data) { setError(payload.error?.message ?? "Söhbət açıla bilmədi."); return; }
+    if (!response.ok || !payload.data) { setError(payload.error?.message ?? t("chat.openFailed")); return; }
     setContactsOpen(false); setTab("direct"); setActive({ kind: "direct", conversationId: payload.data.id, peer: apiPeer(contact), muted: false });
   }
 
@@ -309,28 +312,28 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
 
   return (
     <div className="chat-dock" style={{ "--peer-accent": accent, "--peer-glow": glow } as CSSProperties}>
-      <AnimatePresence>{!open ? <motion.button id="chat-launcher" type="button" className="chat-launcher" aria-label="Mesajları aç" onClick={() => onOpenChange(true)} initial={reduceMotion ? false : { opacity: 0, scale: .85, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .85 }}><span className="launcher-pulse" /><MessageCircle size={21} />{unreadCount ? <i>{Math.min(unreadCount, 9)}</i> : null}</motion.button> : null}</AnimatePresence>
+      <AnimatePresence>{!open ? <motion.button id="chat-launcher" type="button" className="chat-launcher" aria-label={t("chat.open")} onClick={() => onOpenChange(true)} initial={reduceMotion ? false : { opacity: 0, scale: .85, y: 14 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .85 }}><span className="launcher-pulse" /><MessageCircle size={21} />{unreadCount ? <i>{Math.min(unreadCount, 9)}</i> : null}</motion.button> : null}</AnimatePresence>
       <AnimatePresence>{open ? (
-        <motion.section className="chat-panel chat-center" data-view={active ? "thread" : "list"} role="dialog" aria-label="Mesaj mərkəzi" drag={canDrag} dragControls={dragControls} dragListener={false} dragMomentum={false} initial={reduceMotion ? false : { opacity: 0, y: 24, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 18, scale: .96 }}>
+        <motion.section className="chat-panel chat-center" data-view={active ? "thread" : "list"} role="dialog" aria-label={t("chat.center")} drag={canDrag} dragControls={dragControls} dragListener={false} dragMomentum={false} initial={reduceMotion ? false : { opacity: 0, y: 24, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 18, scale: .96 }}>
           <aside className="chat-center-sidebar">
-            <header onPointerDown={(event) => canDrag && dragControls.start(event)}><span><MessagesSquare size={18} /></span><div><strong>Mesajlar</strong><small>{conversations.length + groups.length} söhbət</small></div><button type="button" className="chat-new-trigger" aria-label="Yeni söhbət başlat" aria-expanded={contactsOpen} onPointerDown={(event) => event.stopPropagation()} onClick={() => contactsOpen ? setContactsOpen(false) : void openContacts()}><Plus size={18} /></button><button type="button" className="chat-sidebar-close" aria-label="Mesajları bağla" onPointerDown={(event) => event.stopPropagation()} onClick={() => onOpenChange(false)}><X size={18} /></button></header>
-            <AnimatePresence>{contactsOpen ? <motion.div className="chat-contact-picker" initial={reduceMotion ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}><header><div><strong>Yeni söhbət</strong><small>Əlaqələrindən birini seç</small></div><button type="button" onClick={() => setContactsOpen(false)} aria-label="Əlaqə siyahısını bağla"><X size={16} /></button></header><div>{contactsLoading ? <p>Əlaqələr yüklənir…</p> : contacts.length ? contacts.map((contact) => <button type="button" key={contact.id} onClick={() => void startContactChat(contact)}><span className={`chat-list-avatar${contact.avatarUrl ? " has-image" : ""}`} style={avatarStyle(contact.avatarUrl)}>{contact.avatarUrl ? null : initials(contact.name)}</span><span><strong>{contact.name}</strong><small>{contact.program || contact.role}</small></span><MessageCircle size={15} /></button>) : <p>Mesaj yaza biləcəyin qəbul edilmiş əlaqə yoxdur.</p>}</div></motion.div> : null}</AnimatePresence>
-            <div className="chat-center-tabs"><button type="button" className={tab === "direct" ? "active" : ""} onClick={() => setTab("direct")}>Söhbətlər</button><button type="button" className={tab === "group" ? "active" : ""} onClick={() => setTab("group")}>Klub qrupları</button></div>
+            <header onPointerDown={(event) => canDrag && dragControls.start(event)}><span><MessagesSquare size={18} /></span><div><strong>{t("chat.title")}</strong><small>{t("chat.conversationCount", { count: conversations.length + groups.length })}</small></div><button type="button" className="chat-new-trigger" aria-label={t("chat.newChat")} aria-expanded={contactsOpen} onPointerDown={(event) => event.stopPropagation()} onClick={() => contactsOpen ? setContactsOpen(false) : void openContacts()}><Plus size={18} /></button><button type="button" className="chat-sidebar-close" aria-label={t("chat.close")} onPointerDown={(event) => event.stopPropagation()} onClick={() => onOpenChange(false)}><X size={18} /></button></header>
+            <AnimatePresence>{contactsOpen ? <motion.div className="chat-contact-picker" initial={reduceMotion ? false : { opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}><header><div><strong>{t("chat.newChatTitle")}</strong><small>{t("chat.newChatBody")}</small></div><button type="button" onClick={() => setContactsOpen(false)} aria-label={t("chat.closeContacts")}><X size={16} /></button></header><div>{contactsLoading ? <p>{t("chat.contactsLoading")}</p> : contacts.length ? contacts.map((contact) => <button type="button" key={contact.id} onClick={() => void startContactChat(contact)}><span className={`chat-list-avatar${contact.avatarUrl ? " has-image" : ""}`} style={avatarStyle(contact.avatarUrl)}>{contact.avatarUrl ? null : initials(contact.name)}</span><span><strong>{contact.name}</strong><small>{contact.program || contact.role}</small></span><MessageCircle size={15} /></button>) : <p>{t("chat.noContacts")}</p>}</div></motion.div> : null}</AnimatePresence>
+            <div className="chat-center-tabs"><button type="button" className={tab === "direct" ? "active" : ""} onClick={() => setTab("direct")}>{t("chat.conversations")}</button><button type="button" className={tab === "group" ? "active" : ""} onClick={() => setTab("group")}>{t("chat.groups")}</button></div>
             <div className="chat-center-list">
-              {tab === "direct" ? conversations.map((conversation) => <button type="button" key={conversation.id} className={active?.conversationId === conversation.id ? "active" : ""} onClick={() => setActive({ kind: "direct", conversationId: conversation.id, peer: apiPeer(conversation.peer), muted: conversation.muted })}><span className={`chat-list-avatar${conversation.peer.avatarUrl ? " has-image" : ""}`} style={avatarStyle(conversation.peer.avatarUrl)}>{conversation.peer.avatarUrl ? null : initials(conversation.peer.name)}</span><span><strong>{conversation.peer.name}</strong><small>{conversation.lastMessage || conversation.peer.program}</small></span>{conversation.muted ? <BellOff className="chat-list-muted" size={13} /> : conversation.unreadCount ? <b>{conversation.unreadCount}</b> : null}</button>) : groups.map((item) => <button type="button" key={item.id} className={active?.conversationId === item.id ? "active" : ""} onClick={() => setActive({ kind: "group", conversationId: item.id, peer: groupPeer(item), group: groupTarget(item), muted: item.muted })}><span className="chat-list-avatar is-group"><UsersRound size={16} /></span><span><strong>{item.club.name}</strong><small>{item.lastMessage || `${item.memberCount} üzv`}</small></span>{item.muted ? <BellOff className="chat-list-muted" size={13} /> : item.isAdmin ? <Crown size={14} /> : item.unreadCount ? <b>{item.unreadCount}</b> : null}</button>)}
-              {tab === "direct" && !conversations.length ? <p>Qəbul edilmiş əlaqələrin söhbətləri burada görünəcək.</p> : null}
-              {tab === "group" && !groups.length ? <p>Kluba qoşulduqda qrupu burada görəcəksən.</p> : null}
+              {tab === "direct" ? conversations.map((conversation) => <button type="button" key={conversation.id} className={active?.conversationId === conversation.id ? "active" : ""} onClick={() => setActive({ kind: "direct", conversationId: conversation.id, peer: apiPeer(conversation.peer), muted: conversation.muted })}><span className={`chat-list-avatar${conversation.peer.avatarUrl ? " has-image" : ""}`} style={avatarStyle(conversation.peer.avatarUrl)}>{conversation.peer.avatarUrl ? null : initials(conversation.peer.name)}</span><span><strong>{conversation.peer.name}</strong><small>{conversation.lastMessage || conversation.peer.program}</small></span>{conversation.muted ? <BellOff className="chat-list-muted" size={13} /> : conversation.unreadCount ? <b>{conversation.unreadCount}</b> : null}</button>) : groups.map((item) => <button type="button" key={item.id} className={active?.conversationId === item.id ? "active" : ""} onClick={() => setActive({ kind: "group", conversationId: item.id, peer: groupPeer(item, t), group: groupTarget(item), muted: item.muted })}><span className="chat-list-avatar is-group"><UsersRound size={16} /></span><span><strong>{item.club.name}</strong><small>{item.lastMessage || t("chat.members", { count: item.memberCount })}</small></span>{item.muted ? <BellOff className="chat-list-muted" size={13} /> : item.isAdmin ? <Crown size={14} /> : item.unreadCount ? <b>{item.unreadCount}</b> : null}</button>)}
+              {tab === "direct" && !conversations.length ? <p>{t("chat.noConversations")}</p> : null}
+              {tab === "group" && !groups.length ? <p>{t("chat.noGroups")}</p> : null}
             </div>
           </aside>
           <main className="chat-center-main">
-            <button type="button" className="chat-center-close" onClick={() => onOpenChange(false)} aria-label="Mesajları bağla"><X size={19} /></button>
+            <button type="button" className="chat-center-close" onClick={() => onOpenChange(false)} aria-label={t("chat.close")}><X size={19} /></button>
             {active ? <>
-              <header className="chat-header" onPointerDown={(event) => canDrag && dragControls.start(event)}><button type="button" className="chat-back" aria-label="Söhbətlər siyahısına qayıt" onPointerDown={(event) => event.stopPropagation()} onClick={() => setActive(null)}><ArrowLeft size={20} /></button><div className="chat-person"><span className={`chat-person-avatar${active.kind === "direct" && active.peer.avatarUrl ? " has-image" : ""}`} style={active.kind === "direct" ? avatarStyle(active.peer.avatarUrl) : undefined}>{active.kind === "group" ? <UsersRound size={17} /> : active.peer.avatarUrl ? null : active.peer.initials}<i className="online" /></span><div><h2>{active.peer.name}</h2><p>{typing ? <span className="chat-status-typing">yazır…</span> : active.kind === "group" ? `${active.group.memberCount} üzv · klub qrupu` : "onlayn"}{active.muted ? " · səssizdədir" : ""}</p></div></div><div ref={menuRef} className="chat-more" onPointerDown={(event) => event.stopPropagation()}><button type="button" className="chat-more-trigger" onClick={() => setMenuOpen((value) => !value)} aria-label="Söhbət seçimləri" aria-haspopup="menu" aria-expanded={menuOpen}><MoreVertical size={18} /></button><AnimatePresence>{menuOpen ? <motion.div className="chat-more-menu" role="menu" initial={reduceMotion ? false : { opacity: 0, y: -6, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: .98 }}><button type="button" role="menuitem" onClick={() => void mute()}>{active.muted ? <Volume2 size={16} /> : <BellOff size={16} />}<span><strong>{active.muted ? "Səsi aktiv et" : "Səssizə al"}</strong><small>{active.muted ? "Yeni bildirişləri yenidən göstər" : "Yeni mesaj bildirişlərini dayandır"}</small></span></button><button type="button" role="menuitem" onClick={() => void report(active.kind === "group" ? "club" : "profile", active.peer.id)}><Flag size={16} /><span><strong>Şikayət et</strong><small>Moderasiya komandasına göndər</small></span></button>{active.kind === "direct" ? <button type="button" role="menuitem" className="is-danger" onClick={() => void block()}><Ban size={16} /><span><strong>İstifadəçini blokla</strong><small>Əlaqəni və yeni mesajları dayandır</small></span></button> : null}</motion.div> : null}</AnimatePresence></div></header>
+              <header className="chat-header" onPointerDown={(event) => canDrag && dragControls.start(event)}><button type="button" className="chat-back" aria-label={t("chat.back")} onPointerDown={(event) => event.stopPropagation()} onClick={() => setActive(null)}><ArrowLeft size={20} /></button><div className="chat-person"><span className={`chat-person-avatar${active.kind === "direct" && active.peer.avatarUrl ? " has-image" : ""}`} style={active.kind === "direct" ? avatarStyle(active.peer.avatarUrl) : undefined}>{active.kind === "group" ? <UsersRound size={17} /> : active.peer.avatarUrl ? null : active.peer.initials}</span><div><h2>{active.peer.name}</h2><p>{typing ? <span className="chat-status-typing">{t("chat.typing")}</span> : active.kind === "group" ? t("chat.groupMeta", { count: active.group.memberCount }) : t(active.peer.role)}{active.muted ? t("chat.mutedSuffix") : ""}</p></div></div><div ref={menuRef} className="chat-more" onPointerDown={(event) => event.stopPropagation()}><button type="button" className="chat-more-trigger" onClick={() => setMenuOpen((value) => !value)} aria-label={t("chat.options")} aria-haspopup="menu" aria-expanded={menuOpen}><MoreVertical size={18} /></button><AnimatePresence>{menuOpen ? <motion.div className="chat-more-menu" role="menu" initial={reduceMotion ? false : { opacity: 0, y: -6, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: .98 }}><button type="button" role="menuitem" onClick={() => void mute()}>{active.muted ? <Volume2 size={16} /> : <BellOff size={16} />}<span><strong>{t(active.muted ? "chat.unmute" : "chat.mute")}</strong><small>{t(active.muted ? "chat.unmuteHint" : "chat.muteHint")}</small></span></button><button type="button" role="menuitem" onClick={() => void report(active.kind === "group" ? "club" : "profile", active.peer.id)}><Flag size={16} /><span><strong>{t("chat.report")}</strong><small>{t("chat.reportHint")}</small></span></button>{active.kind === "direct" ? <button type="button" role="menuitem" className="is-danger" onClick={() => void block()}><Ban size={16} /><span><strong>{t("chat.block")}</strong><small>{t("chat.blockHint")}</small></span></button> : null}</motion.div> : null}</AnimatePresence></div></header>
               <div ref={listRef} className="message-list" data-pattern={conversationPattern(active.conversationId)} role="log" aria-live="polite" onScroll={onListScroll}>
-                {loading ? <p className="chat-state">Yüklənir…</p> : null}
+                {loading ? <p className="chat-state">{t("chat.loadingShort")}</p> : null}
                 {error ? <p className="form-error" role="alert">{error}</p> : null}
                 {feedback ? <p className="chat-feedback" role="status">{feedback}</p> : null}
-                {!loading && !error && !messages.length ? <p className="chat-state">İlk mesajı sən yaz.</p> : null}
+                {!loading && !error && !messages.length ? <p className="chat-state">{t("chat.firstMessage")}</p> : null}
                 <AnimatePresence initial={false}>
                   {rendered.map((entry) => entry.type === "day"
                     ? <div key={entry.key} className="message-day"><span>{entry.label}</span></div>
@@ -343,12 +346,12 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
                         <motion.div key={message.id} data-message={message.id} className={`message-row ${own ? "message-own" : "message-peer"}${entry.groupStart ? " group-start" : ""}${entry.groupEnd ? " group-end" : ""}${actionsFor === message.id ? " actions-open" : ""}`} data-deleted={message.deleted ? "true" : undefined} initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} layout={reduceMotion ? false : "position"}>
                           {!own ? (entry.groupEnd ? <span className={`message-avatar${message.senderAvatarUrl ? " has-image" : ""}`} style={avatarStyle(message.senderAvatarUrl)}>{message.senderAvatarUrl ? null : message.senderInitials || active.peer.initials}</span> : <span className="message-avatar message-avatar-spacer" aria-hidden="true" />) : null}
                           <div className="message-bubble-wrap">
-                            {active.kind === "group" && !own && entry.groupStart ? <strong className="message-sender-name">{message.senderName || "Klub üzvü"}</strong> : null}
+                            {active.kind === "group" && !own && entry.groupStart ? <strong className="message-sender-name">{message.senderName || t("chat.clubMember")}</strong> : null}
                             <div className="message-bubble">
                               {message.replyTo ? <button type="button" className="message-quote" onClick={() => scrollToMessage(message.replyTo!.id)}><span>{message.replyTo.senderName}</span><small>{message.replyTo.deleted ? "Mesaj silindi" : message.replyTo.body}</small></button> : null}
                               <p>{message.body}</p>
-                              <span className="message-meta">{message.editedAt && !message.deleted ? <em className="message-edited">redaktə olundu</em> : null}{new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}{own && message.status ? (message.status === "read" ? <CheckCheck className="tick tick-read" size={13} /> : <Check className="tick" size={12} />) : null}</span>
-                              {!message.deleted ? <div className="message-actions"><button type="button" onClick={() => setActionsFor((current) => current === message.id ? null : message.id)} aria-label="Reaksiya seç"><SmilePlus size={14} /></button><button type="button" onClick={() => startReply(message)} aria-label="Cavab yaz"><Reply size={14} /></button>{canEdit ? <button type="button" onClick={() => startEdit(message)} aria-label="Mesajı redaktə et"><Pencil size={13} /></button> : null}{canDelete ? <button type="button" onClick={() => void removeMessage(message.id)} aria-label="Mesajı sil"><Trash2 size={13} /></button> : null}</div> : null}
+                              <span className="message-meta">{message.editedAt && !message.deleted ? <em className="message-edited">{t("chat.edited")}</em> : null}{new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}{own && message.status ? (message.status === "read" ? <CheckCheck className="tick tick-read" size={13} /> : <Check className="tick" size={12} />) : null}</span>
+                              {!message.deleted ? <div className="message-actions"><button type="button" onClick={() => setActionsFor((current) => current === message.id ? null : message.id)} aria-label={t("chat.reaction")}><SmilePlus size={14} /></button><button type="button" onClick={() => startReply(message)} aria-label="Cavab yaz"><Reply size={14} /></button>{canEdit ? <button type="button" onClick={() => startEdit(message)} aria-label={t("chat.edit")}><Pencil size={13} /></button> : null}{canDelete ? <button type="button" onClick={() => void removeMessage(message.id)} aria-label={t("chat.delete")}><Trash2 size={13} /></button> : null}</div> : null}
                               <AnimatePresence>{actionsFor === message.id && !message.deleted ? <motion.div className="reaction-bar" initial={reduceMotion ? false : { opacity: 0, y: 6, scale: .9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: .9 }}>{REACTIONS.map((emoji) => <button type="button" key={emoji} onClick={() => void toggleReaction(message.id, emoji)} aria-label={`${emoji} reaksiyası`}>{emoji}</button>)}</motion.div> : null}</AnimatePresence>
                             </div>
                             {message.reactions?.length ? <div className={`message-reactions${own ? " own" : ""}`}>{message.reactions.map((reaction) => <button type="button" key={reaction.emoji} className={reaction.mine ? "mine" : ""} onClick={() => void toggleReaction(message.id, reaction.emoji)}><span>{reaction.emoji}</span>{reaction.count > 1 ? <b>{reaction.count}</b> : null}</button>)}</div> : null}
@@ -359,21 +362,21 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
                   {typing ? <motion.div key="typing" className="typing-row" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><span className={`message-avatar${active.peer.avatarUrl ? " has-image" : ""}`} style={avatarStyle(active.peer.avatarUrl)}>{active.peer.avatarUrl ? null : active.peer.initials}</span><div className="typing-bubble"><i /><i /><i /></div></motion.div> : null}
                 </AnimatePresence>
               </div>
-              <AnimatePresence>{!atBottom ? <motion.button type="button" className="chat-scroll-bottom" onClick={() => { setAtBottom(true); scrollToEnd(reduceMotion ? "auto" : "smooth"); }} aria-label="Ən son mesaja keç" initial={reduceMotion ? false : { opacity: 0, scale: .8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .8 }}><ChevronDown size={18} /></motion.button> : null}</AnimatePresence>
+              <AnimatePresence>{!atBottom ? <motion.button type="button" className="chat-scroll-bottom" onClick={() => { setAtBottom(true); scrollToEnd(reduceMotion ? "auto" : "smooth"); }} aria-label={t("chat.toLatest")} initial={reduceMotion ? false : { opacity: 0, scale: .8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .8 }}><ChevronDown size={18} /></motion.button> : null}</AnimatePresence>
               <form className="chat-composer" onSubmit={(event) => void send(event)}>
-                <AnimatePresence>{replyTo || editing ? <motion.div className="composer-context" initial={reduceMotion ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}><div className="composer-context-body"><span>{editing ? "Redaktə" : `Cavab: ${replyTo?.senderName ?? ""}`}</span><small>{editing ? editing.body : replyTo?.deleted ? "Mesaj silindi" : replyTo?.body}</small></div><button type="button" onClick={cancelComposerContext} aria-label="Ləğv et"><X size={15} /></button></motion.div> : null}</AnimatePresence>
+                <AnimatePresence>{replyTo || editing ? <motion.div className="composer-context" initial={reduceMotion ? false : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}><div className="composer-context-body"><span>{editing ? t("chat.editLabel") : t("chat.replyTo", { name: replyTo?.senderName ?? "" })}</span><small>{editing ? editing.body : replyTo?.deleted ? "Mesaj silindi" : replyTo?.body}</small></div><button type="button" onClick={cancelComposerContext} aria-label={t("chat.cancel")}><X size={15} /></button></motion.div> : null}</AnimatePresence>
                 <div className="composer-row">
                   <div className="composer-emoji">
-                    <button type="button" className="composer-emoji-trigger" onClick={() => setEmojiOpen((value) => !value)} aria-label="Emoji əlavə et" aria-expanded={emojiOpen}><SmilePlus size={19} /></button>
+                    <button type="button" className="composer-emoji-trigger" onClick={() => setEmojiOpen((value) => !value)} aria-label={t("chat.addEmoji")} aria-expanded={emojiOpen}><SmilePlus size={19} /></button>
                     <AnimatePresence>{emojiOpen ? <motion.div className="composer-emoji-panel" initial={reduceMotion ? false : { opacity: 0, y: 8, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: .96 }}>{EMOJIS.map((emoji) => <button type="button" key={emoji} onClick={() => insertEmoji(emoji)}>{emoji}</button>)}</motion.div> : null}</AnimatePresence>
                   </div>
-                  <label className="sr-only" htmlFor="chat-message">Mesaj</label>
-                  <textarea ref={inputRef} id="chat-message" value={draft} onChange={(event) => changeDraft(event.target.value)} onKeyDown={keyDown} rows={1} maxLength={2000} placeholder={editing ? "Mesajı redaktə et…" : "Mesajını yaz…"} />
+                  <label className="sr-only" htmlFor="chat-message">{t("chat.messageLabel")}</label>
+                  <textarea ref={inputRef} id="chat-message" value={draft} onChange={(event) => changeDraft(event.target.value)} onKeyDown={keyDown} rows={1} maxLength={2000} placeholder={t(editing ? "chat.editPlaceholder" : "chat.placeholder")} />
                   <button type="submit" disabled={!draft.trim() || !active.conversationId}>{editing ? <Check size={18} /> : <Send size={17} />}</button>
                 </div>
-                <span className="composer-hint">Enter ilə göndər · Shift + Enter ilə yeni sətir</span>
+                <span className="composer-hint">{t("chat.sendHint")}</span>
               </form>
-            </> : <div className="chat-center-empty">{feedback ? <p className="chat-feedback" role="status">{feedback}</p> : null}<MessagesSquare size={30} /><h2>Söhbət seç</h2><p>Şəxsi söhbətlər və klub qrupları ayrı siyahılarda saxlanılır.</p></div>}
+            </> : <div className="chat-center-empty">{feedback ? <p className="chat-feedback" role="status">{feedback}</p> : null}<MessagesSquare size={30} /><h2>{t("chat.pickTitle")}</h2><p>{t("chat.pickBody")}</p></div>}
           </main>
         </motion.section>
       ) : null}</AnimatePresence>
@@ -436,8 +439,9 @@ function mergeReactions(current: ApiReaction[] | undefined, incoming: ApiReactio
 }
 
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join(""); }
-function apiPeer(peer: ApiConversation["peer"]): Peer { return { id: peer.id, name: peer.name, initials: initials(peer.name), role: peer.role, focus: peer.program, bio: "", city: peer.city, status: "online", accent: "#8fc15f", glow: "rgba(143,193,95,.28)", mutuals: 0, tags: [], openingMessage: "", reply: "", avatarUrl: peer.avatarUrl }; }
+function apiPeer(peer: ApiConversation["peer"]): Peer { return { id: peer.id, name: peer.name, initials: initials(peer.name), role: roleLabelKey(peer.role), focus: peer.program, bio: "", city: peer.city, status: "online", accent: "#8fc15f", glow: "rgba(143,193,95,.28)", mutuals: 0, tags: [], openingMessage: "", reply: "", avatarUrl: peer.avatarUrl }; }
 function groupTarget(item: ApiGroup): ClubChatTarget { return { conversationId: item.id, clubId: item.club.id, name: item.club.name, initials: initials(item.club.name), memberCount: item.memberCount, isAdmin: item.isAdmin }; }
-function groupPeer(item: ApiGroup): Peer { return { id: item.club.id, name: item.club.name, initials: initials(item.club.name), role: "Klub qrupu", focus: `${item.memberCount} üzv`, bio: "", city: "", status: "online", accent: "#44766c", glow: "rgba(68,118,108,.28)", mutuals: 0, tags: [], openingMessage: "", reply: "" }; }
+/** `t` kenardan verilir: modul seviyyesinde hook cagirmaq olmaz. */
+function groupPeer(item: ApiGroup, t: (key: string, values?: Record<string, string | number>) => string): Peer { return { id: item.club.id, name: item.club.name, initials: initials(item.club.name), role: "chat.clubGroup", focus: t("chat.members", { count: item.memberCount }), bio: "", city: "", status: "online", accent: "#44766c", glow: "rgba(68,118,108,.28)", mutuals: 0, tags: [], openingMessage: "", reply: "" }; }
 function conversationPattern(id?: string) { return String([...(id ?? "edurate")].reduce((total, character) => total + character.charCodeAt(0), 0) % 3); }
 function avatarStyle(url?: string): CSSProperties | undefined { return url ? { backgroundImage: `url("${url}")`, "--avatar-image": `url("${url}")` } as CSSProperties : undefined; }
