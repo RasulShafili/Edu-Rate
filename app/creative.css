@@ -684,7 +684,7 @@
 /* Kartlar hover-də zərif qalxır — tamamilə 2D, perspektiv/preserve-3d yoxdur */
 [data-motion="alive"] :is(
   .event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card,
-  .review-card, .community-card-shell, .announcement-card, .club-member-card,
+  .review-card, .announcement-card, .club-member-card,
   .kuds-quick-card, .profile-stat-card
 ) {
   position: relative;
@@ -696,7 +696,7 @@
 @media (hover: hover) and (pointer: fine) {
   [data-motion="alive"] :is(
     .event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card,
-    .review-card, .community-card-shell, .announcement-card, .club-member-card,
+    .review-card, .announcement-card, .club-member-card,
     .kuds-quick-card, .profile-stat-card
   ):hover {
     translate: 0 -6px;
@@ -732,10 +732,10 @@
    `premium-route-rise` ilə bir dəfə görünür, ikiqat animasiya artıq idi. */
 
 /* ---------- Kart daxili mikro-hərəkət ---------- */
-.kuds-shell :is(.event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card, .community-card-shell) svg {
+.kuds-shell :is(.event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card) svg {
   transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.kuds-shell :is(.event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card, .community-card-shell):hover svg {
+.kuds-shell :is(.event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card):hover svg {
   transform: translateX(2px) scale(1.06);
 }
 
@@ -1783,7 +1783,7 @@
         daimi kompozitor qatı və 3D kontekst təmiz israfdır. */
   [data-motion="alive"] :is(
     .event-card, .club-directory-card, .peer-card, .mentor-card, .teacher-card,
-    .review-card, .community-card-shell, .announcement-card, .club-member-card,
+    .review-card, .announcement-card, .club-member-card,
     .kuds-quick-card, .profile-stat-card
   ) {
     will-change: auto;
