@@ -2932,6 +2932,40 @@ a { color: inherit; text-decoration: none; }
 .announcements-board,
 .announcements-list { min-width: 0; }
 .announcement-filter-bar { isolation: isolate; }
+
+/* Lentde paylasim yazma duymesi. */
+.feed-post-trigger {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  border: 1px solid var(--ku-dark-green, #16423c); border-radius: 999px;
+  background: var(--ku-dark-green, #16423c); color: #fff;
+  font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer;
+  transition: opacity 160ms ease;
+}
+.feed-post-trigger:hover { opacity: 0.88; }
+
+
+/* Yadda saxlananlar gorunusu — elfecin duymesi evvel hec yere aparmirdi. */
+.announcement-saved-toggle {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 12px;
+  border: 1px solid var(--kuds-border, #e2e8f0); border-radius: 999px; background: #fff;
+  color: var(--kuds-muted, #64748b); font: inherit; font-size: 11.5px; font-weight: 650;
+  white-space: nowrap; cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+.announcement-saved-toggle b { font-weight: 750; }
+.announcement-saved-toggle:hover { border-color: rgb(68 118 108 / 45%); color: var(--ku-dark-green, #16423c); }
+.announcement-saved-toggle.is-active {
+  border-color: var(--ku-dark-green, #16423c); background: var(--ku-dark-green, #16423c); color: #fff;
+}
+
+/* Oxundu / yadda saxla / reaksiya sorgusu ugursuz olanda sebebi yazilir. */
+.announcement-state-error {
+  display: flex; align-items: center; gap: 7px; margin: 10px 0 0; padding: 9px 12px;
+  border: 1px solid rgb(239 68 68 / 38%); border-radius: 11px; background: rgb(239 68 68 / 9%);
+  color: #9b1c1c; font-size: 12.5px; line-height: 1.45;
+}
+.announcement-state-error svg { flex: none; }
+
 .announcement-filters { overscroll-behavior-x: contain; scroll-padding-inline: 4px; }
 .announcements-list { scroll-padding-inline: 1px; overscroll-behavior-x: contain; }
 .announcement-card,

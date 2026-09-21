@@ -13,6 +13,8 @@ import type {
   StudentFeedItem,
   StudentFeedKind,
 } from "../data/network";
+import { useT } from "../i18n/LanguageProvider";
+import { formatDateTimeWithMonths } from "../lib/date";
 
 type FeedCardProps = {
   item: StudentFeedItem;
@@ -27,9 +29,9 @@ type KindPresentation = {
 };
 
 const kindPresentation: Record<StudentFeedKind, KindPresentation> = {
-  post: { label: "Tələbə paylaşımı", icon: MessageCircleMore },
-  news: { label: "Xəbər", icon: Newspaper },
-  notification: { label: "Bildiriş", icon: Bell },
+  post: { label: "feed.kind.post", icon: MessageCircleMore },
+  news: { label: "feed.kind.news", icon: Newspaper },
+  notification: { label: "feed.kind.notification", icon: Bell },
 };
 
 const toneClasses: Record<
@@ -72,6 +74,10 @@ const FeedCardBase = forwardRef<HTMLElement, FeedCardProps>(function FeedCard(
   { item, position, total, reducedMotion },
   ref,
 ) {
+  const t = useT();
+  // Server `timeLabel`-i hazir azerbaycanca qaytarir; ISO tarixden
+  // formatlamaq tarixin de secilmis dilde olmasini temin edir.
+  const months = Array.from({ length: 12 }, (_, index) => t(`month.${index + 1}`));
   const presentation = kindPresentation[item.kind];
   const tone = toneClasses[item.tone];
   const KindIcon = presentation.icon;
@@ -118,7 +124,7 @@ const FeedCardBase = forwardRef<HTMLElement, FeedCardProps>(function FeedCard(
               className="mt-1 block text-[10px] tracking-[0.04em] text-[color:rgba(244,243,237,0.45)]"
               dateTime={item.publishedAt}
             >
-              {item.timeLabel}
+              {formatDateTimeWithMonths(item.publishedAt, months)}
             </time>
           </div>
         </div>
@@ -127,7 +133,7 @@ const FeedCardBase = forwardRef<HTMLElement, FeedCardProps>(function FeedCard(
           className={`feed-card-kind ${tone.icon} inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[9px] font-bold uppercase tracking-[0.1em]`}
         >
           <KindIcon size={13} strokeWidth={1.8} aria-hidden="true" />
-          <span className="hidden sm:inline">{presentation.label}</span>
+          <span className="hidden sm:inline">{t(presentation.label)}</span>
         </span>
       </div>
 

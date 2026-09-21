@@ -53,6 +53,22 @@ export function formatAzDate(value: string): string {
   return `${day} ${AZ_MONTHS[month - 1]} ${year}`;
 }
 
+/**
+ * Ay adlarını kənardan alır ki, tarix istifadəçinin seçdiyi dildə yazılsın.
+ * `formatAzDate` yalnız azərbaycanca qaytarır və hələ də bir neçə yerdə
+ * işlədilir; bu funksiya tərcümə lüğəti ilə birlikdə istifadə olunur.
+ */
+export function formatDateWithMonths(value: string, months: readonly string[]): string {
+  const { day, month, year } = getStableDateParts(value);
+  return `${day} ${months[month - 1] ?? month} ${year}`;
+}
+
+/** "10 avqust · 10:20" — ay adi lugetden gelir. */
+export function formatDateTimeWithMonths(value: string, months: readonly string[]): string {
+  const { day, month, hour, minute } = getStableDateParts(value);
+  return `${day} ${months[month - 1] ?? month} · ${hour}:${minute}`;
+}
+
 export function formatAzDateTime(value: string): string {
   const { day, month, hour, minute } = getStableDateParts(value);
   return `${day} ${AZ_MONTHS[month - 1]}, ${hour}:${minute}`;

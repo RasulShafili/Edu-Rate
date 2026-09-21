@@ -164,7 +164,7 @@ export function ScheduleExperience() {
   const dateLine = now
     ? t("schedule.dateLine", {
         day: now.getDate(),
-        month: t(`schedule.month.${now.getMonth() + 1}`),
+        month: t(`month.${now.getMonth() + 1}`),
         weekday: t(`schedule.day.${isoDay(now)}`),
       })
     : "";
