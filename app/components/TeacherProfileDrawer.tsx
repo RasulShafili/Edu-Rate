@@ -10,11 +10,12 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { Teacher } from "../types/professionals";
 import { formatDecimalScore, formatInteger } from "../lib/number-format";
 import { TeacherSilhouette } from "./TeacherSilhouette";
+import { useT } from "../i18n/LanguageProvider";
 
 type TeacherProfileDrawerProps = {
   teacher: Teacher | null;
@@ -33,10 +34,22 @@ export function TeacherProfileDrawer({
   onExitComplete,
   onChooseForRating,
 }: TeacherProfileDrawerProps) {
+  const t = useT();
   const closeRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const selectionRequestedRef = useRef(false);
   const reduceMotion = useReducedMotion();
+  /**
+   * Portal yalnız quraşdırmadan SONRA render olunur.
+   *
+   * Əvvəl `typeof document === "undefined"` yoxlanışı vardı: serverdə `null`,
+   * brauzerin İLK (hidrasiya) render-ində isə portal qaytarırdı. Yəni server
+   * HTML-i ilə müştərinin ilk render-i fərqlənirdi və React bütün bölməni
+   * atıb yenidən qururdu — konsolda "Hydration failed" xətası bundan gəlirdi.
+   * `mounted` bayrağı ilk render-i hər iki tərəfdə eyni (null) saxlayır.
+   */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!teacher) return;
@@ -154,27 +167,27 @@ export function TeacherProfileDrawer({
 
             <dl className="teacher-profile-facts">
               <div>
-                <dt><GraduationCap size={16} /> Təcrübə</dt>
+                <dt><GraduationCap size={16} /> {t("teachers.experience")}</dt>
                 <dd>{teacher.experience}</dd>
               </div>
               <div>
-                <dt><MapPin size={16} /> Şəhər</dt>
+                <dt><MapPin size={16} /> {t("teachers.city")}</dt>
                 <dd>{teacher.city}</dd>
               </div>
               <div>
-                <dt><Users size={16} /> İcma</dt>
-                <dd>{teacher.reviewCount > 0 ? `${formatInteger(teacher.reviewCount)} təsdiqlənmiş rəy` : "Hələ təsdiqlənmiş rəy yoxdur"}</dd>
+                <dt><Users size={16} /> {t("teachers.community")}</dt>
+                <dd>{teacher.reviewCount > 0 ? t("teachers.approvedReviews", { count: formatInteger(teacher.reviewCount) }) : t("teachers.noApprovedReviews")}</dd>
               </div>
               <div>
-                <dt><CalendarClock size={16} /> Uyğun vaxt</dt>
+                <dt><CalendarClock size={16} /> {t("teachers.availability")}</dt>
                 <dd>{teacher.availability}</dd>
               </div>
             </dl>
 
             <div className="teacher-profile-bottom">
               <div>
-                <span>Obyektiv qiymətləndirmə</span>
-                <p>İzah, fənn biliyi, obyektivlik və ünsiyyət üzrə rəyini paylaş.</p>
+                <span>{t("teachers.objectiveTitle")}</span>
+                <p>{t("teachers.objectiveBody")}</p>
               </div>
               <motion.button
                 type="button"
@@ -185,11 +198,11 @@ export function TeacherProfileDrawer({
                 disabled={selectionDisabled}
                 whileTap={reduceMotion ? undefined : { scale: 0.97 }}
               >
-                {selectionDisabled
-                  ? "Rəy yoxlanılır"
+                {t(selectionDisabled
+                  ? "teachers.reviewChecking"
                   : isRatingTarget
-                    ? "Qiymətləndirməyə keç"
-                    : "Qiymətləndirmək üçün seç"}
+                    ? "teachers.goToRating"
+                    : "teachers.chooseForRating")}
                 <ArrowRight size={16} />
               </motion.button>
             </div>
@@ -202,7 +215,6 @@ export function TeacherProfileDrawer({
   // `kuds-shell` sarğısı (display:contents — heç nə çəkmir) işıqlı temanın
   // `.kuds-shell ...` seçicilərinin bədənə portal olunandan sonra da işləməsini
   // təmin edir; onsuz müəllim profili köhnə tünd temada qara qalırdı.
-  return typeof document === "undefined"
-    ? null
-    : createPortal(<div className="kuds-shell" style={{ display: "contents" }}>{drawer}</div>, document.body);
+  if (!mounted) return null;
+  return createPortal(<div className="kuds-shell" style={{ display: "contents" }}>{drawer}</div>, document.body);
 }

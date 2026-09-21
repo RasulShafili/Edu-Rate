@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { useT } from "../i18n/LanguageProvider";
 import { ArrowUpRight, Check, Star } from "lucide-react";
 import { useRef, type CSSProperties, type RefObject } from "react";
 import type { Teacher } from "../types/professionals";
@@ -27,6 +28,7 @@ export function TeacherCard({
   onOpenProfile,
 }: TeacherCardProps) {
   const cardRef = useRef<HTMLElement>(null);
+  const t = useT();
   const reduceMotion = useReducedMotion();
   const { scrollXProgress } = useScroll({
     container: scrollContainer,
@@ -59,7 +61,7 @@ export function TeacherCard({
         aria-haspopup="dialog"
         aria-expanded={isProfileOpen}
         aria-controls="teacher-profile-dialog"
-        aria-label={`${teacher.name} — ${teacher.subject} profilini aç${isRatingTarget ? ", qiymətləndirmə üçün seçilib" : ""}`}
+        aria-label={`${t("teachers.openProfileAria", { name: teacher.name, subject: teacher.subject })}${isRatingTarget ? t("teachers.selectedSuffix") : ""}`}
         whileTap={reduceMotion ? undefined : { scale: 0.985 }}
       >
         <span className="teacher-avatar" aria-hidden="true">
@@ -85,7 +87,7 @@ export function TeacherCard({
                 {formatDecimalScore(teacher.rating)}
                 <small>{teacher.reviewCount} rəy</small>
               </>
-            ) : <small>Yeni profil</small>}
+            ) : <small>{t("teachers.newProfile")}</small>}
           </span>
         </span>
 

@@ -74,6 +74,8 @@ export function AdminRecordFormSheet({
   userRoleOnly,
 }: AdminRecordFormSheetProps) {
   const reducedMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -143,7 +145,16 @@ export function AdminRecordFormSheet({
       ? "Bu əməliyyat geri qaytarılmır. Təsdiqdən əvvəl qeydi bir daha yoxla."
       : "Yalnız vacib məlumatları daxil et. Dəyişikliklər REST API-yə təhlükəsiz göndəriləcək.";
 
-  if (typeof document === "undefined") return null;
+  /**
+   * Portal yalnız quraşdırmadan SONRA render olunur.
+   *
+   * Əvvəl `typeof document === "undefined"` yoxlanışı vardı: serverdə `null`,
+   * brauzerin İLK (hidrasiya) render-ində isə portal qaytarırdı. Yəni server
+   * HTML-i ilə müştərinin ilk render-i fərqlənirdi və React bütün bölməni
+   * atıb yenidən qururdu — konsolda "Hydration failed" xətası bundan gəlirdi.
+   * `mounted` bayrağı ilk render-i hər iki tərəfdə eyni (null) saxlayır.
+   */
+  if (!mounted) return null;
 
   // Modal document.body-yə portal olunur ki, heç bir transform/filter saxlayan
   // ata element onu viewport əvəzinə səhifə hündürlüyünə "uzada" bilməsin.

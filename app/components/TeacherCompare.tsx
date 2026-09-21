@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Check, GraduationCap, Scale, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "../i18n/LanguageProvider";
 
 type Criteria = {
   clarity: number;
@@ -27,15 +28,16 @@ type Teacher = {
 };
 
 const CRITERIA: Array<{ key: keyof Criteria; label: string; hint: string }> = [
-  { key: "clarity", label: "İzahın aydınlığı", hint: "Mövzunu nə qədər başa düşülən çatdırır" },
-  { key: "subjectKnowledge", label: "Fənn biliyi", hint: "Sahəyə dərin hakimiyyəti" },
-  { key: "objectivity", label: "Obyektivlik", hint: "Qiymətləndirmədə ədalətlilik" },
-  { key: "communication", label: "Ünsiyyət", hint: "Sual vermək və cavab almaq rahatlığı" },
+  { key: "clarity", label: "rating.clarity", hint: "rating.clarityHint" },
+  { key: "subjectKnowledge", label: "rating.subjectKnowledge", hint: "rating.subjectKnowledgeHint" },
+  { key: "objectivity", label: "rating.objectivity", hint: "rating.objectivityHint" },
+  { key: "communication", label: "rating.communication", hint: "rating.communicationHint" },
 ];
 
 const MAX_COMPARE = 3;
 
 export function TeacherCompare() {
+  const t = useT();
   const reduceMotion = Boolean(useReducedMotion());
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,34 +105,29 @@ export function TeacherCompare() {
     <section className="compare-shell">
       <header className="section-heading">
         <div>
-          <span>Seçim köməkçisi</span>
-          <h1 className="module-page-title">Hansı müəllimi seçim?</h1>
+          <span>{t("compare.eyebrow")}</span>
+          <h1 className="module-page-title">{t("compare.title")}</h1>
         </div>
-        <Link href="/teachers" className="compare-back">Bütün müəllimlər</Link>
+        <Link href="/teachers" className="compare-back">{t("compare.allTeachers")}</Link>
       </header>
 
-      <p className="compare-lead">
-        Fənni seç, sonra 2–3 müəllimi yan-yana müqayisə et. Ballar tələbələrin dörd pedaqoji meyar üzrə
-        verdiyi təsdiqlənmiş rəylərdən hesablanır — şəxs haqqında deyil, dərsin keyfiyyəti haqqında.
-      </p>
+      <p className="compare-lead">{t("compare.lead")}</p>
 
       <div className="compare-filters">
         <label>
-          Fənn
+          {t("teachers.subject")}
           <select value={subject} onChange={(event) => { setSubject(event.target.value); setPicked([]); }}>
-            <option value="all">Bütün fənlər</option>
+            <option value="all">{t("teachers.allSubjects")}</option>
             {subjects.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
-        <span className="compare-counter">{picked.length}/{MAX_COMPARE} seçilib</span>
+        <span className="compare-counter">{t("compare.selected", { count: picked.length, max: MAX_COMPARE })}</span>
       </div>
 
       {loading ? (
-        <p className="chat-state">Müəllimlər yüklənir…</p>
+        <p className="chat-state">{t("compare.loading")}</p>
       ) : failed ? (
-        <p className="compare-load-error" role="alert">
-          Müəllim kataloqu yüklənmədi. Server cavab vermədi — bir qədər sonra yenidən yoxla.
-        </p>
+        <p className="compare-load-error" role="alert">{t("compare.loadFailed")}</p>
       ) : (
         <div className="compare-picker">
           {visible.map((teacher) => {
@@ -151,12 +148,12 @@ export function TeacherCompare() {
                   <small>{teacher.specialty}</small>
                 </span>
                 <span className="compare-chip__score">
-                  {teacher.reviewCount ? <><Star size={11} /> {teacher.rating.toFixed(1)}</> : "yeni"}
+                  {teacher.reviewCount ? <><Star size={11} /> {teacher.rating.toFixed(1)}</> : t("compare.new")}
                 </span>
               </button>
             );
           })}
-          {visible.length === 0 ? <p className="week-day__empty">Bu fənn üzrə müəllim tapılmadı.</p> : null}
+          {visible.length === 0 ? <p className="week-day__empty">{t("compare.noneForSubject")}</p> : null}
         </div>
       )}
 
@@ -167,25 +164,23 @@ export function TeacherCompare() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="compare-table__head">
-            <span className="compare-table__corner"><Scale size={15} /> Meyar</span>
+            <span className="compare-table__corner"><Scale size={15} /> {t("compare.criterion")}</span>
             {selected.map((teacher) => (
               <span key={teacher.id} className="compare-table__teacher">
                 <strong>{teacher.name}</strong>
-                <small>{teacher.reviewCount ? `${teacher.reviewCount} rəy` : "rəy yoxdur"}</small>
+                <small>{teacher.reviewCount ? t("compare.reviewsCount", { count: teacher.reviewCount }) : t("compare.noReviews")}</small>
               </span>
             ))}
           </div>
 
           {rated.length === 0 ? (
-            <p className="compare-empty-note">
-              Seçdiyin müəllimlər üçün hələ təsdiqlənmiş rəy yoxdur. Dərsi keçmisənsə, ilk rəyi sən yaza bilərsən.
-            </p>
+            <p className="compare-empty-note">{t("compare.noApproved")}</p>
           ) : (
             CRITERIA.map((criterion) => (
               <div key={criterion.key} className="compare-row">
                 <span className="compare-row__label">
-                  <strong>{criterion.label}</strong>
-                  <small>{criterion.hint}</small>
+                  <strong>{t(criterion.label)}</strong>
+                  <small>{t(criterion.hint)}</small>
                 </span>
                 {selected.map((teacher) => {
                   const value = teacher.criteria?.[criterion.key] ?? 0;
@@ -205,19 +200,19 @@ export function TeacherCompare() {
           )}
 
           <div className="compare-row compare-row--meta">
-            <span className="compare-row__label"><strong>Təcrübə</strong><small>İllər üzrə</small></span>
-            {selected.map((teacher) => <span key={teacher.id} className="compare-cell"><b>{teacher.experienceYears} il</b></span>)}
+            <span className="compare-row__label"><strong>{t("teachers.experience")}</strong><small>{t("compare.experienceHint")}</small></span>
+            {selected.map((teacher) => <span key={teacher.id} className="compare-cell"><b>{t("compare.years", { count: teacher.experienceYears })}</b></span>)}
           </div>
           <div className="compare-row compare-row--meta">
-            <span className="compare-row__label"><strong>Format</strong><small>Dərs keçmə üsulu</small></span>
+            <span className="compare-row__label"><strong>{t("compare.format")}</strong><small>{t("compare.formatHint")}</small></span>
             {selected.map((teacher) => <span key={teacher.id} className="compare-cell"><b>{teacher.meetingMode}</b></span>)}
           </div>
         </motion.div>
       ) : (
         <div className="schedule-empty">
           <Scale size={28} />
-          <h2>Müqayisə üçün ən azı iki müəllim seç</h2>
-          <p>Yuxarıdan fənni seç, sonra müqayisə etmək istədiyin müəllimlərə toxun — dörd meyar üzrə ballar yan-yana görünəcək.</p>
+          <h2>{t("compare.pickTitle")}</h2>
+          <p>{t("compare.pickBody")}</p>
         </div>
       )}
     </section>

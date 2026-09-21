@@ -26,6 +26,7 @@ import { ReviewCard } from "./ReviewCard";
 import { TeacherCard } from "./TeacherCard";
 import { TeacherProfileDrawer } from "./TeacherProfileDrawer";
 import { useAuth } from "./AuthProvider";
+import { useT } from "../i18n/LanguageProvider";
 import { formatDecimalScore, formatInteger } from "../lib/number-format";
 import { getCurrentAcademicSemester } from "../lib/academic-semester";
 
@@ -62,7 +63,8 @@ const teacherPalette = [
   { accent: "#6f62a8", glow: "rgba(111,98,168,.22)" },
   { accent: "#b48652", glow: "rgba(180,134,82,.2)" },
 ] as const;
-function toTeacher(profile:ProfessionalTeacher,index:number):Teacher{const color=teacherPalette[index%teacherPalette.length];return{id:profile.id,name:profile.name,initials:profile.name.split(/\s+/).filter(Boolean).slice(0,2).map((part)=>part[0]?.toLocaleUpperCase("az")).join(""),role:profile.headline,subject:profile.specialty,bio:profile.biography,city:profile.city,experience:profile.experienceYears>0?`${profile.experienceYears} il təcrübə`:"Təcrübə məlumatı əlavə edilməyib",availability:profile.availability||"Vaxt məlumatı əlavə edilməyib",teachingMode:normalizeMode(profile.meetingMode),language:profile.languages.includes("İngilis dili")?"İngilis dili":"Azərbaycan dili",studentsCount:0,rating:profile.rating,reviewCount:profile.reviewCount,...color};}
+/** `t` kenardan verilir: modul seviyyesinde hook cagirmaq olmaz. */
+function toTeacher(profile:ProfessionalTeacher,index:number,t:(key:string,values?:Record<string,string|number>)=>string):Teacher{const color=teacherPalette[index%teacherPalette.length];return{id:profile.id,name:profile.name,initials:profile.name.split(/\s+/).filter(Boolean).slice(0,2).map((part)=>part[0]?.toLocaleUpperCase("az")).join(""),role:profile.headline,subject:profile.specialty,bio:profile.biography,city:profile.city,experience:profile.experienceYears>0?t("teachers.yearsExperience",{count:profile.experienceYears}):t("teachers.noExperienceInfo"),availability:profile.availability||t("teachers.noAvailabilityInfo"),teachingMode:normalizeMode(profile.meetingMode),language:profile.languages.includes("İngilis dili")?"İngilis dili":"Azərbaycan dili",studentsCount:0,rating:profile.rating,reviewCount:profile.reviewCount,...color};}
 function normalizeMode(value:string):Teacher["teachingMode"]{return value==="Onlayn"||value==="Əyani"||value==="Hibrid"?value:"Onlayn";}
 
 async function loadPublishedReviews(): Promise<PublishedReview[]> {
@@ -100,6 +102,7 @@ export function TeacherEvaluation() {
   const ratingScrollPending = useRef(false);
   const reduceMotion = useReducedMotion();
   const { user } = useAuth();
+  const t = useT();
   const currentSemester = useMemo(() => getCurrentAcademicSemester(), []);
   const semesterReviewsLoading = Boolean(user && semesterReviewsOwnerId !== user.id);
   const publishedReviews = useSWR("published-teacher-reviews", loadPublishedReviews, {
@@ -131,7 +134,7 @@ export function TeacherEvaluation() {
       })
     return () => { cancelled = true; controller.abort(); };
   }, [currentSemester, user]);
-  useEffect(()=>{let cancelled=false;void fetch("/api/catalog/teachers",{cache:"no-store"}).then(async(response)=>{const payload=await response.json() as {data?:ProfessionalTeacher[];error?:{message?:string}};if(!response.ok)throw new Error(payload.error?.message??"Müəllim kataloqu yüklənmədi.");if(!cancelled){const active=(payload.data??[]).filter((item)=>item.available);setAvailableTeacherIds(new Set(active.map((item)=>item.id)));setCatalogTeachers(active.map(toTeacher));}}).catch((value)=>{if(!cancelled){setAvailableTeacherIds(new Set());setTeacherCatalogError(value instanceof Error?value.message:"Müəllim kataloqu yüklənmədi.");}});return()=>{cancelled=true;};},[]);
+  useEffect(()=>{let cancelled=false;void fetch("/api/catalog/teachers",{cache:"no-store"}).then(async(response)=>{const payload=await response.json() as {data?:ProfessionalTeacher[];error?:{message?:string}};if(!response.ok)throw new Error(payload.error?.message??t("teachers.catalogFailed"));if(!cancelled){const active=(payload.data??[]).filter((item)=>item.available);setAvailableTeacherIds(new Set(active.map((item)=>item.id)));setCatalogTeachers(active.map((item,index)=>toTeacher(item,index,t)));}}).catch((value)=>{if(!cancelled){setAvailableTeacherIds(new Set());setTeacherCatalogError(value instanceof Error?value.message:t("teachers.catalogFailed"));}});return()=>{cancelled=true;};},[t]);
   const selectedTeacher = teachers.find((teacher) => teacher.id === selectedId) ?? null;
   const selectedSemesterReview = selectedTeacher && semesterReviewsOwnerId === user?.id
     ? semesterReviews[selectedTeacher.id]
@@ -266,15 +269,15 @@ export function TeacherEvaluation() {
       validation = await response.json() as ReviewValidationResponse;
       if (!response.ok || !validation.accepted) {
         setReviewError({
-          reason: validation.reason ?? "Rəy bu formada qəbul edilmədi.",
-          suggestion: validation.suggestion ?? "Mətni tədris təcrübəsinə yönəldərək yenidən yoxla.",
+          reason: validation.reason ?? t("teachers.rejectReason"),
+          suggestion: validation.suggestion ?? t("teachers.rejectSuggestion"),
         });
         return;
       }
     } catch {
       setReviewError({
-        reason: "Rəyi indi yoxlaya bilmədik.",
-        suggestion: "Mətnin saxlanılıb. Bağlantını yoxlayıb bir daha göndər.",
+        reason: t("teachers.checkFailed"),
+        suggestion: t("teachers.checkFailedSuggestion"),
       });
       return;
     } finally {
@@ -309,19 +312,19 @@ export function TeacherEvaluation() {
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
       >
         <div>
-          <span className="teachers-kicker">Müəllim seçimi</span>
-          <h1 id="teachers-title" className="module-page-title">Müəllimlər</h1>
+          <span className="teachers-kicker">{t("teachers.eyebrow")}</span>
+          <h1 id="teachers-title" className="module-page-title">{t("teachers.title")}</h1>
           <Link href="/teachers/compare" className="teachers-compare-link">
-            <Scale size={15} /> Hansı müəllimi seçim? Yan-yana müqayisə et
+            <Scale size={15} /> {t("compare.title")}
           </Link>
         </div>
         <div className="teachers-heading-aside">
           <div className="teacher-carousel-controls">
-            <button type="button" onClick={() => moveCarousel(-1)} aria-label="Əvvəlki müəllim" aria-controls="available-teachers-track">
+            <button type="button" onClick={() => moveCarousel(-1)} aria-label={t("teachers.prev")} aria-controls="available-teachers-track">
               <ArrowLeft size={17} />
             </button>
             <span><strong>{String(activeIndex + 1).padStart(2, "0")}</strong> / {String(teachers.length).padStart(2, "0")}</span>
-            <button type="button" onClick={() => moveCarousel(1)} aria-label="Növbəti müəllim" aria-controls="available-teachers-track">
+            <button type="button" onClick={() => moveCarousel(1)} aria-label={t("teachers.next")} aria-controls="available-teachers-track">
               <ArrowRight size={17} />
             </button>
           </div>
@@ -336,47 +339,47 @@ export function TeacherEvaluation() {
         onClick={() => setFiltersOpen((current) => !current)}
       >
         <SlidersHorizontal size={16} aria-hidden="true" />
-        <span>Filtrlər</span>
+        <span>{t("teachers.filters")}</span>
         <small>{displayedTeachers.length} nəticə</small>
       </button>
       <div
         id="teacher-directory-filters"
         className={`teacher-directory-filters${filtersOpen ? " is-open" : ""}`}
-        aria-label="Müəllim axtarış filtrləri"
+        aria-label={t("teachers.filtersLabel")}
       >
         <label>
-          <span>Müəllim və ya fənn</span>
-          <input type="search" value={teacherQuery} onChange={(event) => setTeacherQuery(event.target.value)} placeholder="Məsələn, riyaziyyat" />
+          <span>{t("teachers.search")}</span>
+          <input type="search" value={teacherQuery} onChange={(event) => setTeacherQuery(event.target.value)} placeholder={t("teachers.searchPlaceholder")} />
         </label>
         <label>
-          <span>Tədris dili</span>
+          <span>{t("teachers.language")}</span>
           <select value={languageFilter} onChange={(event) => setLanguageFilter(event.target.value)}>
-            <option value="all">Bütün dillər</option>
+            <option value="all">{t("teachers.allLanguages")}</option>
             <option value="Azərbaycan dili">Azərbaycan dili</option>
             <option value="İngilis dili">İngilis dili</option>
           </select>
         </label>
         <label>
-          <span>Sıralama</span>
+          <span>{t("teachers.sort")}</span>
           <select value={teacherSort} onChange={(event) => setTeacherSort(event.target.value)}>
-            <option value="rating">Ən yüksək reytinq</option>
-            <option value="reviews">Ən çox rəy</option>
+            <option value="rating">{t("teachers.sortRating")}</option>
+            <option value="reviews">{t("teachers.sortReviews")}</option>
           </select>
         </label>
         <label>
-          <span>Fənn</span>
+          <span>{t("teachers.subject")}</span>
           <select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-            <option value="all">Bütün fənlər</option>
+            <option value="all">{t("teachers.allSubjects")}</option>
             {[...new Set(teachers.map((teacher) => teacher.subject))].map((subject) => <option key={subject} value={subject}>{subject}</option>)}
           </select>
         </label>
         <label>
-          <span>Tədris formatı</span>
+          <span>{t("teachers.mode")}</span>
           <select value={modeFilter} onChange={(event) => setModeFilter(event.target.value)}>
-            <option value="all">Bütün formatlar</option>
-            <option value="Onlayn">Onlayn</option>
-            <option value="Əyani">Əyani</option>
-            <option value="Hibrid">Hibrid</option>
+            <option value="all">{t("teachers.allModes")}</option>
+            <option value="Onlayn">{t("teachers.modeOnline")}</option>
+            <option value="Əyani">{t("teachers.modeInPerson")}</option>
+            <option value="Hibrid">{t("teachers.modeHybrid")}</option>
           </select>
         </label>
       </div>
@@ -386,7 +389,7 @@ export function TeacherEvaluation() {
         ref={trackRef}
         className="teachers-track"
         role="list"
-        aria-label="Hazırda müsait müəllimlər"
+        aria-label={t("teachers.availableNow")}
         onScroll={updateActiveCard}
       >
         {displayedTeachers.map((teacher, index) => (
@@ -401,7 +404,7 @@ export function TeacherEvaluation() {
             onOpenProfile={openTeacherProfile}
           />
         ))}
-        {displayedTeachers.length === 0 && <div className="teacher-filter-empty">{availableTeacherIds===null?"Müəllimlər yüklənir…":teacherCatalogError||"Bu filtrlərə uyğun müəllim tapılmadı."}</div>}
+        {displayedTeachers.length === 0 && <div className="teacher-filter-empty">{availableTeacherIds===null?t("teachers.loading"):teacherCatalogError||t("teachers.noMatch")}</div>}
         <span className="teachers-track-spacer" aria-hidden="true" />
       </div>
 
@@ -431,39 +434,39 @@ export function TeacherEvaluation() {
           transition={{ duration: reduceMotion ? 0.01 : 0.42, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="rating-panel-copy">
-            <span><Sparkles size={13} /> Təcrübəni qiymətləndir</span>
+            <span><Sparkles size={13} /> {t("teachers.rateTitle")}</span>
             <h3 id="teacher-rating-title">{selectedTeacher.name} sənə necə kömək etdi?</h3>
-            <p>Dörd peşəkar meyar üzrə verdiyin rəqəmsal qiymət digər tələbələrin daha doğru seçim etməsinə kömək edir.</p>
+            <p>{t("teachers.rateBody")}</p>
             <div className="rating-teacher-chip">
               <i>{selectedTeacher.initials}</i>
-              <span><strong>{selectedTeacher.subject}</strong><small>{formatInteger(selectedTeacher.reviewCount)} təsdiqlənmiş qiymətləndirmə</small></span>
+              <span><strong>{selectedTeacher.subject}</strong><small>{t("teachers.approvedCount", { count: formatInteger(selectedTeacher.reviewCount) })}</small></span>
             </div>
           </div>
 
           {!user ? (
             <div className="rating-auth-required">
-              <span>Rəylərin etibarlılığını qoruyuruq</span>
-              <h3>Qiymətləndirmək üçün hesabına daxil ol.</h3>
-              <p>Hər tələbə eyni müəllim üçün semestr ərzində yalnız bir qiymətləndirmə göndərə bilər.</p>
-              <Link href="/auth?returnTo=%2Fteachers">Daxil ol <ArrowRight size={15} /></Link>
+              <span>{t("teachers.authEyebrow")}</span>
+              <h3>{t("teachers.authTitle")}</h3>
+              <p>{t("teachers.authBody")}</p>
+              <Link href="/auth?returnTo=%2Fteachers">{t("teachers.signIn")} <ArrowRight size={15} /></Link>
             </div>
           ) : !canReview ? (
             <div className="rating-auth-required">
-              <span>Qiymətləndirmə tələbə hesabları üçündür</span>
-              <h3>Bu hesabla qiymətləndirmə göndərilə bilməz.</h3>
-              <p>Müəllim qiymətləndirməsini yalnız tələbə hesabı göndərir. Profilləri nəzərdən keçirə və dərc olunmuş nəticələri izləyə bilərsən.</p>
+              <span>{t("teachers.roleEyebrow")}</span>
+              <h3>{t("teachers.roleTitle")}</h3>
+              <p>{t("teachers.roleBody")}</p>
             </div>
           ) : selectedSemesterReview && !reviewSent ? (
             <div className="teacher-review-existing" role="status">
               <i><Check size={22} aria-hidden="true" /></i>
-              <span>Cari semestr qiymətləndirməsi</span>
-              <h3>Sən bu müəllimə cari semestr üçün artıq rəy vermisən.</h3>
+              <span>{t("teachers.existingEyebrow")}</span>
+              <h3>{t("teachers.existingTitle")}</h3>
               <p>
-                {selectedSemesterReview.status === "approved"
-                  ? "Qiymətləndirmən təsdiqlənib və müəllimin göstəricilərinə əlavə olunub."
+                {t(selectedSemesterReview.status === "approved"
+                  ? "teachers.existingApproved"
                   : selectedSemesterReview.status === "rejected"
-                    ? "Qiymətləndirmən moderasiya qaydalarına uyğun olmadığı üçün qəbul edilməyib."
-                    : "Qiymətləndirmən yoxlanılır. Nəticə təsdiqdən sonra ümumi göstəricilərə əlavə olunacaq."}
+                    ? "teachers.existingRejected"
+                    : "teachers.existingPending")}
               </p>
             </div>
           ) : <form className="rating-form" onSubmit={submitReview}>
@@ -477,7 +480,7 @@ export function TeacherEvaluation() {
               disabled={reviewChecking || reviewSent}
               className="criteria-rating"
             />
-            <p className="review-score-explanation">Açıq mətn rəyi qəbul edilmir. Ümumi bal izahın aydınlığı, fənn biliyi, obyektivlik və ünsiyyət ballarının bərabər çəkili ortasıdır.</p>
+            <p className="review-score-explanation">{t("teachers.noTextNotice")}</p>
             <AnimatePresence initial={false}>
               {reviewError && (
                 <motion.div
@@ -496,12 +499,12 @@ export function TeacherEvaluation() {
             <div className="rating-form-footer">
               <small>
                 {areCriteriaComplete(criteriaRatings)
-                  ? `Orta qiymət: ${formatDecimalScore(rating)} / 5`
-                  : "Dörd meyarı tamamla"}
+                  ? t("teachers.average", { score: formatDecimalScore(rating) })
+                  : t("teachers.completeFour")}
               </small>
               <motion.button type="submit" disabled={!canSubmit} whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
                 {reviewSent ? <Check size={15} /> : reviewChecking ? <i className="review-check-spinner" /> : <Send size={14} />}
-                {reviewSent ? "Qiymət göndərildi" : reviewChecking ? "Qiymət saxlanılır" : "Qiyməti göndər"}
+                {t(reviewSent ? "teachers.sent" : reviewChecking ? "teachers.saving" : "teachers.send")}
               </motion.button>
             </div>
 
@@ -522,8 +525,8 @@ export function TeacherEvaluation() {
                   >
                     <Check size={25} />
                   </motion.i>
-                  <strong>Qiymətləndirmən göndərildi</strong>
-                  <span>Təşəkkür edirik — rəqəmsal nəticə təsdiqləndikdən sonra müəllimin ümumi göstəricilərinə əlavə olunacaq.</span>
+                  <strong>{t("teachers.confirmTitle")}</strong>
+                  <span>{t("teachers.confirmBody")}</span>
                   {!reduceMotion && (
                     <b className="review-success-ring" aria-hidden="true" />
                   )}
@@ -547,9 +550,9 @@ export function TeacherEvaluation() {
         >
           <Sparkles size={18} aria-hidden="true" />
           <div>
-            <span>Hələ müəllim seçilməyib</span>
-            <h2>Əvvəl profillə tanış ol.</h2>
-            <p>Müəllim kartına toxun, profili nəzərdən keçir və sonra qiymətləndirmək üçün seç.</p>
+            <span>{t("teachers.emptyEyebrow")}</span>
+            <h2>{t("teachers.emptyTitle")}</h2>
+            <p>{t("teachers.emptyBody")}</p>
           </div>
         </motion.div>
         )}
@@ -557,13 +560,13 @@ export function TeacherEvaluation() {
 
       <div className="reviews-heading">
         <div>
-          <span className="teachers-kicker">Tələbə qiymətləndirmələri</span>
-          <h2>Son nəticələr</h2>
+          <span className="teachers-kicker">{t("teachers.resultsEyebrow")}</span>
+          <h2>{t("teachers.resultsTitle")}</h2>
         </div>
         <p><Star size={14} fill="currentColor" /> {formatInteger(allReviews.length)} dərc edilmiş qiymətləndirmə</p>
       </div>
 
-      <div className="reviews-masonry" aria-label="Müəllimlərin rəqəmsal qiymətləndirmələri">
+      <div className="reviews-masonry" aria-label={t("teachers.resultsLabel")}>
         {allReviews.slice(0, reviewLimit).map((review, index) => <ReviewCard key={review.id} review={review} index={index} />)}
       </div>
       {reviewLimit < allReviews.length && (
