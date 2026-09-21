@@ -249,6 +249,20 @@ parse xətası verdi. Uzun skripti `Write` ilə fayla yaz, sonra işə sal.
   Lövbər hədəf komponentin daxilində **unikal** olmalıdır (məsələn
   `}: AdminRecordFormSheetProps) {`), ümumi nümunə yox.
 
+### Sətir sayı ≠ təkrar sayı
+`grep -c` **sətri** sayır, təkrarı yox. `community-card` üçün `grep -c` 50
+verdi, `grep -o ... | wc -l` isə 55 — çünki bir neçə sətirdə sinif iki dəfə
+keçirdi (`.x-shell.is-active .x-button`). Yamağın gözlənilən sayını `grep -c`
+üzrə qursan, skript düzgün işlədiyi halda "uyğunsuzluq" deyib dayanacaq.
+Təkrar sayı lazımdırsa: `grep -o 'naxış' fayl | wc -l`.
+
+### CSS faylları CRLF-dir
+`app/globals.css`, `app/creative.css`, `app/kuds.css` **CRLF** sətir sonu
+işlədir. `newline=""` ilə oxuyanda çoxsətirli lövbərdəki `\n` **heç vaxt uyğun
+gəlmir** — lövbər tapılmır, skript isə düzgün işləyir. Faylın öz sonluğunu
+aşkarla (`eol = "\r\n" if "\r\n" in text else "\n"`) və lövbəri onunla qur;
+yazarkən də `newline=""` saxla, yoxsa bütün fayl bir commit-də dəyişmiş görünür.
+
 ### Hər addımdan sonra
 `npx tsc --noEmit` — ucuzdur və səhvi dərhal göstərir.
 
@@ -296,3 +310,33 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
 Toxunma: parametrli SQL, RBAC-ın özü, CSRF/CORS/CSP, rate limiting.
 Bir sessiyada **bir bölmə** — tam bitirilib sonra növbətiyə keçilir.
 Dizaynı öz təşəbbüsünlə yenidən qurma.
+
+---
+
+## 14. Ölü kod: silmədən əvvəl təsdiqlə
+
+Komponentin adını grep etmək **kifayət deyil**. Üç yeri ayrıca yoxla:
+
+1. **Adın özü** — bütün repoda (`--exclude-dir=node_modules --exclude-dir=.next`),
+   əlavə olaraq `tsconfig.tsbuildinfo`-nu da kənara qoy: o, köhnə build qeydi
+   olduğu üçün silinmiş ada da uyğun gəlir və yalançı istifadə göstərir.
+2. **Dinamik idxal və barrel** — `dynamic(() => import(...))`, `React.lazy`,
+   `app/**/index.ts`. EduRate-də barrel fayl yoxdur, dinamik idxal isə var
+   (`PlatformProvider` → `ChatDock`), ona görə bu yoxlama realdır.
+3. **Komponentin render etdiyi CSS sinifləri** — başqa komponent eyni sinfi
+   işlədə bilər; o halda komponent ölüdür, sinif isə yox.
+
+**Nəyin əvəz etdiyini tap.** `CommunityCard` öz-özünə ölməmişdi:
+`/community` → `ConnectionsExperience` → `PeerDirectory` keçidi onu arxada
+qoymuşdu. Marşrutu sonuna qədər izlə — əvəzedicini görmədən silmə.
+
+**Paylaşılan selektor siyahısından yalnız ölü üzvü çıxar.** Ölü sinif çox vaxt
+canlı siniflərlə eyni qaydanın içində olur
+(`:is(.event-card, .peer-card, .community-card-shell)`). Bütün qaydanı silmək
+canlı kartların üslubunu aparır. Skriptə qoru qoy: bir sətri **yalnız** onun
+bütün selektorları ölü sinfə aid olduqda sil, əks halda `SystemExit` at.
+
+**Sonda sıfırı təsdiqlə:** `grep -rn '<sinif-prefiksi>'` boş qaytarmalıdır,
+sonra `npx tsc --noEmit` + `npm test` + `npm run build`. Build vacibdir — CSS-i
+PostCSS keçirir, ona görə səhv silmədən yaranan sintaksis pozuntusunu yalnız o
+tutur.
