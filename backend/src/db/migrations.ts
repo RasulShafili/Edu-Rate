@@ -566,6 +566,18 @@ const migrations: Migration[] = [
         ON marketplace_listings (user_id, created_at DESC);
     `,
   },
+  {
+    version: 25,
+    name: "hide professional profiles of deleted accounts",
+    sql: `
+      UPDATE professional_profiles AS p
+         SET visible = FALSE, updated_at = NOW()
+        FROM users AS u
+       WHERE p.user_id = u.id
+         AND u.deleted_at IS NOT NULL
+         AND p.visible = TRUE;
+    `,
+  },
 ];
 
 export const latestMigrationVersion = Math.max(...migrations.map((migration) => migration.version));

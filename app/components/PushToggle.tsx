@@ -2,6 +2,7 @@
 
 import { BellRing } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useT } from "../i18n/LanguageProvider";
 
 type State = "checking" | "unsupported" | "disabled" | "off" | "on" | "denied";
 
@@ -12,17 +13,28 @@ function toKeyBytes(base64: string) {
   return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)));
 }
 
+const HINT_KEYS: Record<State, string> = {
+  checking: "push.checking",
+  unsupported: "push.unsupported",
+  disabled: "push.disabled",
+  denied: "push.denied",
+  off: "push.body",
+  on: "push.body",
+};
+
 /**
  * Cihaz bildirişləri açarı.
  *
- * Server VAPID açarı təqdim etməyibsə (push konfiqurasiya olunmayıb) bölmə
- * özünü "hazır deyil" kimi göstərir — heç bir saxta vəziyyət yaratmır.
+ * Server VAPID açarı təqdim etməyibsə (push konfiqurasiya olunmayıb) bunu açıq
+ * deyir. Əvvəl belə halda komponent heç nə göstərmirdi və Parametrlərdə yalnız
+ * heç nəyi idarə etməyən açarlar qalırdı.
  */
 export function PushToggle() {
+  const t = useT();
   const [state, setState] = useState<State>("checking");
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
+  const [messageKey, setMessageKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -64,7 +76,7 @@ export function PushToggle() {
   async function enable() {
     if (!publicKey) return;
     setBusy(true);
-    setMessage("");
+    setMessageKey("");
     try {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
@@ -81,11 +93,14 @@ export function PushToggle() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });
-      if (!response.ok) throw new Error("Abunəlik saxlanmadı.");
+      if (!response.ok) {
+        setMessageKey("push.saveFailed");
+        return;
+      }
       setState("on");
-      setMessage("Bu cihaz üçün bildirişlər aktivdir.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Bildirişlər aktivləşdirilmədi.");
+      setMessageKey("push.enabled");
+    } catch {
+      setMessageKey("push.enableFailed");
     } finally {
       setBusy(false);
     }
@@ -93,7 +108,7 @@ export function PushToggle() {
 
   async function disable() {
     setBusy(true);
-    setMessage("");
+    setMessageKey("");
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       const subscription = await registration?.pushManager.getSubscription();
@@ -106,40 +121,34 @@ export function PushToggle() {
         await subscription.unsubscribe();
       }
       setState("off");
-      setMessage("Bu cihazda bildirişlər dayandırıldı.");
+      setMessageKey("push.disabledDone");
     } catch {
-      setMessage("Bildirişlər dayandırılmadı.");
+      setMessageKey("push.disableFailed");
     } finally {
       setBusy(false);
     }
   }
 
-  if (state === "checking" || state === "unsupported" || state === "disabled") {
-    return null;
-  }
+  const actionable = state === "on" || state === "off";
 
   return (
     <div className="push-toggle">
       <span className="push-toggle__icon" aria-hidden="true"><BellRing size={17} /></span>
       <div>
-        <strong>Cihaz bildirişləri</strong>
-        <small>
-          {state === "denied"
-            ? "Brauzer bildirişləri bloklayıb. İcazəni brauzer parametrlərindən aç."
-            : "Yeni elan və tədbir xəbərdarlığını telefonuna al."}
-        </small>
-        {message ? <em role="status">{message}</em> : null}
+        <strong>{t("push.title")}</strong>
+        <small>{t(HINT_KEYS[state])}</small>
+        {messageKey ? <em role="status">{t(messageKey)}</em> : null}
       </div>
-      {state === "denied" ? null : (
+      {actionable ? (
         <button
           type="button"
           className={state === "on" ? "push-toggle__off" : "push-toggle__on"}
           onClick={() => void (state === "on" ? disable() : enable())}
           disabled={busy}
         >
-          {busy ? "Gözlə…" : state === "on" ? "Dayandır" : "Aktivləşdir"}
+          {busy ? t("push.wait") : state === "on" ? t("push.disable") : t("push.enable")}
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -25,7 +25,7 @@ import {
   verifyPassword,
 } from "../lib/auth.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { synchronizeProfessionalProfilesForUser } from "../db/professionals.js";
+import { deactivateProfessionalProfilesForUser, synchronizeProfessionalProfilesForUser } from "../db/professionals.js";
 import { consumeActionCode, consumeActionToken, createActionCode, createActionToken, listSessions, registerSessionToken, revokeAllSessions, revokeSession } from "../db/auth-security.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 import { env } from "../config/env.js";
@@ -300,17 +300,20 @@ authRouter.post("/password/reset",loginLimiter,async(request,response)=>{
 authRouter.delete("/account", authenticate, async (request, response) => {
   const { password } = z.object({ password: z.string().min(1) }).parse(request.body);
   const user = await findUserById(request.auth!.userId);
-  if (!user) throw new ApiError(404, "USER_NOT_FOUND", "Istifadeci tapilmadi.");
+  if (!user) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
 
   if (!(await verifyPassword(password, user.passwordHash))) {
-    throw new ApiError(401, "INVALID_CREDENTIALS", "Sifre duzgun deyil.");
+    throw new ApiError(401, "INVALID_CREDENTIALS", "Şifrə düzgün deyil.");
   }
   if (user.role === "admin" || user.role === "assistant_admin" || user.role === "owner_admin") {
-    throw new ApiError(409, "ADMIN_SELF_DELETE_FORBIDDEN", "Administrator hesabi bu yolla silinmir. Diger administratorla elaqe saxla.");
+    throw new ApiError(409, "ADMIN_SELF_DELETE_FORBIDDEN", "Administrator hesabı bu yolla silinmir. Digər administratorla əlaqə saxla.");
   }
 
   await revokeAllSessions(user.id);
-  if (!(await deleteUser(user.id))) throw new ApiError(404, "USER_NOT_FOUND", "Istifadeci tapilmadi.");
+  // Admin silməsi bunu edirdi, öz-özünə silmə yox: hesabını silən müəllim və
+  // mentor kataloqda REAL ADI ilə qalırdı və tələbələr ona müraciət göndərə bilirdi.
+  await deactivateProfessionalProfilesForUser(user.id);
+  if (!(await deleteUser(user.id))) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
   response.status(204).send();
 });
 

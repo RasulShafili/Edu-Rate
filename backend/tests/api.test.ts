@@ -1368,3 +1368,35 @@ describe("Dəstək müraciəti", () => {
     assert.equal(after.body.data.some((item: { reference: string }) => item.reference === unlinked.body.data.reference), false);
   });
 });
+
+describe("Hesabın silinməsi", () => {
+  it("öz hesabını silən mentor kataloqdan çıxır və ona müraciət getmir", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const mentor = await createUser({ ...base, name: "Silinəcək Mentor", email: "deleted.mentor@example.az", role: "mentor" });
+    const student = await createUser({ ...base, name: "Kataloq Tələbəsi", email: "catalog.student@example.az", role: "student" });
+    const mentorAuth = `Bearer ${createAccessToken(mentor)}`;
+    const studentAuth = `Bearer ${createAccessToken(student)}`;
+
+    await request(app).get("/api/workspace").set("Authorization", mentorAuth).expect(200);
+    const before = await request(app).get("/api/mentors").expect(200);
+    const profile = before.body.data.find((item: { userId: string | null }) => item.userId === mentor.id);
+    assert.ok(profile);
+
+    await request(app).delete("/api/auth/account").set("Authorization", mentorAuth).send({ password: "yanlis-parol-1" }).expect(401);
+    await request(app).delete("/api/auth/account").set("Authorization", mentorAuth).send({ password: "EduRate2026" }).expect(204);
+
+    // Reqressiya: profil real adla kataloqda qalırdı və müraciət 201 alırdı.
+    const after = await request(app).get("/api/mentors").expect(200);
+    assert.equal(after.body.data.some((item: { id: string }) => item.id === profile.id), false);
+    await request(app).post("/api/mentorship/requests").set("Authorization", studentAuth).send({ mentorId: profile.id }).expect(404);
+
+    // Administrator hesabı bu yolla silinmir.
+    const denied = await request(app).delete("/api/auth/account").set("Authorization", `Bearer ${reusableAdminToken}`).send({ password: "EduRate2026" }).expect(409);
+    assert.equal(denied.body.error.code, "ADMIN_SELF_DELETE_FORBIDDEN");
+  });
+});

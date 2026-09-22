@@ -73,13 +73,16 @@ export default async function RootLayout({
   // Dil serverde oxunur ki, <html lang> ve ilk render dogru dilde olsun.
   const language = normalizeLanguage(cookieStore.get(languageCookieName)?.value);
   const requestIdentity = await getServerRequestIdentity();
-  const initialUser = requestIdentity
+  // Server bütün istifadəçini artıq alıb: əvvəl ondan yalnız ad, e-poçt və rol
+  // götürülürdü, qalan sahələr yer tutucu idi — profil hər açılışda əvvəlcə
+  // "məlumat əlavə edilməyib" göstərir, sonra brauzerdə dəyişirdi.
+  const initialUser = requestIdentity?.profile ?? (requestIdentity
     ? {
         ...createIdentityProfile(requestIdentity.displayName, requestIdentity.email),
         accessRole: requestIdentity.role ?? "student",
         role: requestIdentity.role === "teacher" ? "Müəllim" as const : requestIdentity.role === "mentor" ? "Mentor" as const : requestIdentity.role === "owner_admin" || requestIdentity.role === "admin" || requestIdentity.role === "assistant_admin" ? "Rəhbərlik" as const : "Tələbə" as const,
       }
-    : null;
+    : null);
   return (
     <html lang={language} data-scroll-behavior="smooth">
       <body className="antialiased">

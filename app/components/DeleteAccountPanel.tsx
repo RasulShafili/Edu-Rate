@@ -1,30 +1,52 @@
 "use client";
 
 import { AlertTriangle, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { useT } from "../i18n/LanguageProvider";
+import { isAdminAccessRole } from "../lib/auth/admin-role";
+import { useAuth } from "./AuthProvider";
 
 /**
  * Hesabın silinməsi (GDPR "unudulma hüququ").
  *
- * Əvvəl istifadəçinin hesabını silmək üçün heç bir yol yox idi — məxfilik
- * siyasəti yalnız "dəstək formasından sorğu göndər" deyirdi. İndi özü silə bilir.
- *
  * Silinmə geri qaytarılmır, ona görə iki maneə var: əvvəlcə təsdiq addımı açılır,
  * sonra şifrə tələb olunur (backend onu yoxlayır). Beləcə nə təsadüfi klik, nə də
  * oğurlanmış açıq sessiya hesabı silə bilmir.
+ *
+ * Backend `deleteUser` hesabı anonimləşdirir (ad, e-poçt, profil sahələri
+ * silinir, hesab bağlanır) — mətn də bunu deyir; əvvəl "rəylərin, mesajların və
+ * klub üzvlüklərin silinir" yazırdı, halbuki onlar silinmir.
  */
 export function DeleteAccountPanel() {
-  const router = useRouter();
+  const t = useT();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [errorKey, setErrorKey] = useState("");
+
+  // D7: backend administratorun öz hesabını silməsinə icazə vermir (409). Əvvəl
+  // admin paneli görür, şifrəsini yazır və yalnız sonra rədd cavabı alırdı.
+  if (isAdminAccessRole(user?.accessRole)) {
+    return (
+      <section className="danger-zone" aria-labelledby="danger-zone-title">
+        <header>
+          <span className="danger-zone__icon" aria-hidden="true">
+            <AlertTriangle size={17} />
+          </span>
+          <div>
+            <strong id="danger-zone-title">{t("deleteAccount.adminTitle")}</strong>
+            <small>{t("deleteAccount.adminBody")}</small>
+          </div>
+        </header>
+      </section>
+    );
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setError("");
+    setErrorKey("");
     try {
       const response = await fetch("/api/auth/account", {
         method: "DELETE",
@@ -32,15 +54,22 @@ export function DeleteAccountPanel() {
         body: JSON.stringify({ password }),
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
-        throw new Error(payload?.error?.message || "Hesab silinmədi.");
+        const payload = (await response.json().catch(() => null)) as { error?: { code?: string } } | null;
+        const code = payload?.error?.code;
+        // 401 iki fərqli şey ola bilər: yanlış şifrə və ya bitmiş sessiya.
+        setErrorKey(
+          code === "INVALID_CREDENTIALS" ? "deleteAccount.wrongPassword"
+            : response.status === 401 ? "deleteAccount.sessionExpired"
+              : code === "ADMIN_SELF_DELETE_FORBIDDEN" ? "deleteAccount.adminBody"
+                : "deleteAccount.failed",
+        );
+        setBusy(false);
+        return;
       }
       // Sessiya artıq etibarsızdır — tam yenidən yükləmə ilə çıxış edirik.
       window.location.href = "/";
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Hesab silinmədi.");
+    } catch {
+      setErrorKey("deleteAccount.failed");
       setBusy(false);
     }
   }
@@ -52,15 +81,12 @@ export function DeleteAccountPanel() {
           <AlertTriangle size={17} />
         </span>
         <div>
-          <strong id="danger-zone-title">Hesabı sil</strong>
-          <small>
-            Profilin, rəylərin, mesajların və klub üzvlüklərin həmişəlik silinir.
-            Bu əməliyyat geri qaytarılmır.
-          </small>
+          <strong id="danger-zone-title">{t("deleteAccount.title")}</strong>
+          <small>{t("deleteAccount.body")}</small>
         </div>
         {!open ? (
           <button type="button" className="danger-zone__open" onClick={() => setOpen(true)}>
-            Sil
+            {t("deleteAccount.open")}
           </button>
         ) : null}
       </header>
@@ -68,7 +94,7 @@ export function DeleteAccountPanel() {
       {open ? (
         <form onSubmit={(event) => void submit(event)}>
           <label htmlFor="delete-account-password">
-            Təsdiq üçün şifrəni yaz
+            {t("deleteAccount.password")}
             <input
               id="delete-account-password"
               type="password"
@@ -81,9 +107,9 @@ export function DeleteAccountPanel() {
             />
           </label>
 
-          {error ? (
+          {errorKey ? (
             <p className="danger-zone__error" role="alert">
-              {error}
+              {t(errorKey)}
             </p>
           ) : null}
 
@@ -93,15 +119,15 @@ export function DeleteAccountPanel() {
               onClick={() => {
                 setOpen(false);
                 setPassword("");
-                setError("");
+                setErrorKey("");
               }}
               disabled={busy}
             >
-              Ləğv et
+              {t("deleteAccount.cancel")}
             </button>
             <button type="submit" className="is-danger" disabled={busy || password.length < 8}>
               <Trash2 size={15} aria-hidden="true" />
-              {busy ? "Silinir…" : "Hesabı həmişəlik sil"}
+              {busy ? t("deleteAccount.deleting") : t("deleteAccount.submit")}
             </button>
           </div>
         </form>

@@ -116,6 +116,21 @@ export async function getRemoteSession(token: string) {
   return requestRemoteApi<{ user: RemoteApiUser }>("/api/auth/session", { token });
 }
 
+/**
+ * Backend yeni hesabı bu mətnlərlə yaradır (`createUser`, sütun default-ları).
+ * Onlar istifadəçinin yazdığı məlumat deyil — boş sayılmalıdır.
+ */
+const STORED_PLACEHOLDERS = new Set([
+  "Kurs məlumatı əlavə edilməyib",
+  "İxtisas məlumatı əlavə edilməyib",
+  "EduRate icmasında universitet həyatını daha əlaqəli yaşamaq üçün buradayam.",
+]);
+
+function filledValue(value: string | null | undefined) {
+  const trimmed = (value ?? "").trim();
+  return STORED_PLACEHOLDERS.has(trimmed) ? "" : trimmed;
+}
+
 export function mapRemoteUserToProfile(user: RemoteApiUser): UserProfile {
   const base = createIdentityProfile(user.name, user.email);
   const profile = {
@@ -132,14 +147,17 @@ export function mapRemoteUserToProfile(user: RemoteApiUser): UserProfile {
     about: user.about || "EduRate icmasına xoş gəlmisən.",
   };
 
+  // Əvvəl sayım yer tutucular QOYULANDAN SONRA aparılırdı — hər sahə həmişə
+  // "dolu" görünürdü və profil hamı üçün 100% idi.
+  const details = { program: filledValue(user.program), year: filledValue(user.year), about: filledValue(user.about) };
   const completed = [
-    profile.name,
-    profile.university,
-    profile.faculty,
-    profile.program,
-    profile.year,
-    profile.about,
-  ].filter((value) => value.trim().length > 0).length;
+    user.name,
+    user.university,
+    user.faculty,
+    details.program,
+    details.year,
+    details.about,
+  ].filter((value) => filledValue(value).length > 0).length;
 
   const roleLabels: Record<RemoteApiUser["role"], UserProfile["role"]> = {
     student: "Tələbə",
@@ -149,7 +167,7 @@ export function mapRemoteUserToProfile(user: RemoteApiUser): UserProfile {
     admin: "Rəhbərlik",
     owner_admin: "Rəhbərlik",
   };
-  return { ...profile, role: roleLabels[user.role], completion: Math.round((completed / 6) * 100) };
+  return { ...profile, details, role: roleLabels[user.role], completion: Math.round((completed / 6) * 100) };
 }
 
 function getRemoteApiBaseUrl() {

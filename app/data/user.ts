@@ -26,6 +26,14 @@ export type UserProfile = {
   year: string;
   city: string;
   about: string;
+  /**
+   * İstifadəçinin HƏQİQƏTƏN doldurduğu dəyərlər. Backend yeni hesabı yer
+   * tutucu mətnlərlə yaradır ("Kurs məlumatı əlavə edilməyib" və s.) və
+   * yuxarıdakı sahələr göstəriş üçün də yer tutucu ilə doldurulur — burada
+   * isə doldurulmayan sahə boş sətirdir. Tamamlanma faizi və redaktə forması
+   * bunu işlədir.
+   */
+  details: { program: string; year: string; about: string };
   interests: readonly string[];
   completion: number;
   stats: readonly ProfileStat[];
@@ -103,8 +111,9 @@ export function createIdentityProfile(nameValue: string, emailValue: string): Us
     year: "Kurs məlumatı əlavə edilməyib",
     city: "Azərbaycan",
     about: "Profilini tamamlayaraq universitetini, maraqlarını və öyrənmə məqsədlərini icma ilə paylaş.",
+    details: { program: "", year: "", about: "" },
     interests: [],
-    completion: 36,
+    completion: 0,
     stats: emptyProfileStats,
     activities: [],
   };
