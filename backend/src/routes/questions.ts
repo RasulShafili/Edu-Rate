@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   createAnswer,
   createQuestion,
+  hideAnswer,
   hideQuestion,
   listAnswers,
   listQuestions,
@@ -57,6 +58,16 @@ questionsRouter.post("/:id/vote", authenticate, async (request, response) => {
   const result = await toggleVote(id, request.auth!.userId);
   if (!result) throw new ApiError(404, "QUESTION_NOT_FOUND", "Sual tapılmadı.");
   response.json({ data: result });
+});
+
+questionsRouter.delete("/:id/answers/:answerId", authenticate, async (request, response) => {
+  const id = z.string().uuid().parse(request.params.id);
+  const answerId = z.string().uuid().parse(request.params.answerId);
+  const isModerator = MODERATORS.includes(request.auth!.role);
+  if (!(await hideAnswer(id, answerId, request.auth!.userId, isModerator))) {
+    throw new ApiError(404, "ANSWER_NOT_FOUND", "Silinə bilən cavab tapılmadı.");
+  }
+  response.status(204).send();
 });
 
 questionsRouter.delete("/:id", authenticate, async (request, response) => {

@@ -1533,6 +1533,8 @@
 .question-vote:hover:not(:disabled) { color: var(--ku-green, #44766c); border-color: rgb(68 118 108 / 45%); }
 .question-vote.is-voted { color: #fff; border-color: var(--ku-green, #44766c); background: var(--ku-green, #44766c); }
 .question-vote:disabled { cursor: default; opacity: 0.6; }
+/* Anonim istifadəçi üçün səs düyməsi girişə aparan keçiddir. */
+a.question-vote { text-decoration: none; }
 .question-vote b { font-size: 12.5px; font-weight: 750; }
 
 .question-body { display: grid; gap: 6px; min-width: 0; flex: 1; }
@@ -1569,7 +1571,7 @@
 .question-actions button.is-danger { color: var(--kuds-danger, #ef4444); }
 .question-actions button.is-danger:hover { border-color: rgb(239 68 68 / 45%); }
 
-.question-answers { overflow: hidden; display: grid; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--kuds-border, #e2e8f0); }
+.question-answers { overflow: clip; display: grid; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--kuds-border, #e2e8f0); }
 .question-answer {
   display: grid;
   gap: 3px;
@@ -1608,6 +1610,62 @@
   cursor: pointer;
 }
 .question-answer-form button:disabled { opacity: 0.4; cursor: default; }
+
+.question-answer__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.question-answer__delete {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  color: var(--kuds-muted, #64748b);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.question-answer__delete:hover { color: var(--kuds-danger, #ef4444); border-color: rgb(239 68 68 / 35%); }
+
+/* Silmə təsdiqi: əvvəl sual bir kliklə, xəbərdarlıqsız silinirdi. */
+.question-confirm { display: grid; gap: 6px; margin-top: 2px; }
+.question-confirm p { margin: 0; color: var(--kuds-text, #1e293b); font-size: 12.5px; font-weight: 650; }
+.question-confirm div { display: flex; flex-wrap: wrap; gap: 8px; }
+.question-confirm button {
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--ku-dark-green, #16423c);
+  font-size: 12px;
+  font-weight: 650;
+  border: 1px solid var(--kuds-border, #e2e8f0);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+.question-confirm button.is-danger { color: #fff; border-color: #b91c1c; background: #b91c1c; }
+
+.question-inline-retry {
+  margin-left: auto;
+  padding: 0 8px;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .questions-sort button,
+  .questions-topics button,
+  .question-actions button,
+  .question-confirm button { min-height: 44px; }
+  .question-vote { min-height: 44px; }
+  .question-answer__delete,
+  .question-answer-form button { width: 44px; height: 44px; }
+  .question-answer-form input,
+  .question-answers .welcome-secondary { min-height: 44px; }
+}
 
 /* ---------- Təqvimə əlavə et ---------- */
 .calendar-download {

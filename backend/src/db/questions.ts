@@ -97,8 +97,13 @@ export async function listAnswers(questionId: string, viewerId: string | null): 
       mine: Boolean(viewerId && answer.authorId === viewerId),
     }));
   }
+  // Gizlədilmiş sualın cavabları da gizli qalmalıdır — əvvəl id ilə oxunurdu.
   const result = await databasePool.query(
-    "SELECT id,body,created_at,author_id FROM campus_answers WHERE question_id=$1 AND status='published' ORDER BY created_at",
+    `SELECT a.id,a.body,a.created_at,a.author_id
+     FROM campus_answers a
+     JOIN campus_questions q ON q.id=a.question_id AND q.status='published'
+     WHERE a.question_id=$1 AND a.status='published'
+     ORDER BY a.created_at`,
     [questionId],
   );
   return result.rows.map((row) => ({
@@ -146,7 +151,9 @@ export async function toggleVote(questionId: string, userId: string) {
     else question.votes.add(userId);
     return { voted: question.votes.has(userId), voteCount: question.votes.size };
   }
-  const exists = await databasePool.query("SELECT 1 FROM campus_questions WHERE id=$1", [questionId]);
+  // `createAnswer` kimi yalnız dərc olunmuş suala: gizlədilmiş suala səs getmirdi
+  // yalnız yaddaş rejimində (orada sual silinir), bazada isə gedirdi.
+  const exists = await databasePool.query("SELECT 1 FROM campus_questions WHERE id=$1 AND status='published'", [questionId]);
   if (!exists.rowCount) return null;
   const removed = await databasePool.query("DELETE FROM campus_question_votes WHERE question_id=$1 AND user_id=$2", [questionId, userId]);
   if (!removed.rowCount) {
@@ -167,6 +174,33 @@ export async function hideQuestion(questionId: string, userId: string, isModerat
   const result = isModerator
     ? await databasePool.query("UPDATE campus_questions SET status='hidden',updated_at=NOW() WHERE id=$1", [questionId])
     : await databasePool.query("UPDATE campus_questions SET status='hidden',updated_at=NOW() WHERE id=$1 AND author_id=$2", [questionId, userId]);
+  return Boolean(result.rowCount);
+}
+
+/**
+ * Müəllif öz cavabını, moderator istənilən cavabı gizlədə bilər. Əvvəl bunun
+ * üçün heç bir yol yox idi: anonim bölmədə təhqiramiz cavabı nə yazan, nə də
+ * moderator silə bilirdi (`campus_answers.status` sütunu isə hazır idi).
+ */
+export async function hideAnswer(questionId: string, answerId: string, userId: string, isModerator: boolean) {
+  if (!databasePool) {
+    const question = memory.get(questionId);
+    const index = question ? question.answers.findIndex((item) => item.id === answerId) : -1;
+    const target = question?.answers[index];
+    if (!question || !target) return false;
+    if (!isModerator && target.authorId !== userId) return false;
+    question.answers.splice(index, 1);
+    return true;
+  }
+  const result = isModerator
+    ? await databasePool.query(
+      "UPDATE campus_answers SET status='hidden' WHERE id=$1 AND question_id=$2 AND status='published'",
+      [answerId, questionId],
+    )
+    : await databasePool.query(
+      "UPDATE campus_answers SET status='hidden' WHERE id=$1 AND question_id=$2 AND author_id=$3 AND status='published'",
+      [answerId, questionId, userId],
+    );
   return Boolean(result.rowCount);
 }
 

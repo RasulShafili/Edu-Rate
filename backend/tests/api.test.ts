@@ -1242,3 +1242,54 @@ describe("Klub görünürlüyü və silmə səlahiyyəti", () => {
     await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", ownerAuth).expect(204);
   });
 });
+
+describe("Kampus sualları", () => {
+  it("sualı və cavabı müəllif ilə moderator silə bilir, başqası yox", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const asker = await createUser({ ...base, name: "Sual Verən", email: "questions.asker@example.az", role: "student" });
+    const replier = await createUser({ ...base, name: "Cavab Yazan", email: "questions.replier@example.az", role: "student" });
+    const assistant = await createUser({ ...base, name: "Sual Moderatoru", email: "questions.assistant@example.az", role: "assistant_admin" });
+    const askerAuth = `Bearer ${createAccessToken(asker)}`;
+    const replierAuth = `Bearer ${createAccessToken(replier)}`;
+    const assistantAuth = `Bearer ${createAccessToken(assistant)}`;
+
+    const created = await request(app).post("/api/questions").set("Authorization", askerAuth)
+      .send({ title: "Kitabxana həftəsonu açıqdır?", topic: "kampus" }).expect(201);
+    const id = created.body.data.id as string;
+
+    // Suallar anonimdir: siyahıda müəllifə aid heç bir sahə yoxdur.
+    const listed = await request(app).get("/api/questions").set("Authorization", replierAuth).expect(200);
+    const item = listed.body.data.find((question: { id: string }) => question.id === id);
+    assert.deepEqual(Object.keys(item).sort(), ["answerCount", "body", "createdAt", "id", "mine", "title", "topic", "voteCount", "voted"]);
+    assert.equal(item.mine, false);
+
+    await request(app).post(`/api/questions/${id}/answers`).set("Authorization", replierAuth)
+      .send({ body: "Şənbə 18:00-a qədər." }).expect(201);
+    await request(app).post(`/api/questions/${id}/answers`).set("Authorization", replierAuth)
+      .send({ body: "Bazar bağlıdır." }).expect(201);
+    const answers = await request(app).get(`/api/questions/${id}/answers`).set("Authorization", replierAuth).expect(200);
+    const [first, second] = answers.body.data as Array<{ id: string; mine: boolean }>;
+    assert.equal(first.mine, true);
+
+    // Reqressiya: cavabı silmək üçün heç bir endpoint yox idi.
+    await request(app).delete(`/api/questions/${id}/answers/${first.id}`).expect(401);
+    await request(app).delete(`/api/questions/${id}/answers/${first.id}`).set("Authorization", askerAuth).expect(404);
+    await request(app).delete(`/api/questions/${id}/answers/${first.id}`).set("Authorization", replierAuth).expect(204);
+    await request(app).delete(`/api/questions/${id}/answers/${first.id}`).set("Authorization", replierAuth).expect(404);
+    await request(app).delete(`/api/questions/${id}/answers/${second.id}`).set("Authorization", assistantAuth).expect(204);
+    const after = await request(app).get(`/api/questions/${id}/answers`).expect(200);
+    assert.equal(after.body.data.length, 0);
+    const recount = await request(app).get("/api/questions").expect(200);
+    assert.equal(recount.body.data.find((question: { id: string }) => question.id === id).answerCount, 0);
+
+    // Başqası sualı silə bilmir; moderator silə bilir (interfeys bunu D6-da göstərmirdi).
+    await request(app).delete(`/api/questions/${id}`).set("Authorization", replierAuth).expect(404);
+    await request(app).delete(`/api/questions/${id}`).set("Authorization", assistantAuth).expect(204);
+    await request(app).post(`/api/questions/${id}/vote`).set("Authorization", replierAuth).expect(404);
+  });
+});
