@@ -1217,7 +1217,6 @@ body {
 .kuds-shell .teacher-avatar { color: var(--ku-dark-green) !important; background: var(--ku-soft-green) !important; box-shadow: none !important; }
 .kuds-shell .peer-avatar.has-image { background-image: var(--avatar-image) !important; background-position: center !important; background-size: cover !important; }
 .kuds-shell .peer-avatar-orbit,
-.kuds-shell .mentor-avatar i { border-color: rgb(68 118 108 / 32%) !important; }
 .kuds-shell .peer-identity h3,
 .kuds-shell .peer-identity strong { color: var(--kuds-text) !important; }
 .kuds-shell .peer-identity span,

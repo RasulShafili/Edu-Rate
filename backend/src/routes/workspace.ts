@@ -29,7 +29,7 @@ workspaceRouter.get("/", async (request, response) => {
     const visibleMentorRequests = mentorRequests.filter((item) => item.status !== "cancelled");
     const mentorItems = await Promise.all(visibleMentorRequests.slice(0, 12).map(async (item) => {
       const requester = await findUserById(item.userId);
-      return { ...item, userId: undefined, title: requester?.name ?? "Tələbə müraciəti", course: requester?.program ?? "Mentorluq",
+      return { ...item, userId: undefined, title: requester?.name ?? "Tələbə müraciəti", course: requester?.program ?? "Mentorluq", text: item.note || undefined,
         chatPeer: item.status === "accepted" && requester ? toChatPeer(requester) : undefined };
     }));
     const approved = reviews.filter((review) => review.status === "approved");
@@ -56,6 +56,7 @@ workspaceRouter.get("/", async (request, response) => {
         userId: undefined,
         title: requester?.name ?? "Tələbə müraciəti",
         course: requester?.program ?? "Mentorluq",
+        text: item.note || undefined,
         chatPeer: item.status === "accepted" && requester ? toChatPeer(requester) : undefined,
       };
     }));

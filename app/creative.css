@@ -1667,6 +1667,57 @@ a.question-vote { text-decoration: none; }
   .question-answers .welcome-secondary { min-height: 44px; }
 }
 
+/* ---------- Mentorlar ---------- */
+/* Köhnə tünd temadan qalan 7–9px mətnlər oxunmurdu (etiket 8px, faktlar 9px). */
+.kuds-shell .mentor-identity small,
+.kuds-shell .mentor-label { font-size: 11px; }
+.kuds-shell .mentor-expertise span,
+.kuds-shell .mentor-availability span { font-size: 11.5px; }
+.kuds-shell .mentor-facts { font-size: 12px; }
+
+.mentor-request-actions { display: grid; gap: 8px; margin-top: auto; }
+.mentor-request-actions .mentor-request { margin-top: 0; }
+.mentor-request-note { display: grid; gap: 5px; margin-top: 18px; }
+.mentor-request-note span { color: var(--kuds-muted, #64748b); font-size: 11.5px; font-weight: 650; }
+.mentor-request-note textarea {
+  padding: 9px 11px;
+  color: var(--kuds-text, #1e293b);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  border: 1px solid var(--kuds-border, #e2e8f0);
+  border-radius: 10px;
+  background: #fff;
+  outline: none;
+}
+.mentor-request-note textarea:focus { border-color: var(--ku-green, #44766c); }
+.mentor-request-hint { margin: 16px 0 0; color: var(--kuds-muted, #64748b); font-size: 12.5px; line-height: 1.5; }
+.mentor-request-secondary {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  color: var(--ku-dark-green, #16423c);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  text-decoration: none;
+  border: 1px solid var(--kuds-border, #e2e8f0);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.mentor-request-secondary:hover { border-color: rgb(68 118 108 / 45%); }
+.mentor-request-secondary:disabled { opacity: 0.6; cursor: default; }
+.mentor-filter-empty { gap: 10px; }
+.mentor-filter-empty p { margin: 0; }
+
+@media (pointer: coarse) {
+  .mentor-request-secondary { min-height: 44px; }
+}
+
 /* ---------- Təqvimə əlavə et ---------- */
 .calendar-download {
   display: inline-flex;

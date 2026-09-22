@@ -6,60 +6,165 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Check,
-  Clock3,
   MapPin,
+  RotateCcw,
   SlidersHorizontal,
   Sparkles,
+  TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
-import type { Mentor } from "../types/professionals";
+import { useT } from "../i18n/LanguageProvider";
 import { useAuth } from "./AuthProvider";
 import { ErrorState, Skeleton } from "./ui/Primitives";
 
 const ease = [0.22, 1, 0.36, 1] as const;
-type ProfessionalMentor={id:string;profileId:string;available:boolean;name:string;headline:string;specialty:string;biography:string;city:string;experienceYears:number;availability:string;meetingMode:string;languages:string[];expertise:string[]};
+
+type MeetingMode = "Onlayn" | "Əyani" | "Hibrid";
+type RequestStatus = "pending" | "accepted" | "rejected" | "cancelled";
+type LoadState = "idle" | "ready" | "error";
+
+type ProfessionalMentor = {
+  id: string;
+  profileId: string;
+  userId: string | null;
+  available: boolean;
+  name: string;
+  headline: string;
+  specialty: string;
+  biography: string;
+  city: string;
+  experienceYears: number;
+  availability: string;
+  meetingMode: string;
+  languages: string[];
+  expertise: string[];
+};
+
+type MentorCard = {
+  /** Kataloq `slug`-ı — POST üçün göndərilir. */
+  id: string;
+  /** Profilin `uuid`-i — müraciətlər buna bağlanır (`mentorProfileId`). */
+  profileId: string;
+  userId: string | null;
+  name: string;
+  initials: string;
+  role: string;
+  focus: string;
+  bio: string;
+  city: string;
+  experienceYears: number;
+  availability: string;
+  mode: MeetingMode;
+  languages: string[];
+  expertise: string[];
+  accent: string;
+  glow: string;
+};
+
+type MentorshipRequest = { id: string; mentorId: string; mentorProfileId?: string; status: RequestStatus };
+
 const mentorPalette = [
   { accent: "#44766c", glow: "rgba(68,118,108,.24)" },
   { accent: "#6f62a8", glow: "rgba(111,98,168,.22)" },
   { accent: "#b48652", glow: "rgba(180,134,82,.2)" },
 ] as const;
-function initials(name:string){return name.split(/\s+/).filter(Boolean).slice(0,2).map((part)=>part[0]?.toLocaleUpperCase("az")).join("");}
-function toMentor(profile:ProfessionalMentor,index:number):Mentor{const color=mentorPalette[index%mentorPalette.length];return{id:profile.id,name:profile.name,initials:initials(profile.name),role:profile.headline,focus:profile.specialty,bio:profile.biography,location:profile.city?`${profile.city}, Azərbaycan`:"Azərbaycan",timezone:"UTC+4",experience:profile.experienceYears>0?`${profile.experienceYears} il təcrübə`:"Təcrübə məlumatı əlavə edilməyib",responseTime:profile.availability||"Uyğun vaxtı mentorla dəqiqləşdir",availability:profile.availability?[profile.availability]:[],mode:normalizeMentorMode(profile.meetingMode),languages:profile.languages,expertise:profile.expertise,outcome:"",...color};}
-function normalizeMentorMode(value:string):Mentor["mode"]{return value==="Onlayn"||value==="Əyani"||value==="Hibrid"?value:"Onlayn";}
+
+const MODE_KEYS: Record<MeetingMode, string> = { Onlayn: "mentors.mode.online", "Əyani": "mentors.mode.inPerson", Hibrid: "mentors.mode.hybrid" };
+const MODES = Object.keys(MODE_KEYS) as MeetingMode[];
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join("");
+}
+
+function normalizeMentorMode(value: string): MeetingMode {
+  return value === "Onlayn" || value === "Əyani" || value === "Hibrid" ? value : "Onlayn";
+}
+
+function toMentor(profile: ProfessionalMentor, index: number): MentorCard {
+  const color = mentorPalette[index % mentorPalette.length];
+  return {
+    id: profile.id,
+    profileId: profile.profileId,
+    userId: profile.userId ?? null,
+    name: profile.name,
+    initials: initials(profile.name),
+    role: profile.headline,
+    focus: profile.specialty,
+    bio: profile.biography,
+    city: profile.city,
+    experienceYears: profile.experienceYears,
+    availability: profile.availability,
+    mode: normalizeMentorMode(profile.meetingMode),
+    languages: profile.languages ?? [],
+    expertise: profile.expertise ?? [],
+    ...color,
+  };
+}
+
+/** Uğursuz müraciətin səbəbi — tərcümə açarı kimi (dil dəyişəndə də düzgün qalsın). */
+function requestFailureKey(status: number, code: string | undefined, fallbackKey: string) {
+  if (status === 401) return "mentors.sessionExpired";
+  if (status === 403) return code === "STUDENT_ACCOUNT_REQUIRED" ? "mentors.studentOnly" : "mentors.restricted";
+  if (status === 404) return "mentors.mentorGone";
+  if (status === 409) return "mentors.requestExists";
+  if (status === 429) return "mentors.rateLimited";
+  return fallbackKey;
+}
 
 export function MentorshipDashboard() {
-  const [availableMentorIds, setAvailableMentorIds] = useState<Set<string> | null>(null);
+  const t = useT();
+  const { user } = useAuth();
+  const reduceMotion = useReducedMotion();
+  const [mentors, setMentors] = useState<MentorCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
-  const [catalogMentors,setCatalogMentors]=useState<Mentor[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [requestStatuses, setRequestStatuses] = useState<Map<string, "pending" | "accepted">>(() => new Map());
-  const [requestingId, setRequestingId] = useState<string | null>(null);
-  const [requestError, setRequestError] = useState("");
+  const [requests, setRequests] = useState<MentorshipRequest[]>([]);
+  const [requestsState, setRequestsState] = useState<LoadState>("idle");
+  const [requestsErrorKey, setRequestsErrorKey] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [cardError, setCardError] = useState<{ mentorId: string; key: string } | null>(null);
+  const [note, setNote] = useState("");
+  const [announcement, setAnnouncement] = useState("");
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState("all");
   const [language, setLanguage] = useState("all");
-  const [response, setResponse] = useState("all");
-  const reduceMotion = useReducedMotion();
-  const { user } = useAuth();
-  const mentors=catalogMentors;
+
+  // Mentorluq müraciəti yalnız tələbə üçündür — backend eyni qaydanı tətbiq edir (D9).
+  const isStudent = Boolean(user) && (user?.accessRole ?? "student") === "student";
 
   const loadMentors = useCallback(async () => {
     setIsLoading(true);
-    setLoadError("");
+    setLoadFailed(false);
     try {
       const response = await fetch("/api/catalog/mentors", { cache: "no-store" });
-      const payload = await response.json() as { data?: ProfessionalMentor[]; error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "Mentorlar yüklənmədi.");
-      if (!Array.isArray(payload.data)) throw new Error("Mentor məlumatları düzgün formatda deyil.");
-      const active=payload.data.filter((mentor)=>mentor.available);
-      setAvailableMentorIds(new Set(active.map((mentor) => mentor.id)));
-      setCatalogMentors(active.map(toMentor));
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Mentorlar yüklənmədi.");
+      const payload = await response.json() as { data?: ProfessionalMentor[] };
+      if (!response.ok || !Array.isArray(payload.data)) throw new Error(String(response.status));
+      setMentors(payload.data.filter((mentor) => mentor.available).map(toMentor));
+    } catch {
+      setLoadFailed(true);
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  const loadRequests = useCallback(async () => {
+    try {
+      const response = await fetch("/api/mentorship/requests", { cache: "no-store" });
+      if (!response.ok) {
+        setRequestsErrorKey(response.status === 401 ? "mentors.sessionExpired" : "mentors.statusFailed");
+        setRequestsState("error");
+        return;
+      }
+      const payload = await response.json() as { data?: MentorshipRequest[] };
+      setRequests(Array.isArray(payload.data) ? payload.data : []);
+      setRequestsState("ready");
+    } catch {
+      // Əvvəl bu xəta udulurdu: tələbə göndərdiyi müraciəti görmür, yenidən
+      // göndərir və 409 alırdı.
+      setRequestsErrorKey("mentors.statusFailed");
+      setRequestsState("error");
     }
   }, []);
 
@@ -69,52 +174,179 @@ export function MentorshipDashboard() {
   }, [loadMentors]);
 
   useEffect(() => {
-    if (!user) {
-      const timer = window.setTimeout(() => setRequestStatuses(new Map()), 0);
-      return () => window.clearTimeout(timer);
+    const timer = window.setTimeout(() => {
+      if (isStudent) {
+        void loadRequests();
+      } else {
+        setRequests([]);
+        setRequestsState("idle");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isStudent, loadRequests]);
+
+  /**
+   * Hər mentor üçün ən son müraciət. Backend siyahını yenidən köhnəyə qaytarır.
+   * Əvvəl açar `mentorProfileId` (uuid), kartın id-si isə `slug` idi — bir-birinə
+   * heç vaxt uyğun gəlmirdi, ona görə səhifə yenilənəndən sonra göndərilmiş
+   * müraciət itirdi və düymə yenə "müraciət et" deyirdi (klikləyəndə 409).
+   */
+  const latestRequest = useMemo(() => {
+    const byKey = new Map<string, MentorshipRequest>();
+    for (const item of requests) {
+      // Həm profil uuid-i, həm slug ilə: köhnə sətirlərdə `mentorProfileId` boş ola bilər.
+      for (const key of [item.mentorProfileId, item.mentorId]) {
+        if (key && !byKey.has(key)) byKey.set(key, item);
+      }
     }
-    void fetch("/api/mentorship/requests", { cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json() as { data?: Array<{ mentorId: string; mentorProfileId?: string; status: string }> };
-        if (response.ok && Array.isArray(payload.data)) {
-          setRequestStatuses(new Map(payload.data
-            .filter((item) => item.status === "pending" || item.status === "accepted")
-            .map((item) => [item.mentorProfileId ?? item.mentorId, item.status as "pending" | "accepted"])));
-        }
-      })
-      .catch(() => undefined);
-  }, [user]);
+    return (mentor: MentorCard) => byKey.get(mentor.profileId) ?? byKey.get(mentor.id);
+  }, [requests]);
+
+  const languageOptions = useMemo(
+    () => [...new Set(mentors.flatMap((mentor) => mentor.languages))].sort((a, b) => a.localeCompare(b, "az")),
+    [mentors],
+  );
 
   const filteredMentors = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("az");
     return mentors.filter((mentor) => {
-      if (!availableMentorIds?.has(mentor.id)) return false;
-      const matchesQuery = !normalized || `${mentor.name} ${mentor.role} ${mentor.expertise.join(" ")}`.toLocaleLowerCase("az").includes(normalized);
+      const matchesQuery = !normalized || `${mentor.name} ${mentor.role} ${mentor.focus} ${mentor.expertise.join(" ")}`.toLocaleLowerCase("az").includes(normalized);
       const matchesLanguage = language === "all" || mentor.languages.includes(language);
-      const fastResponse = /4 saat|6 saat|8 saat/.test(mentor.responseTime);
-      const matchesResponse = response === "all" || (response === "fast" ? fastResponse : !fastResponse);
-      return matchesQuery && matchesLanguage && matchesResponse && (mode === "all" || mentor.mode === mode);
+      return matchesQuery && matchesLanguage && (mode === "all" || mentor.mode === mode);
     });
-  }, [availableMentorIds, language, mentors, mode, query, response]);
+  }, [language, mentors, mode, query]);
 
-  async function requestMentorship(mentorId: string) {
-    if (requestingId) return;
-    setRequestingId(mentorId);
-    setRequestError("");
+  const filtersActive = Boolean(query.trim()) || mode !== "all" || language !== "all";
+
+  function clearFilters() {
+    setQuery("");
+    setMode("all");
+    setLanguage("all");
+  }
+
+  function toggle(mentorId: string) {
+    setExpandedId((current) => (current === mentorId ? null : mentorId));
+    setNote("");
+    setCardError(null);
+  }
+
+  async function requestMentorship(mentor: MentorCard) {
+    if (busyId) return;
+    setBusyId(mentor.id);
+    setCardError(null);
     try {
       const response = await fetch("/api/mentorship/requests", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mentorId }),
+        body: JSON.stringify({ mentorId: mentor.id, note: note.trim() }),
       });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "Müraciət göndərilmədi.");
-      setRequestStatuses((current) => new Map(current).set(mentorId, "pending"));
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Müraciət göndərilmədi.");
+      const payload = await response.json().catch(() => null) as { data?: MentorshipRequest; error?: { code?: string } } | null;
+      if (!response.ok) {
+        setCardError({ mentorId: mentor.id, key: requestFailureKey(response.status, payload?.error?.code, "mentors.requestFailed") });
+        // Server artıq müraciət olduğunu deyirsə, vəziyyəti ondan götür.
+        if (response.status === 409) void loadRequests();
+        return;
+      }
+      if (payload?.data) setRequests((current) => [payload.data as MentorshipRequest, ...current]);
+      setNote("");
+      setAnnouncement(t("mentors.sentLive", { name: mentor.name }));
+    } catch {
+      setCardError({ mentorId: mentor.id, key: "mentors.requestFailed" });
     } finally {
-      setRequestingId(null);
+      setBusyId(null);
     }
+  }
+
+  async function withdraw(mentor: MentorCard, requestId: string) {
+    if (busyId) return;
+    setBusyId(mentor.id);
+    setCardError(null);
+    try {
+      const response = await fetch(`/api/mentorship/requests/${encodeURIComponent(requestId)}`, { method: "DELETE" });
+      if (response.ok) {
+        setRequests((current) => current.filter((item) => item.id !== requestId));
+        return;
+      }
+      setCardError({ mentorId: mentor.id, key: response.status === 401 ? "mentors.sessionExpired" : "mentors.withdrawFailed" });
+      // 404: mentor artıq cavab verib — təzə vəziyyəti göstər.
+      if (response.status === 404) void loadRequests();
+    } catch {
+      setCardError({ mentorId: mentor.id, key: "mentors.withdrawFailed" });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function renderAction(mentor: MentorCard) {
+    if (!user) {
+      return (
+        <Link className="mentor-request" href="/auth?returnTo=%2Fmentors">
+          <span>{t("mentors.signIn")} <ArrowUpRight size={15} aria-hidden="true" /></span>
+        </Link>
+      );
+    }
+    if (mentor.userId && mentor.userId === user.id) {
+      return <p className="mentor-request-hint">{t("mentors.ownProfile")}</p>;
+    }
+    if (!isStudent) {
+      return <p className="mentor-request-hint">{t("mentors.studentOnly")}</p>;
+    }
+
+    const latest = latestRequest(mentor);
+    const busy = busyId === mentor.id;
+
+    if (latest?.status === "accepted") {
+      return (
+        <>
+          <span className="mentor-request is-requested" role="status">
+            <span><Check size={16} strokeWidth={2.4} aria-hidden="true" /> {t("mentors.accepted")}</span>
+          </span>
+          <Link className="mentor-request-secondary" href="/workspace">{t("mentors.openWorkspace")}</Link>
+        </>
+      );
+    }
+    if (latest?.status === "pending") {
+      return (
+        <>
+          <span className="mentor-request is-requested" role="status">
+            <span><Check size={16} strokeWidth={2.4} aria-hidden="true" /> {t("mentors.pending")}</span>
+          </span>
+          <button type="button" className="mentor-request-secondary" onClick={() => void withdraw(mentor, latest.id)} disabled={busy}>
+            {busy ? t("mentors.withdrawing") : t("mentors.withdraw")}
+          </button>
+        </>
+      );
+    }
+
+    const noteId = `mentor-note-${mentor.id}`;
+    return (
+      <>
+        {latest?.status === "rejected" ? <p className="mentor-request-hint">{t("mentors.rejectedHint")}</p> : null}
+        {latest?.status === "cancelled" ? <p className="mentor-request-hint">{t("mentors.endedHint")}</p> : null}
+        {/* Backend qeydi həmişə qəbul edirdi, interfeys isə heç soruşmurdu —
+            mentor müraciəti yalnız ad ilə, kontekstsiz alırdı. */}
+        <label className="mentor-request-note" htmlFor={noteId}>
+          <span>{t("mentors.noteLabel")}</span>
+          <textarea
+            id={noteId}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            maxLength={600}
+            rows={3}
+            placeholder={t("mentors.notePlaceholder")}
+          />
+        </label>
+        <button
+          type="button"
+          className="mentor-request"
+          onClick={() => void requestMentorship(mentor)}
+          disabled={busy}
+          aria-disabled={busy}
+        >
+          <span><Sparkles size={15} aria-hidden="true" /> {busy ? t("mentors.sending") : t("mentors.request")}</span>
+        </button>
+      </>
+    );
   }
 
   return (
@@ -130,11 +362,11 @@ export function MentorshipDashboard() {
         transition={{ duration: 0.75, ease }}
       >
         <div>
-          <span className="mentor-kicker">Mentorluq</span>
-          <h1 id="mentor-title" className="module-page-title">Mentorlar</h1>
+          <span className="mentor-kicker">{t("mentors.eyebrow")}</span>
+          <h1 id="mentor-title" className="module-page-title">{t("mentors.title")}</h1>
         </div>
         <div className="mentor-heading-aside">
-          <span><Sparkles size={13} /> Uyğun mentorunu tap</span>
+          <span><Sparkles size={13} aria-hidden="true" /> {t("mentors.aside")}</span>
         </div>
       </motion.div>
 
@@ -146,30 +378,69 @@ export function MentorshipDashboard() {
         onClick={() => setFiltersOpen((current) => !current)}
       >
         <SlidersHorizontal size={16} aria-hidden="true" />
-        <span>Filtrlər</span>
-        <small>{filteredMentors.length} nəticə</small>
+        <span>{t("mentors.filters")}</span>
+        <small>{t("mentors.results", { count: filteredMentors.length })}</small>
       </button>
-      <div id="mentor-directory-filters" className={`mentor-filters${filtersOpen ? " is-open" : ""}`} aria-label="Mentor filtrləri">
-        <label><span>Ad və ya ixtisas</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Məsələn, məhsul strategiyası" /></label>
-        <label><span>Görüş formatı</span><select value={mode} onChange={(event) => setMode(event.target.value)}><option value="all">Bütün formatlar</option><option value="Onlayn">Onlayn</option><option value="Əyani">Əyani</option><option value="Hibrid">Hibrid</option></select></label>
-        <label><span>Dil</span><select value={language} onChange={(event) => setLanguage(event.target.value)}><option value="all">Bütün dillər</option><option value="Azərbaycan dili">Azərbaycan dili</option><option value="İngilis dili">İngilis dili</option></select></label>
-        <label><span>Cavab vaxtı</span><select value={response} onChange={(event) => setResponse(event.target.value)}><option value="all">Fərq etmir</option><option value="fast">8 saata qədər</option><option value="daily">Bir günədək</option></select></label>
+      {/* "Cavab vaxtı" süzgəci silindi: o, uyğun vaxt mətnində "4 saat" kimi
+          sözləri axtarırdı — real mentorların mətnində belə söz olmadığı üçün
+          "8 saata qədər" hamısını gizlədirdi. Dil seçimləri artıq məlumatdan gəlir. */}
+      <div id="mentor-directory-filters" className={`mentor-filters${filtersOpen ? " is-open" : ""}`} aria-label={t("mentors.filtersLabel")}>
+        <label><span>{t("mentors.search")}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("mentors.searchPlaceholder")} /></label>
+        <label>
+          <span>{t("mentors.mode")}</span>
+          <select value={mode} onChange={(event) => setMode(event.target.value)}>
+            <option value="all">{t("mentors.modeAll")}</option>
+            {MODES.map((item) => <option key={item} value={item}>{t(MODE_KEYS[item])}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>{t("mentors.language")}</span>
+          <select value={language} onChange={(event) => setLanguage(event.target.value)}>
+            <option value="all">{t("mentors.languageAll")}</option>
+            {languageOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </label>
       </div>
 
+      <div aria-live="polite">
+        {requestsState === "error" ? (
+          <p className="schedule-warning is-error" role="alert">
+            <TriangleAlert size={14} aria-hidden="true" /> {t(requestsErrorKey)}
+            <button type="button" className="question-inline-retry" onClick={() => void loadRequests()}>{t("mentors.retry")}</button>
+          </p>
+        ) : null}
+      </div>
+      <span className="sr-only" aria-live="polite">{announcement}</span>
+
       {isLoading ? (
-        <div className="mentor-grid mentor-skeleton-grid" aria-label="Mentorlar yüklənir">
+        <div className="mentor-grid mentor-skeleton-grid" aria-label={t("mentors.loading")}>
           {Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="mentor-card-skeleton" />)}
         </div>
-      ) : loadError ? (
-        <ErrorState title="Mentorları göstərmək mümkün olmadı" description={loadError} action={<button type="button" className="kuds-primary-button" onClick={() => void loadMentors()}>Yenidən yoxla</button>} />
+      ) : loadFailed ? (
+        <ErrorState
+          title={t("mentors.loadFailedTitle")}
+          description={t("mentors.loadFailedBody")}
+          action={<button type="button" className="kuds-primary-button" onClick={() => void loadMentors()}><RotateCcw size={15} aria-hidden="true" /> {t("mentors.retry")}</button>}
+        />
+      ) : mentors.length === 0 ? (
+        // Production-da mentor olmayanda əvvəl "Bu filtrlərə uyğun mentor tapılmadı"
+        // yazılırdı — heç bir filtr seçilmədiyi halda.
+        <div className="schedule-empty">
+          <Sparkles size={28} aria-hidden="true" />
+          <h2>{t("mentors.emptyTitle")}</h2>
+          <p>{t("mentors.emptyBody")}</p>
+          {user?.accessRole === "teacher" ? (
+            <Link className="kuds-primary-button" href="/workspace">{t("mentors.emptyTeacherCta")}</Link>
+          ) : null}
+        </div>
       ) : (
-      <motion.div layout className="mentor-grid" aria-label="Mentor siyahısı">
+      <motion.div layout className="mentor-grid" aria-label={t("mentors.listLabel")}>
         {filteredMentors.map((mentor, index) => {
           const expanded = expandedId === mentor.id;
-          const requestStatus = requestStatuses.get(mentor.id);
-          const requested = Boolean(requestStatus);
           const detailsId = `mentor-details-${mentor.id}`;
           const triggerId = `mentor-trigger-${mentor.id}`;
+          const modeLabel = t(MODE_KEYS[mentor.mode]);
+          const availabilityText = mentor.availability || t("mentors.availabilityUnknown");
 
           return (
             <motion.article
@@ -194,24 +465,21 @@ export function MentorshipDashboard() {
                 id={triggerId}
                 type="button"
                 className="mentor-card-trigger"
-                onClick={() => setExpandedId(expanded ? null : mentor.id)}
+                onClick={() => toggle(mentor.id)}
                 aria-expanded={expanded}
                 aria-controls={detailsId}
               >
-                <motion.span
-                  layout="position"
-                  className="mentor-avatar"
-                  aria-hidden="true"
-                >
+                {/* Yaşıl "onlayn" nöqtəsi silindi: kataloqda iştirak məlumatı yoxdur,
+                    nöqtə isə hər mentorun həmişə onlayn olduğunu iddia edirdi. */}
+                <motion.span layout="position" className="mentor-avatar" aria-hidden="true">
                   <span>{mentor.initials}</span>
-                  <i />
                 </motion.span>
 
                 <motion.span layout="position" className="mentor-identity">
                   <small>{mentor.role}</small>
                   <strong>{mentor.name}</strong>
                   <span>{mentor.focus}</span>
-                  <span className="mentor-summary-facts">{mentor.mode} · {mentor.responseTime.replace("Adətən ", "")}</span>
+                  <span className="mentor-summary-facts">{modeLabel} · {availabilityText}</span>
                 </motion.span>
 
                 <span className="mentor-expand-icon" aria-hidden="true">
@@ -233,63 +501,42 @@ export function MentorshipDashboard() {
                   >
                     <div className="mentor-details-inner">
                       <div className="mentor-story">
-                        <p>{mentor.bio}</p>
-                        {mentor.outcome ? <blockquote>{mentor.outcome}</blockquote> : null}
+                        {mentor.bio ? <p>{mentor.bio}</p> : null}
                       </div>
 
                       <div className="mentor-practice">
-                        <span className="mentor-label">İxtisas sahələri</span>
-                        <div className="mentor-expertise">
-                          {mentor.expertise.map((item) => <span key={item}>{item}</span>)}
-                        </div>
+                        {mentor.expertise.length ? (
+                          <>
+                            <span className="mentor-label">{t("mentors.expertise")}</span>
+                            <div className="mentor-expertise">
+                              {mentor.expertise.map((item) => <span key={item}>{item}</span>)}
+                            </div>
+                          </>
+                        ) : null}
 
-                        <span className="mentor-label mentor-availability-label">Uyğun vaxtlar</span>
+                        <span className="mentor-label mentor-availability-label">{t("mentors.availability")}</span>
                         <div className="mentor-availability">
-                          {mentor.availability.map((slot) => <span key={slot}>{slot}</span>)}
+                          <span>{availabilityText}</span>
                         </div>
                       </div>
 
                       <div className="mentor-request-panel">
                         <div className="mentor-facts">
-                          <span><MapPin size={13} /> {mentor.location} · {mentor.timezone}</span>
-                          <span><Clock3 size={13} /> {mentor.responseTime}</span>
-                          <span>{mentor.experience} · {mentor.mode}</span>
-                          <span>{mentor.languages.join(" · ")}</span>
+                          <span><MapPin size={13} aria-hidden="true" /> {mentor.city ? `${mentor.city}, ${t("mentors.country")}` : t("mentors.country")} · UTC+4</span>
+                          <span>
+                            {mentor.experienceYears > 0 ? t("mentors.experienceYears", { count: mentor.experienceYears }) : t("mentors.experienceUnknown")} · {modeLabel}
+                          </span>
+                          {mentor.languages.length ? <span>{mentor.languages.join(" · ")}</span> : null}
                         </div>
 
-                        {user ? <motion.button
-                          type="button"
-                          className={`mentor-request${requested ? " is-requested" : ""}`}
-                          onClick={() => !requested && void requestMentorship(mentor.id)}
-                          aria-pressed={requested}
-                          aria-disabled={requested || requestingId === mentor.id}
-                          disabled={requested || requestingId === mentor.id}
-                          whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-                          animate={requested && !reduceMotion ? { scale: [1, 1.06, 1] } : undefined}
-                          transition={{ duration: reduceMotion ? 0 : 0.42, ease, times: [0, 0.52, 1] }}
-                        >
-                          <AnimatePresence mode="wait" initial={false}>
-                            <motion.span
-                              key={requested ? "requested" : "request"}
-                              initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.9 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={reduceMotion ? undefined : { opacity: 0, y: -8, scale: 0.9 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              {requested ? <Check size={16} strokeWidth={2.4} /> : <Sparkles size={15} />}
-                              {requestStatus === "accepted" ? "Mentorluq aktivdir" : requested ? "Müraciət göndərildi" : requestingId === mentor.id ? "Göndərilir…" : "Mentorluq üçün müraciət et"}
-                            </motion.span>
-                          </AnimatePresence>
-                          {requested && !reduceMotion && (
-                            <span className="mentor-success-burst" aria-hidden="true">
-                              <i /><i /><i /><i />
-                            </span>
-                          )}
-                        </motion.button> : <Link className="mentor-request" href="/auth?returnTo=%2Fmentors">Müraciət üçün daxil ol <ArrowUpRight size={15} /></Link>}
-                        {requestError && expanded && <p className="mentor-request-error" role="alert">{requestError}</p>}
-                        <span className="sr-only" aria-live="polite">
-                          {requested ? `${mentor.name} üçün mentorluq müraciəti göndərildi.` : ""}
-                        </span>
+                        <div className="mentor-request-actions">
+                          {renderAction(mentor)}
+                          {cardError?.mentorId === mentor.id ? (
+                            <p className="schedule-warning is-error" role="alert">
+                              <TriangleAlert size={14} aria-hidden="true" /> {t(cardError.key)}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -298,7 +545,14 @@ export function MentorshipDashboard() {
             </motion.article>
           );
         })}
-        {filteredMentors.length === 0 && <div className="mentor-filter-empty">Bu filtrlərə uyğun mentor tapılmadı.</div>}
+        {filteredMentors.length === 0 ? (
+          <div className="mentor-filter-empty">
+            <p>{t("mentors.filterEmpty")}</p>
+            {filtersActive ? (
+              <button type="button" className="mentor-request-secondary" onClick={clearFilters}>{t("mentors.clearFilters")}</button>
+            ) : null}
+          </div>
+        ) : null}
       </motion.div>
       )}
     </section>

@@ -25,10 +25,22 @@ mentorshipRouter.get("/", async (request, response) => {
 });
 
 mentorshipRouter.post("/", async (request, response) => {
+  // D9: əvvəl istənilən rol müraciət edə bilirdi. Amma göndərilmiş müraciətin
+  // vəziyyətini yalnız tələbə paneli göstərir — müəllim, mentor və ya admin
+  // müraciət edəndə onu heç yerdə izləyə bilmirdi. Rəylərdəki qayda ilə eyni.
+  if (request.auth!.role !== "student") {
+    throw new ApiError(403, "STUDENT_ACCOUNT_REQUIRED", "Mentorluq müraciəti yalnız tələbə hesabı üçündür.");
+  }
   const input = requestSchema.parse(request.body);
   const mentor = await findProfessionalProfile(input.mentorId, "mentor");
   if (!mentor || mentor.status !== "approved" || !mentor.visible) {
     throw new ApiError(404, "MENTOR_NOT_FOUND", "Aktiv mentor tapılmadı.");
+  }
+  // D9: mentor öz profilinə müraciət edirdi və özünü öz panelində "yeni
+  // müraciət" kimi görürdü. Rol qaydası bunu indi bağlayır; bu yoxlama isə
+  // qayda gələcəkdə genişlənsə belə özünə müraciəti qadağan saxlayır.
+  if (mentor.userId && mentor.userId === request.auth!.userId) {
+    throw new ApiError(422, "SELF_MENTORSHIP", "Özünə mentorluq müraciəti göndərə bilməzsən.");
   }
   response.status(201).json({ data: await createMentorshipRequest(request.auth!.userId, mentor.slug, input.note, mentor.id) });
 });

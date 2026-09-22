@@ -1,23 +1,3 @@
-export type Mentor = {
-  id: string;
-  name: string;
-  initials: string;
-  role: string;
-  focus: string;
-  bio: string;
-  location: string;
-  timezone: string;
-  experience: string;
-  responseTime: string;
-  availability: string[];
-  mode: "Onlayn" | "Əyani" | "Hibrid";
-  languages: string[];
-  expertise: string[];
-  outcome: string;
-  accent: string;
-  glow: string;
-};
-
 export type Teacher = {
   id: string;
   name: string;

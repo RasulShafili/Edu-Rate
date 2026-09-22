@@ -1293,3 +1293,53 @@ describe("Kampus sualları", () => {
     await request(app).post(`/api/questions/${id}/vote`).set("Authorization", replierAuth).expect(404);
   });
 });
+
+describe("Mentorluq müraciəti", () => {
+  it("yalnız tələbə müraciət edir, mentor qeydi görür, müraciət geri çəkilir", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const student = await createUser({ ...base, name: "Mentorluq Tələbəsi", email: "mentorship.student@example.az", role: "student" });
+    const mentor = await createUser({ ...base, name: "Mentorluq Mentoru", email: "mentorship.mentor@example.az", role: "mentor" });
+    const teacher = await createUser({ ...base, name: "Mentorluq Müəllimi", email: "mentorship.teacher@example.az", role: "teacher" });
+    const studentAuth = `Bearer ${createAccessToken(student)}`;
+    const mentorAuth = `Bearer ${createAccessToken(mentor)}`;
+    const teacherAuth = `Bearer ${createAccessToken(teacher)}`;
+
+    // Mentor profili panel açılanda yaradılır (real saytda qeydiyyatda).
+    await request(app).get("/api/workspace").set("Authorization", mentorAuth).expect(200);
+    const catalog = await request(app).get("/api/mentors").expect(200);
+    const profile = catalog.body.data.find((item: { userId: string | null }) => item.userId === mentor.id);
+    assert.ok(profile);
+
+    // D9: tələbədən başqa rollar müraciət edə bilmir — mentor özünə də.
+    await request(app).post("/api/mentorship/requests").set("Authorization", mentorAuth)
+      .send({ mentorId: profile.id }).expect(403);
+    await request(app).post("/api/mentorship/requests").set("Authorization", teacherAuth)
+      .send({ mentorId: profile.id }).expect(403);
+    await request(app).post("/api/mentorship/requests").set("Authorization", `Bearer ${reusableAdminToken}`)
+      .send({ mentorId: profile.id }).expect(403);
+
+    const created = await request(app).post("/api/mentorship/requests").set("Authorization", studentAuth)
+      .send({ mentorId: profile.id, note: "Portfel hazırlamaqda kömək lazımdır." }).expect(201);
+    // İnterfeys müraciəti kataloqdakı profilə `mentorProfileId` ilə bağlayır.
+    assert.equal(created.body.data.mentorProfileId, profile.profileId);
+    await request(app).post("/api/mentorship/requests").set("Authorization", studentAuth)
+      .send({ mentorId: profile.id }).expect(409);
+
+    // Reqressiya: mentor panelində tələbənin qeydi görünmürdü.
+    const workspace = await request(app).get("/api/workspace").set("Authorization", mentorAuth).expect(200);
+    const item = workspace.body.data.items.find((entry: { id: string }) => entry.id === created.body.data.id);
+    assert.equal(item.text, "Portfel hazırlamaqda kömək lazımdır.");
+    assert.equal(item.userId, undefined);
+
+    // Gözləyən müraciəti yalnız sahibi geri çəkə bilir.
+    await request(app).delete(`/api/mentorship/requests/${created.body.data.id}`).set("Authorization", mentorAuth).expect(404);
+    await request(app).delete(`/api/mentorship/requests/${created.body.data.id}`).set("Authorization", studentAuth).expect(204);
+    const after = await request(app).get("/api/workspace").set("Authorization", mentorAuth).expect(200);
+    assert.equal(after.body.data.items.some((entry: { id: string }) => entry.id === created.body.data.id), false);
+  });
+});

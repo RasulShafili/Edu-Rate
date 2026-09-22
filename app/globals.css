@@ -1826,9 +1826,6 @@ a { color: inherit; text-decoration: none; }
 
 .mentor-avatar::after { position: absolute; inset: 8px; content: ""; border: 1px solid rgba(13, 14, 13, 0.25); border-radius: inherit; }
 .mentor-avatar > span { position: relative; z-index: 2; font-family: var(--font-instrument-serif), Georgia, serif; font-size: 27px; }
-.mentor-avatar > i { position: absolute; right: -8px; bottom: 5px; width: 18px; height: 18px; border: 4px solid color-mix(in srgb, var(--paper), transparent 12%); border-radius: 50%; background: #62cf9b; box-shadow: 0 0 13px rgba(98, 207, 155, 0.55); }
-.mentor-card.is-expanded .mentor-avatar > i { border-color: #171916; }
-.mentor-card:hover .mentor-avatar { border-radius: 45% 55% 59% 41% / 57% 42% 58% 43%; }
 
 .mentor-identity { display: flex; min-width: 0; flex-direction: column; }
 .mentor-identity small { margin-bottom: 11px; color: color-mix(in srgb, var(--mentor-accent), currentColor 35%); font-size: 8px; font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -1873,16 +1870,10 @@ a { color: inherit; text-decoration: none; }
   transition: opacity 220ms ease, background 220ms ease;
 }
 
-.mentor-request > span:not(.mentor-success-burst) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 10px; font-weight: 670; }
+.mentor-request > span { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 670; }
 .mentor-request:hover { opacity: 0.88; }
 .mentor-request:focus-visible { outline: 2px solid var(--paper); outline-offset: 4px; }
 .mentor-request.is-requested { cursor: default; background: #76e2b0; box-shadow: 0 12px 36px rgba(118, 226, 176, 0.24); }
-.mentor-success-burst { position: absolute; pointer-events: none; inset: 50%; }
-.mentor-success-burst i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #76e2b0; box-shadow: 0 0 7px #76e2b0; animation: mentor-pop 720ms cubic-bezier(.2,.8,.2,1) both; }
-.mentor-success-burst i:nth-child(1) { --burst-x: -84px; --burst-y: -28px; }
-.mentor-success-burst i:nth-child(2) { --burst-x: 82px; --burst-y: -22px; animation-delay: 35ms; }
-.mentor-success-burst i:nth-child(3) { --burst-x: -64px; --burst-y: 30px; animation-delay: 70ms; }
-.mentor-success-burst i:nth-child(4) { --burst-x: 66px; --burst-y: 32px; animation-delay: 95ms; }
 
 .support-section {
   position: relative;
@@ -3610,7 +3601,6 @@ a { color: inherit; text-decoration: none; }
 }
 @keyframes launcher-pulse { 0% { opacity: 0.7; transform: scale(0.9); } 70%, 100% { opacity: 0; transform: scale(1.32); } }
 @keyframes typing-dot { 0%, 62%, 100% { opacity: 0.32; transform: translateY(0) scale(0.82); } 30% { opacity: 1; transform: translateY(-3px) scale(1.08); } }
-@keyframes mentor-pop { 0% { opacity: 0; transform: translate(0, 0) scale(0.4); } 38% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--burst-x), var(--burst-y)) scale(1); } }
 
 .manifesto-section { position: relative; display: grid; min-height: 68vh; padding: 120px clamp(22px, 7vw, 116px); overflow: hidden; place-items: center; text-align: center; }
 .manifesto-section > p { position: relative; z-index: 1; margin: 0; font-size: clamp(58px, 9vw, 142px); font-weight: 450; line-height: 0.85; letter-spacing: -0.075em; }
@@ -3831,7 +3821,6 @@ a { color: inherit; text-decoration: none; }
   .mentor-card.is-expanded .mentor-card-trigger { grid-template-columns: 70px minmax(0, 1fr) 31px; gap: 11px; min-height: 184px; padding: 18px; }
   .mentor-avatar { width: 66px; height: 66px; }
   .mentor-avatar > span { font-size: 22px; }
-  .mentor-avatar > i { right: -5px; width: 15px; height: 15px; border-width: 3px; }
   .mentor-identity small { margin-bottom: 8px; font-size: 7px; }
   .mentor-identity strong { font-size: clamp(24px, 7vw, 32px); }
   .mentor-identity > span { margin-top: 9px; font-size: 9px; }
@@ -4161,7 +4150,6 @@ a { color: inherit; text-decoration: none; }
   .mentor-card.is-expanded .mentor-card-trigger { grid-template-columns: 56px minmax(0, 1fr) 36px; gap: 12px; min-height: 136px; padding: 16px; }
   .mentor-avatar { width: 56px; height: 56px; }
   .mentor-avatar > span { font-size: 20px; }
-  .mentor-avatar > i { right: -4px; width: 14px; height: 14px; border-width: 3px; }
   .mentor-identity strong { font-size: clamp(22px, 6vw, 27px); }
   .mentor-identity > span { margin-top: 7px; font-size: 9px; }
   .mentor-expand-icon { width: 36px; height: 36px; }
