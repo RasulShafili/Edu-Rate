@@ -40,6 +40,34 @@ görünür**, halbuki əməliyyat uğurlu olub.
 **Qayda:** animasiyadan asılı hər müşahidədən sonra **real toxunuş** et
 (`hover` və ya `click`) və yenidən yoxla. Yalnız bundan sonra nəticə çıxar.
 
+**Daha aldadıcı forması (Suallar):** `AnimatePresence` çıxan elementi son
+render-in **donmuş surəti** ilə saxlayır. Rolu dəyişəndən sonra (moderator →
+tələbə) tələbənin ekranında moderatorun silmə düyməsi göründü — "icazə səhvi"
+kimi görünürdü. Əslində bağlanmış panelin donmuş surəti idi: `opacity: 0`,
+DOM-da hələ də var. Tab öndə olanda belə kadr işləməyə bilər.
+
+Eyni səbəbdən səhifə "Yüklənir…" vəziyyətində ilişmiş, şəbəkə jurnalında
+sorğu isə **heç görünməmiş** kimi idi.
+
+```js
+// kadrları məcbur et, sonra yenidən ölç
+await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+```
+
+Ekran görüntüsü də kadr işlədir — ondan sonra vəziyyət düzəlirsə, artefaktdır.
+Hər rol yoxlamasında `opacity` və elementin sayını da oxu, yalnız mətni yox.
+
+### 2.4 Mobil emulyasiyada ekran görüntüsü kəsilir
+
+375px emulyasiyasında görüntü sağdan kəsilmiş göründü (kartın kənarı
+ekrandan çıxmış kimi). Ölçülər bunu təkzib etdi: `scrollWidth == clientWidth`,
+sağ kənarı `innerWidth`-i keçən element yoxdur. Görüntü panelə sığdırılarkən
+kəsilir. **Üfüqi sürüşmə iddiası yalnız rəqəmlə:**
+
+```js
+[...document.querySelectorAll('main *')].filter(e => e.getBoundingClientRect().right > innerWidth + 1)
+```
+
 ### 2.2 Konsol buferi köhnə mesajları saxlayır
 
 `console.clear()` panelin öz buferini sıfırlamır. Düzəlişdən sonra xəta hələ də
@@ -215,6 +243,20 @@ Seed elanlarının müddəti bitmişdi, ona görə lövhə boş görünürdü. S
 **Qayda:** "boş / yoxdur" tipli tapıntıda canlı API-ni yoxla:
 `curl -s https://edurate-api.onrender.com/api/<yol>`.
 
+### Yaddaş rejimi baza səhvlərini gizlədir
+
+`db/*.ts` funksiyalarının hər birinin iki qolu var: `if (!databasePool)`
+(yaddaş) və SQL. Semantika fərqlənə bilər. Suallarda yaddaş qolu sualı
+**silirdi**, SQL qolu isə `status='hidden'` qoyurdu. Nəticədə gizlədilmiş suala
+səs vermək lokalda 404 verirdi (düzgün görünürdü), production-da isə 200 —
+çünki SQL sorğusu `status`-u yoxlamırdı. Lokal testlər (yaddaş rejimi) bunu
+**heç vaxt** tuta bilməz.
+
+**Qayda:** silmə/gizlətmə olan hər funksiyada iki qolu yan-yana oxu və soruş:
+"gizlədilmiş sətir digər sorğularda (siyahı, say, səs, cavab) süzülürmü?"
+SQL dəyişikliyini lokalda sınaya bilmirsənsə, bunu açıq de və deploydan sonra
+production-da **yalnız oxuyan** sorğu ilə yoxla.
+
 **Mühit təhlükəsizliyi:** kökdə `.env.local` olmalıdır —
 `EDURATE_API_BASE_URL=http://localhost:3001`. Olmasa `remote-credential.ts`
 default olaraq **canlı Render API-yə** gedir və test məlumatı real bazaya düşür.
@@ -256,8 +298,15 @@ keçirdi (`.x-shell.is-active .x-button`). Yamağın gözlənilən sayını `gre
 üzrə qursan, skript düzgün işlədiyi halda "uyğunsuzluq" deyib dayanacaq.
 Təkrar sayı lazımdırsa: `grep -o 'naxış' fayl | wc -l`.
 
-### CSS faylları CRLF-dir
-`app/globals.css`, `app/creative.css`, `app/kuds.css` **CRLF** sətir sonu
+### Sətir sonu fayldan-fayla dəyişir — həmişə aşkarla
+Əvvəl "CSS faylları CRLF-dir" yazmışdım. **Yanlış ümumiləşdirmə idi:** Suallar
+sessiyasında `creative.css` artıq LF idi, `backend/src/db/questions.ts`,
+`routes/questions.ts`, `QuestionsExperience.tsx` isə CRLF — və yamaq ilk
+cəhddə "0 dəfə" deyib dayandı. Fayl tipinə görə təxmin etmə; **hər faylda**
+aşkarla (`file <yol>` və ya aşağıdakı kod). Git `autocrlf` işlədir, ona görə
+repoda LF, işçi nüsxədə qarışıqdır.
+
+Köhnə qeyd: `app/globals.css`, `app/kuds.css` **CRLF** sətir sonu
 işlədir. `newline=""` ilə oxuyanda çoxsətirli lövbərdəki `\n` **heç vaxt uyğun
 gəlmir** — lövbər tapılmır, skript isə düzgün işləyir. Faylın öz sonluğunu
 aşkarla (`eol = "\r\n" if "\r\n" in text else "\n"`) və lövbəri onunla qur;
@@ -281,6 +330,12 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
   ekran oxuyucu etiketləri, tarix sətirləri).
 - **Baza məlumatı tərcümə olunmur:** klub adı, müəllim adı, şəhər, fənn adı,
   elan mətni. Bu, qəsdəndir.
+- **Xətanı mətn kimi yox, açar kimi saxla.** `setError(t("..."))` dil
+  dəyişəndə köhnə dildə qalır (Suallarda EN səhifədə azərbaycanca "Sessiyan
+  bitib" göründü). `setError("questions.voteFailed")` + render-də `t(error)`.
+- **`t()` cəm formasını bilmir.** `"{count} answers"` 1 üçün "1 answers" verir.
+  EN/RU üçün saydan asılı olmayan forma yaz: `"Answers: {count}"`,
+  `"Ответов: {count}"`. (Azərbaycan dilində problem yoxdur — say ilə isim tək qalır.)
 - Açar əlavə edib komponenti bağlamamaq mümkündür — `rating.*` açarları üç dildə
   hazır idi, komponent isə onları heç işlətmirdi. Açar sayı ilə kifayətlənmə,
   nəticəni brauzerdə dildən-dilə keçərək yoxla.
@@ -340,3 +395,46 @@ bütün selektorları ölü sinfə aid olduqda sil, əks halda `SystemExit` at.
 sonra `npx tsc --noEmit` + `npm test` + `npm run build`. Build vacibdir — CSS-i
 PostCSS keçirir, ona görə səhv silmədən yaranan sintaksis pozuntusunu yalnız o
 tutur.
+
+---
+
+## 15. Brauzerdə parol yazmadan rol görünüşünü yoxla
+
+Brauzerdə giriş formasına parol yazmıram — öz yaratdığım fixture hesabı olsa
+belə, bu, təhlükəsizlik qaydasıdır və istifadəçi icazə versə də dəyişmir.
+Rol görünüşü üçün iş görən üsul (Suallar sessiyasında sınandı):
+
+1. **Sessiyanı brauzerdə saxtalaşdır.** `AuthProvider` sessiyanı `online`
+   hadisəsində yenidən oxuyur. `/api/auth/session`-ı əvəz et və hadisəni at:
+
+   ```js
+   window.__realFetch = window.__realFetch || window.fetch;
+   const user = { id: "fake", name: "QA", email: "x@example.az", accessRole: "owner_admin",
+                  university: "Qarabağ Universiteti", faculty: "", program: "", city: "Bakı" };
+   window.fetch = function (i, init) {
+     const u = typeof i === "string" ? i : i?.url ?? "";
+     if (u.startsWith("/api/auth/session"))
+       return Promise.resolve(new Response(JSON.stringify({ data: { user } }), { status: 200 }));
+     return window.__realFetch.apply(this, arguments);
+   };
+   window.dispatchEvent(new Event("online"));
+   ```
+
+   Bu, **yalnız interfeysi** dəyişir; serverdə kuki yoxdur.
+2. **Bunun faydalı yan təsiri:** yazma sorğuları real BFF-ə gedir və 401
+   qaytarır — yəni vaxtı bitmiş sessiya (D12) yolu avtomatik sınanır.
+3. **Uğur halı** üçün həmin sorğunu əvəz et (`204`/`201`) və interfeysin
+   reaksiyasını yoxla; eyni zamanda sorğunun **URL və metodunu** qeyd et.
+4. **BFF → backend** zəncirini ayrıca, brauzerdən kənarda sübut et: node/curl
+   ilə backend-dən token al və BFF-ə `Cookie: edurate_api_token=<token>`
+   başlığı ilə müraciət et (kukisiz də — 401 gözlənilir).
+
+Üç sübut birlikdə tam zənciri örtür: interfeys düzgün sorğunu göndərir (3),
+BFF onu backend-ə ötürür (4), backend rol qaydasını tətbiq edir (§7).
+
+**Qeyd:** saxta sessiya ilə açılan digər komponentlər (söhbət paneli, avatar)
+də 401 alır — konsoldakı bu xətalar test artefaktıdır, bölmənin səhvi deyil.
+Hansı sorğuların sənə aid olduğunu `read_network_requests` ilə ayır.
+
+**Git Bash-dan göndərilən Azərbaycan mətni** backend-ə `?` kimi çatır
+(kodlaşdırma). Test məlumatını `.mjs` skripti ilə yarat — `fetch` UTF-8 göndərir.
