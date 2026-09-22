@@ -373,6 +373,27 @@ kimi göstərirdi və "Yadda saxla" onu istifadəçinin real kursu kimi yazırd�
 tipli mətn görsən, ondan hesablanan hər şeyi (faiz, forma, "boş" vəziyyəti)
 yoxla. Törəmə göstəricini xam dəyərdən hesabla, göstəriş mətnindən yox.
 
+### Redaktə endpoint-i əlavə etməzdən əvvəl sinxronizasiyanı oxu
+İş panelində mentor profilini redaktə etmək üçün endpoint yazanda məlum oldu ki,
+`synchronizeProfessionalProfilesForUser` hər panel açılışında (bazada) profilin
+ixtisas, bio, şəhər sahələrini istifadəçi profilindən **yenidən yazır**. Həmin
+sahələri redaktə etmək mənasız olardı — növbəti açılışda geri qayıdırdı. Yalnız
+sinxronizasiyanın toxunmadığı sütunları (əlçatanlıq, format, dillər, təcrübə)
+redaktəyə açdım.
+
+**Tələ:** "dəyişiklik panel yenidən açılanda qalır" yoxlamasını yaddaş
+rejimində apardım — orada sinxronizasiya mövcud profilə ümumiyyətlə toxunmur,
+ona görə nəticə heç nəyi sübut etmirdi. Təminat SQL-in (`UPDATE` və
+`INSERT … ON CONFLICT DO UPDATE SET …` siyahısının) oxunmasından gəldi.
+**Qayda:** yaddaş və baza qolları fərqli işləyirsə, lokal "keçdi" nəticəsini
+baza üçün sübut sayma; SQL-i oxu və bunu açıq de.
+
+### Siyahı kəsilməsi göstəricini yalana çevirir
+Mentor növbəsi `slice(0, 12)` ilə kəsilirdi, göstərici isə hamısını sayırdı:
+köhnə gözləyən müraciət təzə qərarların arxasında qalırdı — "Yeni müraciət: 1",
+siyahıda isə yox. Hər `slice`/`LIMIT` gördükdə soruş: kəsilən hissədə
+**əməl tələb edən** element qala bilərmi? Belədirsə, onları önə çək.
+
 ### Silmə yollarını müqayisə et
 Admin istifadəçini silərkən peşəkar profilini gizlədirdi, istifadəçi özü
 silərkən yox — hesabını silən mentor kataloqda real adı ilə qalırdı. Eyni
@@ -597,6 +618,11 @@ Kontrast, mobil və interaktiv hallar üçün isə real sessiya lazımdır — o
 yalnız istifadəçi aça bilər. Ondan xahiş etməzdən əvvəl `tabs_context` ilə
 brauzer panelinin **görünüb-görünmədiyini** yoxla və gizlidirsə bunu de: bir
 dəfə panel gizli idi, istifadəçi daxil olmadı, vizual yoxlama açıq qaldı.
+
+Diqqət: məlumatı brauzerdə SWR ilə yükləyən səhifədə (İş paneli) server
+HTML-i yalnız skelet göstərir — kuki ilə HTML yoxlaması məzmunu örtmür. Orada
+məzmunu BFF cavabları ilə (kuki başlığı ilə) yoxla, HTML-dən isə yalnız server
+tərəfdə render olunan hissələri (naviqasiya, başlıqlar) götür.
 
 ### Giriş limiti də dolur
 Backend girişi 15 dəqiqədə 10 dəfə ilə məhdudlaşdırır. Hər yoxlama skriptində
