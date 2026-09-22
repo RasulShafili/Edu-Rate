@@ -77,6 +77,11 @@ kart isə hələ "gözlənilir" yazırdı — "geri çəkmə işləmir" kimi gö
 yenidən açanda real vəziyyət düzgün idi. Klikdən əvvəl hədəf elementin
 **açıq** kartda olduğunu yoxla (`is-expanded`, `opacity`).
 
+**`AnimatePresence mode="wait"` — növbəti vəziyyət heç gəlmir (Dəstək).**
+Bu rejimdə yeni blok köhnənin çıxış animasiyası bitənə qədər qoşulmur. Kadr
+yoxdursa forma göndərilir (sorğu 201), amma uğur paneli DOM-da **yoxdur** —
+"göndərmə işləmir" kimi görünür. Oxumazdan əvvəl ekran görüntüsü ilə kadr işlət.
+
 ### 2.4 Mobil emulyasiyada ekran görüntüsü kəsilir
 
 375px emulyasiyasında görüntü sağdan kəsilmiş göründü (kartın kənarı
@@ -130,6 +135,25 @@ function bgOf(el){let n=el;while(n){const c=getComputedStyle(n).backgroundColor;
 
 Tapılan nümunələr: `1.02:1`, `1.03:1` — yəni ağ fonda ağ. Köhnə tünd temadan
 qalan `rgba(244,243,237,…)` rəngləri bu saytda həmişə şübhəlidir.
+
+**Elementin `opacity`-sini də hesaba qat.** `kuds.css` bəzi mətnlərə
+`opacity: .78` verir; rəng özü keçir, görünən mətn isə keçmir (FAQ cavabı
+3.04:1 idi). Ön planın alfasını `alpha × opacity` kimi götür.
+
+**Bütün bölməni bir dəfəyə süz**, tək-tək element seçmə — gözlə tapılmayan
+mətnlər belə çıxır:
+
+```js
+for (const el of root.querySelectorAll('*')) {
+  const own = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+  if (!own || el.tagName === 'OPTION') continue;
+  const fs = parseFloat(getComputedStyle(el).fontSize), cr = ratio(el);
+  if (fs < 11 || cr < 4.5) console.log(el, fs, cr);
+}
+```
+
+Bu saytda **8–10px** mətn də köhnə temanın qalığıdır (Mentorlar, Dəstək).
+Hər vəziyyəti ayrıca süz: forma, uğur ekranı, xəta, açıq kart.
 
 ---
 
@@ -219,6 +243,18 @@ birbaşa backend-ə (`:3001`) qur; BFF-dən yalnız bir-iki zəncir sübutu üç
 istifadə et. Sayğac `next dev` yenidən başlayanda sıfırlanır. (Rate limiting-ə
 toxunma — §13.)
 
+**Backend limiti uğursuz sorğuları da sayır.** Dəstəkdə limit 30 dəqiqədə 4
+müraciətdir; iki müraciət və iki validasiya yoxlaması (422) onu bitirdi.
+Sorğu büdcəsini əvvəlcədən say. Bitmiş limit faydalıdır: real 429 yolunu
+interfeysdən sına, sonra QA serverini yenidən başladıb (yaddaş limiti sıfırlanır)
+uğur yolunu sına.
+
+**Saxta sessiya + real BFF = vaxtı bitmiş sessiya.** İnterfeys istifadəçini
+daxil olmuş sayır, BFF-ə isə kuki getmir. `optionalAuthenticate` işlədən
+endpoint-lər bunu anonim sorğu kimi qəbul edir — real həyatdakı vaxtı bitmiş
+tokenin eynisi. Dəstəkdə bu yolla tapıldı: müraciət səssizcə anonim yaranır,
+interfeys isə "tarixçədə izlə" deyirdi.
+
 ---
 
 ## 8. Push ≠ deploy
@@ -264,7 +300,10 @@ hissədən, ya da JS/CSS paketindən seç.
 Render-in pulsuz planı boş qalanda yatır; soyuq başlanğıc da `/api/health`
 `uptime`-ını sıfırlayır. Ona görə kiçik `uptime` **deploy sübutu deyil**.
 Repo özəldir, GitHub API deploy statusunu vermir. Bu halda iddia etmə:
-"frontend təsdiqləndi, backend kənardan təsdiqlənə bilmədi" de. Mümkün olanda
+"frontend təsdiqləndi, backend kənardan təsdiqlənə bilmədi" de.
+`/api/openapi.json` production-da yalnız əsas admin üçündür (401) — marker olmur.
+Production-da yazma sorğusu ilə marker yoxlamaq olmaz (real bazaya test
+məlumatı düşür). Mümkün olanda
 dəyişikliyə **anonim görünən** kiçik bir yan təsir planla (məsələn yeni
 marşrutun 404→401 fərqi, Suallar sessiyasında olduğu kimi).
 
@@ -303,6 +342,20 @@ hər iki tərəfdə eyni dəyər olduğunu gözlə gör:
 ```js
 const hit = catalog.find((m) => m.id === (req.mentorProfileId ?? req.mentorId));  // false -> səhv
 ```
+
+### Statik mətn də iddiadır
+Dəstəyin FAQ-ı "hər mentorluq müraciətini icma nümayəndəsi nəzərdən keçirir"
+və "tədbir yerini başqasına keçiririk" deyirdi. Əvvəlki bölmələrdə yoxlanmış
+davranışla müqayisə edəndə ikisi də yalan çıxdı. FAQ, uğur mesajı, boş vəziyyət
+mətnini **kodla yoxlanmış davranışla** tutuşdur — xüsusən "biz ... edirik" tipli
+cümlələri.
+
+### Qəbul edən paneli də yoxla
+Bir şey yaradılıb API-də varsa, iş bitmir: onu **emal edəcək** tərəf lazımi
+sahəni görürmü? Dəstəkdə admin API ad və e-poçtu qaytarırdı, admin paneli isə
+göstərmirdi — anonim müraciətə cavab vermək mümkün deyildi. Mentorlarda da
+mentor paneli tələbənin qeydini göstərmirdi. Hər axın üçün: yaradan nə görür,
+**emal edən** nə görür, və bu, əməli yerinə yetirməyə kifayətdirmi?
 
 **Mühit təhlükəsizliyi:** kökdə `.env.local` olmalıdır —
 `EDURATE_API_BASE_URL=http://localhost:3001`. Olmasa `remote-credential.ts`
