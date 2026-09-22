@@ -1718,6 +1718,39 @@ a.question-vote { text-decoration: none; }
   .mentor-request-secondary { min-height: 44px; }
 }
 
+/* ---------- Dəstək ---------- */
+/* Köhnə tünd temadan qalan 8–11px mətnlər; forma altındakı vəziyyət mətni
+   ağ fonda ağ idi (8px, 1.03:1), tarixçənin boş mesajı 3.93:1. */
+.kuds-shell .support-panel-label :is(span, small),
+.kuds-shell .faq-number { font-size: 11px; }
+.kuds-shell .faq-contact-note p { font-size: 12.5px; }
+.kuds-shell .ticket-progress-head span { font-size: 13px; }
+.kuds-shell .ticket-progress-head small { font-size: 12px; }
+.kuds-shell .ticket-form-footer > span { color: #475569 !important; font-size: 12px; }
+.kuds-shell .ticket-history__empty { color: #475569 !important; }
+.kuds-shell .floating-select select option { color: #1e293b; background: #fff; }
+.kuds-shell .ticket-success > small { font-size: 11px; }
+.kuds-shell .ticket-success p { color: #475569 !important; font-size: 13px; }
+.kuds-shell .ticket-success button { font-size: 13px; }
+/* FAQ cavabı 11px və `opacity: .78` ilə 3.04:1 idi; tarixçənin kod/tarix sətri 3.72:1. */
+.kuds-shell .faq-answer p { color: #475569 !important; font-size: 13px; line-height: 1.65; opacity: 1; }
+.kuds-shell .ticket-history__list small { color: #475569 !important; }
+.ticket-account-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  color: var(--kuds-text, #1e293b);
+  font-size: 12.5px;
+  line-height: 1.5;
+  border: 1px solid var(--kuds-border, #e2e8f0);
+  border-radius: 10px;
+  background: rgb(68 118 108 / 7%);
+}
+.ticket-message-count { grid-column: 1 / -1; justify-self: end; margin-top: -6px; color: #475569; font-size: 11.5px; }
+.ticket-history__link { color: var(--ku-dark-green, #16423c); font-weight: 700; text-decoration: underline; }
+.admin-ticket-contact { display: block; margin-top: 6px; color: #475569; font-size: 12px; }
+.admin-ticket-contact a { color: var(--ku-dark-green, #16423c); font-weight: 650; text-decoration: underline; }
+
 /* ---------- Təqvimə əlavə et ---------- */
 .calendar-download {
   display: inline-flex;

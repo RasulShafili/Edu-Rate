@@ -1343,3 +1343,28 @@ describe("Mentorluq müraciəti", () => {
     assert.equal(after.body.data.items.some((entry: { id: string }) => entry.id === created.body.data.id), false);
   });
 });
+
+describe("Dəstək müraciəti", () => {
+  it("daxil olmuş istifadəçinin müraciəti hesaba bağlanır, vaxtı bitmiş tokenlə isə bağlanmadığını bildirir", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const student = await createUser({ name: "Dəstək Tələbəsi", email: "support.linked@example.az", passwordHash: await hashPassword("EduRate2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
+    const auth = `Bearer ${createAccessToken(student)}`;
+    const body = { name: "Formadakı Ad", email: "formada@example.az", topic: "Hesab dəstəyi", message: "Hesabımla bağlı sualım var, kömək edin zəhmət olmasa." };
+
+    const linked = await request(app).post("/api/support/tickets").set("Authorization", auth).set("X-Forwarded-For", "203.0.113.120").send(body).expect(201);
+    assert.equal(linked.body.data.linked, true);
+    const mine = await request(app).get("/api/support/tickets/me").set("Authorization", auth).expect(200);
+    const stored = mine.body.data.find((item: { reference: string }) => item.reference === linked.body.data.reference);
+    // Formada nə yazılsa da cavab hesab e-poçtuna gedir — interfeys bunu göstərməlidir.
+    assert.equal(stored.email, "support.linked@example.az");
+
+    // Etibarsız token səssizcə anonimə çevrilir; cavab bunu bildirməlidir.
+    const unlinked = await request(app).post("/api/support/tickets").set("Authorization", "Bearer yanlis.token.deyeri").set("X-Forwarded-For", "203.0.113.121").send(body).expect(201);
+    assert.equal(unlinked.body.data.linked, false);
+    const after = await request(app).get("/api/support/tickets/me").set("Authorization", auth).expect(200);
+    assert.equal(after.body.data.some((item: { reference: string }) => item.reference === unlinked.body.data.reference), false);
+  });
+});

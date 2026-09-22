@@ -43,5 +43,8 @@ supportRouter.post("/tickets", limiter, optionalAuthenticate, async (request, re
   const user=request.auth ? await findUserById(request.auth.userId) : null;
   const input=ticketSchema.parse(request.body);
   const ticket = await createSupportTicket(user ? { ...input, name:user.name, email:user.email } : input, user?.id??null);
-  response.status(201).json({ data: { reference: ticket.reference, status: ticket.status } });
+  // `optionalAuthenticate` vaxtı bitmiş tokeni səssizcə anonim sayır. Müraciət
+  // hesaba bağlanmayıbsa interfeys bunu bilməlidir — yoxsa "tarixçədə izlə" deyir,
+  // müraciət isə tarixçəyə heç düşmür.
+  response.status(201).json({ data: { reference: ticket.reference, status: ticket.status, linked: Boolean(user) } });
 });

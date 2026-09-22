@@ -14,6 +14,7 @@ type Item = {
   message?: string;
   source?: string;
   name?: string;
+  email?: string;
   reference?: string;
   reason?: string;
   details?: string;
@@ -181,6 +182,9 @@ export function AdminOperationsPanel() {
                 <small>{item.reference ?? item.source ?? item.name ?? item.entityType ?? "EduRate"}</small>
                 <h3>{item.title ?? item.topic ?? item.reason ?? "Müraciət"}</h3>
                 <p>{item.summary ?? item.message ?? item.details ?? "Əlavə məlumat yoxdur."}</p>
+                {tab === "support-tickets" && item.email ? (
+                  <small className="admin-ticket-contact">{item.name} · <a href={`mailto:${item.email}?subject=${encodeURIComponent(item.reference ?? "EduRate")}`}>{item.email}</a></small>
+                ) : null}
               </div>
               <footer>
                 <span className={`is-${item.status}`}>{statusLabel(item.status)}</span>

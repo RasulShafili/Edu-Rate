@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Check, ChevronDown, LifeBuoy, Send } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, LifeBuoy, RotateCcw, Send, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -9,7 +10,8 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
-import { supportFaqs, ticketTopics } from "../data/support";
+import { useT } from "../i18n/LanguageProvider";
+import { formatDateWithMonths } from "../lib/date";
 import { useAuth } from "./AuthProvider";
 
 type TicketFields = {
@@ -19,52 +21,97 @@ type TicketFields = {
   message: string;
 };
 
+type TicketStatus = "open" | "in_progress" | "resolved";
+type TicketHistoryItem = { id: string; reference: string; topic: string; status: TicketStatus; createdAt: string };
+type HistoryState = "loading" | "ready" | "error";
+
 const initialFields: TicketFields = { name: "", email: "", topic: "", message: "" };
 const ease = [0.22, 1, 0.36, 1] as const;
-type TicketHistoryItem = { id: string; reference: string; topic: string; status: "open" | "in_progress" | "resolved"; createdAt: string };
+const MESSAGE_MAX = 2000;
 
-function getTicketValidity(fields: TicketFields) {
+// Dəyər serverə olduğu kimi gedir (admin paneli onu oxuyur); görünən ad tərcümədir.
+const TOPICS = [
+  { value: "Mentorluq", key: "support.topic.mentorship" },
+  { value: "Tədbirlər və qeydiyyat", key: "support.topic.events" },
+  { value: "İcma və söhbət", key: "support.topic.community" },
+  { value: "Hesab dəstəyi", key: "support.topic.account" },
+  { value: "Digər məsələ", key: "support.topic.other" },
+] as const;
+
+/**
+ * Əvvəlki FAQ platformanın etmədiyi şeyləri vəd edirdi: "hər mentorluq
+ * müraciətini icma nümayəndəsi nəzərdən keçirir" (müraciət birbaşa mentora
+ * gedir), "tədbir qeydiyyatını dəyişmək üçün bizə yaz, yerini başqasına
+ * keçirərik" (qeydiyyatı istifadəçi özü geri çəkir, ötürmə yoxdur).
+ */
+const FAQS = ["mentor", "response", "events", "safety"] as const;
+
+function topicLabel(value: string, t: ReturnType<typeof useT>) {
+  const topic = TOPICS.find((item) => item.value === value);
+  return topic ? t(topic.key) : value;
+}
+
+function getTicketValidity(fields: TicketFields, signedIn: boolean) {
   return {
-    name: fields.name.trim().length >= 2,
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim()),
+    // Daxil olmuş istifadəçinin adı və e-poçtu hesabdan gəlir — backend onsuz da onları götürür.
+    name: signedIn || fields.name.trim().length >= 2,
+    email: signedIn || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email.trim()),
     topic: fields.topic.length > 0,
     message: fields.message.trim().length >= 20,
   };
 }
 
+function submitFailureKey(status: number) {
+  if (status === 429) return "support.rateLimited";
+  if (status === 422) return "support.invalid";
+  return "support.submitFailed";
+}
+
 export function SupportCenter() {
-  const { user }=useAuth();
-  const [openFaq, setOpenFaq] = useState<string | null>(supportFaqs[0]?.id ?? null);
+  const { user } = useAuth();
+  const t = useT();
+  const [openFaq, setOpenFaq] = useState<string | null>(FAQS[0]);
   const [fields, setFields] = useState<TicketFields>(initialFields);
   const [touched, setTouched] = useState<Set<keyof TicketFields>>(() => new Set());
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [reference, setReference] = useState("");
+  const [submitted, setSubmitted] = useState<{ reference: string; email: string; noteKey: string } | null>(null);
+  const [submitErrorKey, setSubmitErrorKey] = useState("");
   const [tickets, setTickets] = useState<TicketHistoryItem[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [historyRequiresLogin, setHistoryRequiresLogin] = useState(false);
+  const [historyState, setHistoryState] = useState<HistoryState>("loading");
+  const [historyErrorKey, setHistoryErrorKey] = useState("");
   const reduceMotion = useReducedMotion();
 
-  const validity = getTicketValidity(fields);
+  const signedIn = Boolean(user);
+  const validity = getTicketValidity(fields, signedIn);
   const formValid = Object.values(validity).every(Boolean);
+  const months = Array.from({ length: 12 }, (_, index) => t(`month.${index + 1}`));
 
   const loadHistory = useCallback(async () => {
-    if(!user){setHistoryRequiresLogin(true);setHistoryLoading(false);return;}
+    setHistoryState("loading");
     try {
       const response = await fetch("/api/support/tickets", { cache: "no-store" });
-      if (response.status === 401) { setHistoryRequiresLogin(true); return; }
+      if (!response.ok) {
+        // Əvvəl server xətası "Hesabınıza bağlı dəstək müraciəti yoxdur" kimi görünürdü.
+        setHistoryErrorKey(response.status === 401 ? "support.sessionExpired" : "support.historyFailed");
+        setHistoryState("error");
+        return;
+      }
       const payload = await response.json() as { data?: TicketHistoryItem[] };
-      if (response.ok) setTickets(payload.data ?? []);
-    } finally {
-      setHistoryLoading(false);
+      setTickets(payload.data ?? []);
+      setHistoryState("ready");
+    } catch {
+      setHistoryErrorKey("support.historyFailed");
+      setHistoryState("error");
     }
-  }, [user]);
+  }, []);
 
+  // Tarixçə istifadəçiyə bağlıdır: sessiya sonradan bərpa olunanda da yenidən
+  // yüklənir. Əvvəl "daxil ol" vəziyyəti bir dəfə qoyulub heç sıfırlanmırdı.
   useEffect(() => {
+    if (!signedIn) return;
     const timer = window.setTimeout(() => void loadHistory(), 0);
     return () => window.clearTimeout(timer);
-  }, [loadHistory]);
+  }, [signedIn, loadHistory]);
 
   function updateField(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const name = event.target.name as keyof TicketFields;
@@ -82,20 +129,32 @@ export function SupportCenter() {
       return;
     }
     setSubmitting(true);
-    setSubmitError("");
+    setSubmitErrorKey("");
+    // Daxil olmuş istifadəçi üçün backend ad və e-poçtu hesabdan götürür. Əvvəl
+    // forma onları yenə soruşurdu və uğur mesajı YAZILAN e-poçtu vəd edirdi,
+    // halbuki cavab hesab e-poçtuna gedəcəkdi.
+    const contact = user ? { name: user.name, email: user.email } : { name: fields.name, email: fields.email };
     try {
       const response = await fetch("/api/support/tickets", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(fields),
+        body: JSON.stringify({ ...contact, topic: fields.topic, message: fields.message }),
       });
-      const payload = await response.json() as { data?: { reference?: string }; error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message ?? "Sorğu göndərilmədi.");
-      setReference(payload.data?.reference ?? "");
-      setSubmitted(true);
-      await loadHistory();
-    } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Sorğu göndərilmədi. Yenidən yoxla.");
+      if (!response.ok) {
+        setSubmitErrorKey(submitFailureKey(response.status));
+        return;
+      }
+      const payload = await response.json().catch(() => null) as { data?: { reference?: string; linked?: boolean } } | null;
+      const linked = Boolean(user) && payload?.data?.linked !== false;
+      setSubmitted({
+        reference: payload?.data?.reference ?? "",
+        email: contact.email.trim(),
+        // Daxil olmuş görünən, amma sessiyası bitmiş istifadəçinin müraciəti hesaba bağlanmır.
+        noteKey: linked ? "support.successTrack" : user ? "support.successUnlinked" : "support.successAnon",
+      });
+      if (linked) void loadHistory();
+    } catch {
+      setSubmitErrorKey("support.submitFailed");
     } finally {
       setSubmitting(false);
     }
@@ -104,10 +163,11 @@ export function SupportCenter() {
   function resetTicket() {
     setFields(initialFields);
     setTouched(new Set());
-    setSubmitted(false);
-    setSubmitError("");
-    setReference("");
+    setSubmitted(null);
+    setSubmitErrorKey("");
   }
+
+  const showError = (name: keyof TicketFields) => touched.has(name) && !validity[name];
 
   return (
     <section id="support" className="support-section route-module-section" aria-labelledby="support-title">
@@ -119,8 +179,8 @@ export function SupportCenter() {
         transition={{ duration: 0.7, ease }}
       >
         <div>
-          <span className="support-kicker">Yardım mərkəzi</span>
-          <h1 id="support-title" className="module-page-title">Dəstək</h1>
+          <span className="support-kicker">{t("support.eyebrow")}</span>
+          <h1 id="support-title" className="module-page-title">{t("support.title")}</h1>
         </div>
       </motion.div>
 
@@ -133,29 +193,29 @@ export function SupportCenter() {
           transition={{ duration: 0.7, ease }}
         >
           <div className="support-panel-label">
-            <span>Tez-tez verilən suallar</span>
-            <small>{String(supportFaqs.length).padStart(2, "0")} cavab</small>
+            <span>{t("support.faqTitle")}</span>
+            <small>{t("support.faqCount", { count: FAQS.length })}</small>
           </div>
 
           <div className="faq-list">
-            {supportFaqs.map((faq, index) => {
-              const open = openFaq === faq.id;
-              const answerId = `faq-answer-${faq.id}`;
+            {FAQS.map((id, index) => {
+              const open = openFaq === id;
+              const answerId = `faq-answer-${id}`;
               return (
-                <div className={`faq-item${open ? " is-open" : ""}`} key={faq.id}>
+                <div className={`faq-item${open ? " is-open" : ""}`} key={id}>
                   {/* h2: h1-dən sonra birbaşa h3 gəlirdi (başlıq sırası pozulurdu). */}
                   <h2>
                     <button
-                      id={`faq-trigger-${faq.id}`}
+                      id={`faq-trigger-${id}`}
                       type="button"
-                      onClick={() => setOpenFaq(open ? null : faq.id)}
+                      onClick={() => setOpenFaq(open ? null : id)}
                       aria-expanded={open}
                       aria-controls={answerId}
                     >
                       <span className="faq-number">{String(index + 1).padStart(2, "0")}</span>
-                      <strong>{faq.question}</strong>
+                      <strong>{t(`support.faq.${id}.q`)}</strong>
                       <motion.i animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3, ease }}>
-                        <ChevronDown size={16} />
+                        <ChevronDown size={16} aria-hidden="true" />
                       </motion.i>
                     </button>
                   </h2>
@@ -165,13 +225,13 @@ export function SupportCenter() {
                         id={answerId}
                         className="faq-answer"
                         role="region"
-                        aria-labelledby={`faq-trigger-${faq.id}`}
+                        aria-labelledby={`faq-trigger-${id}`}
                         initial={reduceMotion ? false : { height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: reduceMotion ? 0 : 0.38, ease }}
                       >
-                        <p>{faq.answer}</p>
+                        <p>{t(`support.faq.${id}.a`)}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -181,8 +241,8 @@ export function SupportCenter() {
           </div>
 
           <div className="faq-contact-note">
-            <LifeBuoy size={17} />
-            <p><strong>Hələ də sualın var?</strong> İcma nümayəndəmiz adətən bir iş günü ərzində cavab verir.</p>
+            <LifeBuoy size={17} aria-hidden="true" />
+            <p><strong>{t("support.contactNoteTitle")}</strong> {t("support.contactNoteBody")}</p>
           </div>
         </motion.div>
 
@@ -195,8 +255,8 @@ export function SupportCenter() {
         >
           <div className="ticket-progress-head">
             <div>
-              <span>Dəstək sorğusu göndər</span>
-              <small>Məcburi xanaları doldur, sorğunu aidiyyəti komandaya çatdıraq.</small>
+              <span>{t("support.formTitle")}</span>
+              <small>{t("support.formHint")}</small>
             </div>
           </div>
 
@@ -215,14 +275,17 @@ export function SupportCenter() {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 330, damping: 18, delay: 0.12 }}
                 >
-                  <Check size={24} />
+                  <Check size={24} aria-hidden="true" />
                 </motion.span>
-                <small>Dəstək sorğusu qəbul edildi</small>
-                <h3>Etibarlı əllərdəsən.</h3>
-                <p>Sorğun qəbul edildi. İcma nümayəndəmiz {fields.email} ünvanı ilə bir iş günü ərzində əlaqə saxlayacaq.</p>
-                {reference && <small>Müraciət kodu: {reference}</small>}
+                <small>{t("support.successKicker")}</small>
+                <h3>{t("support.successTitle")}</h3>
+                <p>
+                  {t("support.successBody", { email: submitted.email })}{" "}
+                  {t(submitted.noteKey)}
+                </p>
+                {submitted.reference ? <small>{t("support.reference", { code: submitted.reference })}</small> : null}
                 <button type="button" onClick={resetTicket}>
-                  Yeni sorğu göndər <ArrowRight size={14} />
+                  {t("support.newRequest")} <ArrowRight size={14} aria-hidden="true" />
                 </button>
               </motion.div>
             ) : (
@@ -234,63 +297,70 @@ export function SupportCenter() {
                 animate={{ opacity: 1 }}
                 exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
               >
-                <div className={`floating-field${fields.name ? " has-value" : ""}${touched.has("name") && !validity.name ? " has-error" : ""}`}>
-                  <input
-                    id="ticket-name"
-                    name="name"
-                    type="text"
-                    value={fields.name}
-                    onChange={updateField}
-                    onBlur={() => touchField("name")}
-                    placeholder=" "
-                    autoComplete="name"
-                    minLength={2}
-                    aria-invalid={touched.has("name") && !validity.name}
-                    aria-describedby={touched.has("name") && !validity.name ? "ticket-name-error" : undefined}
-                    required
-                  />
-                  <label htmlFor="ticket-name">Adın</label>
-                  {touched.has("name") && !validity.name && <small id="ticket-name-error" className="field-error">Ən azı 2 simvol daxil et.</small>}
-                </div>
+                {user ? (
+                  <p className="ticket-account-note">{t("support.accountNote", { name: user.name, email: user.email })}</p>
+                ) : (
+                  <>
+                    <div className={`floating-field${fields.name ? " has-value" : ""}${showError("name") ? " has-error" : ""}`}>
+                      <input
+                        id="ticket-name"
+                        name="name"
+                        type="text"
+                        value={fields.name}
+                        onChange={updateField}
+                        onBlur={() => touchField("name")}
+                        placeholder=" "
+                        autoComplete="name"
+                        minLength={2}
+                        maxLength={120}
+                        aria-invalid={showError("name")}
+                        aria-describedby={showError("name") ? "ticket-name-error" : undefined}
+                        required
+                      />
+                      <label htmlFor="ticket-name">{t("support.name")}</label>
+                      {showError("name") && <small id="ticket-name-error" className="field-error">{t("support.nameError")}</small>}
+                    </div>
 
-                <div className={`floating-field${fields.email ? " has-value" : ""}${touched.has("email") && !validity.email ? " has-error" : ""}`}>
-                  <input
-                    id="ticket-email"
-                    name="email"
-                    type="email"
-                    value={fields.email}
-                    onChange={updateField}
-                    onBlur={() => touchField("email")}
-                    placeholder=" "
-                    autoComplete="email"
-                    aria-invalid={touched.has("email") && !validity.email}
-                    aria-describedby={touched.has("email") && !validity.email ? "ticket-email-error" : undefined}
-                    required
-                  />
-                  <label htmlFor="ticket-email">E-poçt ünvanın</label>
-                  {touched.has("email") && !validity.email && <small id="ticket-email-error" className="field-error">Düzgün e-poçt ünvanı daxil et.</small>}
-                </div>
+                    <div className={`floating-field${fields.email ? " has-value" : ""}${showError("email") ? " has-error" : ""}`}>
+                      <input
+                        id="ticket-email"
+                        name="email"
+                        type="email"
+                        value={fields.email}
+                        onChange={updateField}
+                        onBlur={() => touchField("email")}
+                        placeholder=" "
+                        autoComplete="email"
+                        aria-invalid={showError("email")}
+                        aria-describedby={showError("email") ? "ticket-email-error" : undefined}
+                        required
+                      />
+                      <label htmlFor="ticket-email">{t("support.email")}</label>
+                      {showError("email") && <small id="ticket-email-error" className="field-error">{t("support.emailError")}</small>}
+                    </div>
+                  </>
+                )}
 
-                <div className={`floating-field floating-select${fields.topic ? " has-value" : ""}${touched.has("topic") && !validity.topic ? " has-error" : ""}`}>
+                <div className={`floating-field floating-select${fields.topic ? " has-value" : ""}${showError("topic") ? " has-error" : ""}`}>
                   <select
                     id="ticket-topic"
                     name="topic"
                     value={fields.topic}
                     onChange={updateField}
                     onBlur={() => touchField("topic")}
-                    aria-invalid={touched.has("topic") && !validity.topic}
-                    aria-describedby={touched.has("topic") && !validity.topic ? "ticket-topic-error" : undefined}
+                    aria-invalid={showError("topic")}
+                    aria-describedby={showError("topic") ? "ticket-topic-error" : undefined}
                     required
                   >
-                    <option value="" disabled aria-label="Mövzu seç" />
-                    {ticketTopics.map((topic) => <option key={topic} value={topic}>{topic}</option>)}
+                    <option value="" disabled aria-label={t("support.topicPlaceholder")} />
+                    {TOPICS.map((topic) => <option key={topic.value} value={topic.value}>{t(topic.key)}</option>)}
                   </select>
-                  <label htmlFor="ticket-topic">Sənə nə ilə kömək edə bilərik?</label>
+                  <label htmlFor="ticket-topic">{t("support.topic")}</label>
                   <ChevronDown size={15} aria-hidden="true" />
-                  {touched.has("topic") && !validity.topic && <small id="ticket-topic-error" className="field-error">Ən uyğun mövzunu seç.</small>}
+                  {showError("topic") && <small id="ticket-topic-error" className="field-error">{t("support.topicError")}</small>}
                 </div>
 
-                <div className={`floating-field floating-textarea${fields.message ? " has-value" : ""}${touched.has("message") && !validity.message ? " has-error" : ""}`}>
+                <div className={`floating-field floating-textarea${fields.message ? " has-value" : ""}${showError("message") ? " has-error" : ""}`}>
                   <textarea
                     id="ticket-message"
                     name="message"
@@ -300,26 +370,33 @@ export function SupportCenter() {
                     placeholder=" "
                     rows={5}
                     minLength={20}
-                    aria-invalid={touched.has("message") && !validity.message}
-                    aria-describedby={touched.has("message") && !validity.message ? "ticket-message-error" : undefined}
+                    maxLength={MESSAGE_MAX}
+                    aria-invalid={showError("message")}
+                    aria-describedby={showError("message") ? "ticket-message-error" : "ticket-message-count"}
                     required
                   />
-                  <label htmlFor="ticket-message">Nə baş verdiyini bizə yaz</label>
-                  {touched.has("message") && !validity.message && <small id="ticket-message-error" className="field-error">Bir az daha ətraflı yaz (ən azı 20 simvol).</small>}
+                  <label htmlFor="ticket-message">{t("support.message")}</label>
+                  {showError("message") && <small id="ticket-message-error" className="field-error">{t("support.messageError")}</small>}
                 </div>
+                {/* Backend 2000 simvoldan uzun mətni rədd edirdi, forma isə limiti heç göstərmirdi. */}
+                <small id="ticket-message-count" className="ticket-message-count">{fields.message.length} / {MESSAGE_MAX}</small>
 
                 <div className="ticket-form-footer">
-                  <span>{formValid ? "Sorğu göndərilməyə hazırdır" : "Bütün məcburi xanaları doldur"}</span>
+                  <span>{formValid ? t("support.ready") : t("support.incomplete")}</span>
                   <motion.button
                     type="submit"
                     disabled={submitting}
                     whileTap={reduceMotion ? undefined : { scale: 0.97 }}
                   >
-                    {submitting ? <i className="ticket-spinner" /> : <Send size={14} />}
-                    {submitting ? "Göndərilir" : "Sorğunu göndər"}
+                    {submitting ? <i className="ticket-spinner" /> : <Send size={14} aria-hidden="true" />}
+                    {submitting ? t("support.submitting") : t("support.submit")}
                   </motion.button>
                 </div>
-                {submitError && <p className="ticket-submit-error" role="alert">{submitError}</p>}
+                {submitErrorKey ? (
+                  <p className="schedule-warning is-error" role="alert">
+                    <TriangleAlert size={14} aria-hidden="true" /> {t(submitErrorKey)}
+                  </p>
+                ) : null}
               </motion.form>
             )}
           </AnimatePresence>
@@ -327,21 +404,34 @@ export function SupportCenter() {
       </div>
       <section className="ticket-history" aria-labelledby="ticket-history-title">
         <header>
-          <span>Müraciətlərim</span>
-          <h2 id="ticket-history-title">Dəstək tarixçəsi</h2>
+          <span>{t("support.historyEyebrow")}</span>
+          <h2 id="ticket-history-title">{t("support.historyTitle")}</h2>
         </header>
-        {historyLoading ? (
-          <div className="ticket-history__loading" aria-label="Müraciətlər yüklənir"><i /><i /></div>
-        ) : historyRequiresLogin ? (
-          <p className="ticket-history__empty">Müraciət tarixçəsini görmək üçün hesabınıza daxil olun.</p>
+        {!user ? (
+          <p className="ticket-history__empty">
+            {t("support.historySignIn")}{" "}
+            <Link href="/auth?returnTo=%2Fsupport" className="ticket-history__link">{t("support.historySignInCta")}</Link>
+          </p>
+        ) : historyState === "loading" ? (
+          <div className="ticket-history__loading" aria-label={t("support.historyLoading")}><i /><i /></div>
+        ) : historyState === "error" ? (
+          <p className="schedule-warning is-error" role="alert">
+            <TriangleAlert size={14} aria-hidden="true" /> {t(historyErrorKey)}
+            <button type="button" className="question-inline-retry" onClick={() => void loadHistory()}>
+              <RotateCcw size={13} aria-hidden="true" /> {t("support.retry")}
+            </button>
+          </p>
         ) : tickets.length === 0 ? (
-          <p className="ticket-history__empty">Hesabınıza bağlı dəstək müraciəti yoxdur.</p>
+          <p className="ticket-history__empty">{t("support.historyEmpty")}</p>
         ) : (
           <div className="ticket-history__list">
             {tickets.map((ticket) => (
               <article key={ticket.id}>
-                <div><small>{ticket.reference}</small><strong>{ticket.topic}</strong></div>
-                <span className={`is-${ticket.status}`}>{ticketStatusLabel(ticket.status)}</span>
+                <div>
+                  <small>{ticket.reference} · {formatDateWithMonths(ticket.createdAt, months)}</small>
+                  <strong>{topicLabel(ticket.topic, t)}</strong>
+                </div>
+                <span className={`is-${ticket.status}`}>{t(`support.status.${ticket.status}`)}</span>
               </article>
             ))}
           </div>
@@ -349,8 +439,4 @@ export function SupportCenter() {
       </section>
     </section>
   );
-}
-
-function ticketStatusLabel(status: TicketHistoryItem["status"]) {
-  return status === "open" ? "Açıq" : status === "in_progress" ? "İcradadır" : "Həll edilib";
 }
