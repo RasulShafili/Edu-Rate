@@ -302,6 +302,13 @@ Render-in pulsuz planı boş qalanda yatır; soyuq başlanğıc da `/api/health`
 Repo özəldir, GitHub API deploy statusunu vermir. Bu halda iddia etmə:
 "frontend təsdiqləndi, backend kənardan təsdiqlənə bilmədi" de.
 `/api/openapi.json` production-da yalnız əsas admin üçündür (401) — marker olmur.
+
+**Miqrasiya varsa, `/api/health` ən yaxşı backend markeridir.** O,
+`migrationVersion` (tətbiq olunmuş) və `latestMigrationVersion` qaytarır. Yeni
+miqrasiya ilə 24 → 25 keçidi iki şeyi birdən sübut edir: yeni kod deploy olunub
+**və** miqrasiya SQL-i production Postgres-də xətasız icra olunub (xəta olsa
+server ümumiyyətlə başlamazdı). Lokalda Postgres olmadığı üçün SQL-i başqa
+yolla sınamaq mümkün deyil — bu, yeganə real yoxlamadır.
 Production-da yazma sorğusu ilə marker yoxlamaq olmaz (real bazaya test
 məlumatı düşür). Mümkün olanda
 dəyişikliyə **anonim görünən** kiçik bir yan təsir planla (məsələn yeni
@@ -356,6 +363,21 @@ sahəni görürmü? Dəstəkdə admin API ad və e-poçtu qaytarırdı, admin pa
 göstərmirdi — anonim müraciətə cavab vermək mümkün deyildi. Mentorlarda da
 mentor paneli tələbənin qeydini göstərmirdi. Hər axın üçün: yaradan nə görür,
 **emal edən** nə görür, və bu, əməli yerinə yetirməyə kifayətdirmi?
+
+### Yer tutucu mətn real məlumat kimi saxlanıla bilər
+Backend yeni hesabı `year = "Kurs məlumatı əlavə edilməyib"` və hazır "haqqında"
+cümləsi ilə yaradır — bunlar bazada **dəyər** kimi durur. Nəticələr: profil
+tamamlanması hamı üçün 100% idi; redaktə forması yer tutucunu sahənin dəyəri
+kimi göstərirdi və "Yadda saxla" onu istifadəçinin real kursu kimi yazırdı.
+**Qayda:** `createUser` və sütun `DEFAULT`-larına bax; "məlumat əlavə edilməyib"
+tipli mətn görsən, ondan hesablanan hər şeyi (faiz, forma, "boş" vəziyyəti)
+yoxla. Törəmə göstəricini xam dəyərdən hesabla, göstəriş mətnindən yox.
+
+### Silmə yollarını müqayisə et
+Admin istifadəçini silərkən peşəkar profilini gizlədirdi, istifadəçi özü
+silərkən yox — hesabını silən mentor kataloqda real adı ilə qalırdı. Eyni
+nəticəyə aparan iki yol varsa (admin silir / özü silir, admin yaradır / özü
+yaradır), yan təsirlərini yan-yana müqayisə et.
 
 **Mühit təhlükəsizliyi:** kökdə `.env.local` olmalıdır —
 `EDURATE_API_BASE_URL=http://localhost:3001`. Olmasa `remote-credential.ts`
@@ -453,6 +475,10 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
 - **Xətanı mətn kimi yox, açar kimi saxla.** `setError(t("..."))` dil
   dəyişəndə köhnə dildə qalır (Suallarda EN səhifədə azərbaycanca "Sessiyan
   bitib" göründü). `setError("questions.voteFailed")` + render-də `t(error)`.
+- **`formatDateTimeWithMonths` UTC saatını göstərir.** `getStableDateParts`
+  ISO sətrini olduğu kimi oxuyur (server/brauzer eyni olsun deyə) — `…T18:48Z`
+  Bakıda 22:48-dir, sayt isə 18:48 yazır. Yalnız brauzerdə render olunan yerdə
+  `new Date()` + lüğət ay adları işlət; SSR olunan yerdə saat qurşağını açıq ver.
 - **`t()` cəm formasını bilmir.** `"{count} answers"` 1 üçün "1 answers" verir.
   EN/RU üçün saydan asılı olmayan forma yaz: `"Answers: {count}"`,
   `"Ответов: {count}"`. (Azərbaycan dilində problem yoxdur — say ilə isim tək qalır.)
@@ -558,3 +584,22 @@ Hansı sorğuların sənə aid olduğunu `read_network_requests` ilə ayır.
 
 **Git Bash-dan göndərilən Azərbaycan mətni** backend-ə `?` kimi çatır
 (kodlaşdırma). Test məlumatını `.mjs` skripti ilə yarat — `fetch` UTF-8 göndərir.
+
+### Serverdə qorunan səhifələr (`/profile`, `/settings`)
+Bu səhifələr kuki yoxdursa serverdə `/auth`-a yönləndirir — brauzerdəki saxta
+sessiya işləmir. İşləyən yol: **server HTML-ini kuki başlığı ilə al** (node
+`fetch`, `Cookie: edurate_api_token=…; edurate_lang=en`) və mətni yoxla. Bu,
+həm də SSR ilə brauzer arasındakı fərqi üzə çıxarır: Profildə server HTML-i
+"Çatışmayan: İxtisas" və `aria-valuenow=0` göstərirdi, API isə 67% deyirdi —
+layout ilk render üçün tam profil əvəzinə yer tutuculu obyekt qururdu.
+
+Kontrast, mobil və interaktiv hallar üçün isə real sessiya lazımdır — onu
+yalnız istifadəçi aça bilər. Ondan xahiş etməzdən əvvəl `tabs_context` ilə
+brauzer panelinin **görünüb-görünmədiyini** yoxla və gizlidirsə bunu de: bir
+dəfə panel gizli idi, istifadəçi daxil olmadı, vizual yoxlama açıq qaldı.
+
+### Giriş limiti də dolur
+Backend girişi 15 dəqiqədə 10 dəfə ilə məhdudlaşdırır. Hər yoxlama skriptində
+yenidən daxil olmaq bu limiti bir sessiyada bitirdi (`RATE_LIMITED`). Hər
+hesaba skriptdə **bir dəfə** daxil ol və tokeni təkrar işlət; limit bitərsə
+QA serverini yenidən başlat.
