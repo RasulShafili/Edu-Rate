@@ -57,6 +57,26 @@ await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 Ekran görüntüsü də kadr işlədir — ondan sonra vəziyyət düzəlirsə, artefaktdır.
 Hər rol yoxlamasında `opacity` və elementin sayını da oxu, yalnız mətni yox.
 
+**`visibilityState === "visible"` kadr işləyir demək deyil (Mentorlar).**
+`document.hidden` `false`, `visibilityState` "visible" idi, amma kadr sayı
+**0/saniyə** idi — panel görünən sayılır, ekrana çəkilmir. Yeganə etibarlı ölçü:
+
+```js
+let n = 0, stop = false;
+const tick = () => { n++; if (!stop) requestAnimationFrame(tick); };
+requestAnimationFrame(tick);
+await new Promise(r => setTimeout(r, 1000)); stop = true;   // n === 0 -> kadr yoxdur
+```
+
+**Skriptdə `requestAnimationFrame`-i gözləmə** — kadr yoxdursa promise heç
+bitmir və alət 45 saniyədən sonra vaxt aşımı verir. Yalnız `setTimeout`.
+
+**Donmuş surətdəki düymə də işləyir, amma ekran yenilənmir.** Bağlanmış kartın
+donmuş çıxış surətində "Müraciəti geri çək"-ə kliklədim: sorğu getdi (204),
+kart isə hələ "gözlənilir" yazırdı — "geri çəkmə işləmir" kimi göründü. Kartı
+yenidən açanda real vəziyyət düzgün idi. Klikdən əvvəl hədəf elementin
+**açıq** kartda olduğunu yoxla (`is-expanded`, `opacity`).
+
 ### 2.4 Mobil emulyasiyada ekran görüntüsü kəsilir
 
 375px emulyasiyasında görüntü sağdan kəsilmiş göründü (kartın kənarı
@@ -192,6 +212,13 @@ done
 Tapılan uyğunsuzluqlar bu yolla gəldi: müəllim bütün formanı görüb 403 alırdı;
 `owner_admin` klub silə bilmirdi, adi `admin` isə bilirdi.
 
+**Rol matrisini BFF üzərindən qurma.** BFF-in öz limit sayğacı (IP üzrə) rədd
+edilmiş (403) cəhdləri də sayır: mentorluq üçün gündə 5 — dörd rol yoxlaması
+və bir tələbə müraciəti limiti bitirdi, altıncı sorğu 429 aldı. Matrisi
+birbaşa backend-ə (`:3001`) qur; BFF-dən yalnız bir-iki zəncir sübutu üçün
+istifadə et. Sayğac `next dev` yenidən başlayanda sıfırlanır. (Rate limiting-ə
+toxunma — §13.)
+
 ---
 
 ## 8. Push ≠ deploy
@@ -233,6 +260,14 @@ for f in $JS; do B=$(curl -s "$URL$f")
 Anonim `curl` istifadəçiyə bağlı interfeysi görmür — markeri ya ictimai
 hissədən, ya da JS/CSS paketindən seç.
 
+### Backend dəyişikliyi yalnız girişlə görünürsə
+Render-in pulsuz planı boş qalanda yatır; soyuq başlanğıc da `/api/health`
+`uptime`-ını sıfırlayır. Ona görə kiçik `uptime` **deploy sübutu deyil**.
+Repo özəldir, GitHub API deploy statusunu vermir. Bu halda iddia etmə:
+"frontend təsdiqləndi, backend kənardan təsdiqlənə bilmədi" de. Mümkün olanda
+dəyişikliyə **anonim görünən** kiçik bir yan təsir planla (məsələn yeni
+marşrutun 404→401 fərqi, Suallar sessiyasında olduğu kimi).
+
 ---
 
 ## 9. Lokal məlumat ≠ canlı məlumat
@@ -256,6 +291,18 @@ səs vermək lokalda 404 verirdi (düzgün görünürdü), production-da isə 20
 "gizlədilmiş sətir digər sorğularda (siyahı, say, səs, cavab) süzülürmü?"
 SQL dəyişikliyini lokalda sınaya bilmirsənsə, bunu açıq de və deploydan sonra
 production-da **yalnız oxuyan** sorğu ilə yoxla.
+
+### İki API siyahısını birləşdirən açarı real məlumatla yoxla
+"Yaradılıb, amma yenilənəndən sonra görünmür" nümunəsinin tipik səbəbi.
+Mentorlarda kataloq kartın id-sini **slug**, müraciət isə mentoru **uuid**
+(`mentorProfileId`) ilə saxlayırdı; interfeys birini o birində axtarırdı və
+heç vaxt tapmırdı. Kodu oxuyanda hər ikisi "mentorId" kimi görünür.
+**Qayda:** iki endpoint-in cavabını yan-yana çap et və birləşdirmə açarının
+hər iki tərəfdə eyni dəyər olduğunu gözlə gör:
+
+```js
+const hit = catalog.find((m) => m.id === (req.mentorProfileId ?? req.mentorId));  // false -> səhv
+```
 
 **Mühit təhlükəsizliyi:** kökdə `.env.local` olmalıdır —
 `EDURATE_API_BASE_URL=http://localhost:3001`. Olmasa `remote-credential.ts`
@@ -311,6 +358,26 @@ işlədir. `newline=""` ilə oxuyanda çoxsətirli lövbərdəki `\n` **heç vax
 gəlmir** — lövbər tapılmır, skript isə düzgün işləyir. Faylın öz sonluğunu
 aşkarla (`eol = "\r\n" if "\r\n" in text else "\n"`) və lövbəri onunla qur;
 yazarkən də `newline=""` saxla, yoxsa bütün fayl bir commit-də dəyişmiş görünür.
+
+### Dev server köhnə CSS verə bilər
+Mentorlarda `globals.css`-i dəyişdim, brauzer isə köhnə qaydanı (10px) ölçdü.
+`creative.css`-in yeni qaydaları gəlirdi, `globals.css`-inkilər yox — hətta
+`touch` və dev serveri **yenidən başlatdıqdan sonra da**. Turbopack-ın `.next/dev`
+keşi faylı başlanğıc versiyasında saxlayırdı. Üslub ölçməzdən əvvəl verilən
+CSS-i yoxla, fərqlidirsə dev serveri dayandır, **`.next/dev`-i sil**, yenidən başlat:
+
+```bash
+CSS=$(curl -s localhost:3000/<yol> | grep -o '/_next/static/chunks/[^"]*\.css' | sort -u)
+for f in $CSS; do curl -s "localhost:3000$f" | grep -c '<yeni-qayda>'; done
+```
+
+Production build (`npm run build`) bu keşdən təsirlənmir — onun CSS-ini
+`.next/static/chunks/*.css`-də ayrıca yoxla.
+
+### Qoruyucu say səhv də ola bilər
+Ölü CSS silərkən 11 sətir gözlədim, skript 12 tapıb dayandı — media
+blokundakı ikinci `.mentor-avatar > i` sətrini unutmuşdum. Qoruyucu düzgün
+işlədi. Gözlənilən sayı təxmin etmə, əvvəlcə `grep -n` ilə say.
 
 ### Hər addımdan sonra
 `npx tsc --noEmit` — ucuzdur və səhvi dərhal göstərir.
