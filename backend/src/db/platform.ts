@@ -111,6 +111,9 @@ const memoryClubs = new Map<string, ClubRecord>(
 const memoryMemberships = new Set<string>();
 const memoryClubLeaders = new Set<string>();
 const memoryReviews = new Map<string, TeacherReviewRecord>();
+// Bazada rəy həm `teacher_id` (slug), həm `teacher_profile_id` (uuid) ilə tapılır;
+// yaddaş rejimi yalnız slug-ı yoxlayırdı və lokal testdə müəllim öz rəylərini görmürdü.
+const memoryReviewProfiles = new Map<string, string>();
 const memoryTickets = new Map<string, SupportTicketRecord>();
 
 function iso(value: unknown) {
@@ -497,6 +500,7 @@ export async function createTeacherReview(
   if (!databasePool) {
     if (memoryReviews.has(uniqueKey)) throw new ApiError(409, "REVIEW_EXISTS", "Bu müəllim üçün cari semestrdə artıq rəy göndərmisən.");
     memoryReviews.set(uniqueKey, review);
+    if (teacherProfileId) memoryReviewProfiles.set(review.id, teacherProfileId);
     return review;
   }
   try {
@@ -525,7 +529,7 @@ export async function listTeacherReviews(filters: {
   const limit = Math.min(100, Math.max(1, filters.limit ?? 50));
   if (!databasePool) {
     return [...memoryReviews.values()]
-      .filter((review) => !filters.teacherId || review.teacherId === filters.teacherId)
+      .filter((review) => !filters.teacherId || review.teacherId === filters.teacherId || memoryReviewProfiles.get(review.id) === filters.teacherId)
       .filter((review) => !filters.userId || review.userId === filters.userId)
       .filter((review) => !filters.semester || review.semester === filters.semester)
       .filter((review) => !filters.status || review.status === filters.status)

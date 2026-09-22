@@ -5,12 +5,30 @@ import { findUserById, listUsers } from "../db/database.js";
 import { getPlatformCounts, listMyClubMemberships, listSupportTickets, listTeacherReviews } from "../db/platform.js";
 import { ApiError } from "../lib/api-error.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { ensureProfessionalProfileForUser, findProfessionalByUser, findProfessionalProfile } from "../db/professionals.js";
+import { ensureProfessionalProfileForUser, findProfessionalByUser, findProfessionalProfile, updateMentorDetails, type ProfessionalProfile } from "../db/professionals.js";
 import { createMentorApplication, getMentorApplication } from "../db/mentor-applications.js";
 import { ensureMentorshipConversation } from "../db/messaging.js";
 
 export const workspaceRouter = Router();
 workspaceRouter.use(authenticate);
+
+/**
+ * Gözləyən müraciətlər həmişə görünür, qalanlardan ən təzə 12-si. Əvvəl siyahı
+ * sadəcə ilk 12-yə kəsilirdi: köhnə gözləyən müraciət təzə qərarların arxasında
+ * qalırdı — göstərici "Yeni müraciət: 1" deyirdi, element isə görünmürdü.
+ */
+function prioritizePending<T extends { status: string }>(items: T[]) {
+  return [...items.filter((item) => item.status === "pending"), ...items.filter((item) => item.status !== "pending").slice(0, 12)];
+}
+
+function mentorDetails(profile: ProfessionalProfile | null | undefined) {
+  return profile ? {
+    availability: profile.availability,
+    meetingMode: profile.meetingMode,
+    languages: profile.languages,
+    experienceYears: profile.experienceYears,
+  } : null;
+}
 
 workspaceRouter.get("/", async (request, response) => {
   const user = await findUserById(request.auth!.userId);
@@ -27,7 +45,7 @@ workspaceRouter.get("/", async (request, response) => {
       ? await listMentorRequests(mentorProfile.slug, mentorProfile.id)
       : [];
     const visibleMentorRequests = mentorRequests.filter((item) => item.status !== "cancelled");
-    const mentorItems = await Promise.all(visibleMentorRequests.slice(0, 12).map(async (item) => {
+    const mentorItems = await Promise.all(prioritizePending(visibleMentorRequests).map(async (item) => {
       const requester = await findUserById(item.userId);
       return { ...item, userId: undefined, title: requester?.name ?? "Tələbə müraciəti", course: requester?.program ?? "Mentorluq", text: item.note || undefined,
         chatPeer: item.status === "accepted" && requester ? toChatPeer(requester) : undefined };
@@ -38,9 +56,11 @@ workspaceRouter.get("/", async (request, response) => {
       { label: "Təsdiqlənmiş rəy", value: approved.length },
       { label: "Gözləyən rəy", value: reviews.filter((review) => review.status === "pending").length },
       { label: "Orta qiymət", value: average ? average.toFixed(1) : "—" },
-    ], items: reviews.slice(0, 8).map(({ userId: _userId, text: _text, ...review }) => review),
+    // Siyahıda yalnız moderasiyadan keçmiş rəylər: əvvəl gözləyən (sonra rədd
+    // edilə bilən) rəylərin qiyməti də müəllimə göstərilirdi. Sayı göstəricidə qalır.
+    ], items: approved.slice(0, 8).map(({ userId: _userId, text: _text, ...review }) => review),
       mentorApplication, mentorEnabled: mentorProfile?.status === "approved" && mentorProfile.visible,
-      mentorItems,
+      mentorItems, mentorDetails: mentorProfile?.status === "approved" ? mentorDetails(mentorProfile) : null,
     } });
     return;
   }
@@ -49,7 +69,7 @@ workspaceRouter.get("/", async (request, response) => {
     const profile = await ensureProfessionalProfileForUser(user);
     const requests = await listMentorRequests(profile?.slug ?? normalizeRoleId(user.name), profile?.id);
     const visibleRequests = requests.filter((item) => item.status !== "cancelled");
-    const items = await Promise.all(visibleRequests.slice(0, 12).map(async (item) => {
+    const items = await Promise.all(prioritizePending(visibleRequests).map(async (item) => {
       const requester = await findUserById(item.userId);
       return {
         ...item,
@@ -64,7 +84,7 @@ workspaceRouter.get("/", async (request, response) => {
       { label: "Yeni müraciət", value: visibleRequests.filter((item) => item.status === "pending").length },
       { label: "Qəbul edilib", value: visibleRequests.filter((item) => item.status === "accepted").length },
       { label: "Ümumi müraciət", value: visibleRequests.length },
-    ], items } });
+    ], items, mentorDetails: mentorDetails(profile) } });
     return;
   }
 
@@ -130,6 +150,28 @@ workspaceRouter.patch("/mentorship/:id", async (request, response) => {
     ? await ensureMentorshipConversation(result.userId, user.id)
     : null;
   response.json({ data: { ...result, conversationId: conversation?.id } });
+});
+
+workspaceRouter.patch("/mentor-profile", async (request, response) => {
+  const user = await findUserById(request.auth!.userId);
+  if (!user) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
+  const profile = user.role === "mentor"
+    ? await ensureProfessionalProfileForUser(user)
+    : user.role === "teacher"
+      ? await findProfessionalByUser(user.id, "mentor")
+      : null;
+  if (!profile || profile.kind !== "mentor" || profile.status !== "approved" || !profile.visible) {
+    throw new ApiError(403, "MENTOR_REQUIRED", "Bu əməliyyat yalnız təsdiqlənmiş mentor üçündür.");
+  }
+  const input = z.object({
+    availability: z.string().trim().max(240),
+    meetingMode: z.enum(["Onlayn", "Əyani", "Hibrid"]),
+    languages: z.array(z.string().trim().min(2).max(80)).min(1).max(5),
+    experienceYears: z.coerce.number().int().min(0).max(60),
+  }).strict().parse(request.body);
+  const updated = await updateMentorDetails(user.id, input);
+  if (!updated) throw new ApiError(404, "MENTOR_PROFILE_NOT_FOUND", "Mentor profili tapılmadı.");
+  response.json({ data: mentorDetails(updated) });
 });
 
 workspaceRouter.post("/mentor-application", async (request, response) => {

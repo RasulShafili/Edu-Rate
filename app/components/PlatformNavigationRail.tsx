@@ -70,14 +70,14 @@ export function PlatformNavigationRail(props: PlatformNavigationRailProps) {
       {props.isAdmin && (
         <div className="platform-nav-group">
           <span className="platform-nav-group-label">{t("nav.group.account")}</span>
-          <NavigationLink href="/admin" label="Rəhbərlik paneli" pathname={props.pathname} icon={ShieldCheck} reducedMotion={Boolean(reducedMotion)} />
+          <NavigationLink href="/admin" label={t("nav.admin")} pathname={props.pathname} icon={ShieldCheck} reducedMotion={Boolean(reducedMotion)} />
         </div>
       )}
       {props.authenticated ? (
         <div className="platform-nav-group">
           <span className="platform-nav-group-label">{t("nav.group.account")}</span>
           <NavigationLink href="/profile" label={t("nav.profile")} pathname={props.pathname} icon={UserRound} reducedMotion={Boolean(reducedMotion)} />
-          {!props.isAdmin && <NavigationLink href="/workspace" label={props.accountRole === "teacher" ? "Müəllim paneli" : props.accountRole === "mentor" ? "Mentor paneli" : "Şəxsi panel"} pathname={props.pathname} icon={LayoutDashboard} reducedMotion={Boolean(reducedMotion)} />}
+          {!props.isAdmin && <NavigationLink href="/workspace" label={t(props.accountRole === "teacher" ? "nav.workspace.teacher" : props.accountRole === "mentor" ? "nav.workspace.mentor" : "nav.workspace.student")} pathname={props.pathname} icon={LayoutDashboard} reducedMotion={Boolean(reducedMotion)} />}
           <NavigationLink href="/settings" label={t("nav.settings")} pathname={props.pathname} icon={Settings} reducedMotion={Boolean(reducedMotion)} />
         </div>
       ) : (

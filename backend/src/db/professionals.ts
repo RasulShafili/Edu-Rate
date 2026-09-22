@@ -71,6 +71,18 @@ export async function seedProfessionalProfiles() {
     WHERE r.mentor_profile_id IS NULL AND r.mentor_id=p.slug`);
 }
 
+/**
+ * `createUser` hər yeni hesaba bu "haqqında" cümləsini yazır. O, istifadəçinin
+ * mətni deyil — peşəkar profilə bio kimi köçürülürdü və kataloqda müəllim və
+ * mentorun özünü təqdimatı kimi görünürdü.
+ */
+const ABOUT_PLACEHOLDER = "EduRate icmasında universitet həyatını daha əlaqəli yaşamaq üçün buradayam.";
+
+function cleanAbout(value: string | undefined) {
+  const trimmed = value?.trim() ?? "";
+  return trimmed === ABOUT_PLACEHOLDER ? "" : trimmed;
+}
+
 function emptyCriteria() {
   return { clarity: 0, subjectKnowledge: 0, objectivity: 0, communication: 0 };
 }
@@ -148,7 +160,7 @@ export async function synchronizeProfessionalProfilesForUser(user: ProfessionalU
         ...(profile.kind === "teacher" ? {
           headline: `${user.program} müəllimi`,
           specialty: user.program,
-          biography: user.about?.trim() || profile.biography,
+          biography: cleanAbout(user.about) || profile.biography,
         } : {}),
       };
       next.visible = shouldShowProfile(user, next);
@@ -162,7 +174,7 @@ export async function synchronizeProfessionalProfilesForUser(user: ProfessionalU
     const created: ProfessionalProfile = {
       id: randomUUID(), userId: user.id, kind, slug, name: user.name,
       headline: `${user.program} ${kind === "teacher" ? "müəllimi" : "mentoru"}`,
-      specialty: user.program, biography: user.about?.trim() ?? "", city: user.city,
+      specialty: user.program, biography: cleanAbout(user.about), city: user.city,
       experienceYears: 0, availability: "", meetingMode: "Onlayn", languages: [],
       expertise: [user.program], rating: 0, reviewCount: 0, criteria: emptyCriteria(), status: "approved", visible: true,
     };
@@ -182,7 +194,7 @@ export async function synchronizeProfessionalProfilesForUser(user: ProfessionalU
          THEN TRUE ELSE FALSE END,
        updated_at=NOW()
      WHERE user_id=$1`,
-    [user.id, user.name, user.city, `${user.program} müəllimi`, user.program, user.about?.trim() ?? "", user.status, user.role],
+    [user.id, user.name, user.city, `${user.program} müəllimi`, user.program, cleanAbout(user.about), user.status, user.role],
   );
 
   if (!kind) return null;
@@ -200,13 +212,47 @@ export async function synchronizeProfessionalProfilesForUser(user: ProfessionalU
      RETURNING *`,
     [randomUUID(), user.id, kind, slug, user.name,
       `${user.program} ${kind === "teacher" ? "müəllimi" : "mentoru"}`,
-      user.program, user.about?.trim() ?? "", user.city, [user.program]],
+      user.program, cleanAbout(user.about), user.city, [user.program]],
   );
   return map(result.rows[0]);
 }
 
 export async function ensureProfessionalProfileForUser(user: ProfessionalUser) {
   return synchronizeProfessionalProfilesForUser(user);
+}
+
+export type MentorDetailsInput = {
+  availability: string;
+  meetingMode: "Onlayn" | "Əyani" | "Hibrid";
+  languages: string[];
+  experienceYears: number;
+};
+
+/**
+ * Mentorun kataloqda görünən praktik məlumatları. Əvvəl bunları heç kim
+ * dəyişə bilmirdi: admin tərəfindən mentor edilən istifadəçinin profili
+ * boş qalırdı ("uyğun vaxtı mentorla dəqiqləşdir", dil yoxdur, təcrübə yoxdur),
+ * təsdiqlənmiş müəllim-mentor isə müraciətdə yazdığını sonra dəyişə bilmirdi.
+ * Bu sütunlara profil sinxronizasiyası toxunmur, ona görə dəyişiklik qalır.
+ */
+export async function updateMentorDetails(userId: string, input: MentorDetailsInput) {
+  if (!databasePool) {
+    for (const [slug, profile] of memory.entries()) {
+      if (profile.userId !== userId || profile.kind !== "mentor") continue;
+      const next: ProfessionalProfile = { ...profile, ...input };
+      memory.set(slug, next);
+      return next;
+    }
+    return null;
+  }
+  const result = await databasePool.query(
+    `UPDATE professional_profiles
+        SET availability=$2, meeting_mode=$3, languages=$4, experience_years=$5, updated_at=NOW()
+      WHERE user_id=$1 AND kind='mentor'
+      RETURNING *`,
+    [userId, input.availability, input.meetingMode, input.languages, input.experienceYears],
+  );
+  return result.rows[0] ? map(result.rows[0]) : null;
 }
 
 export async function deactivateProfessionalProfilesForUser(userId: string) {

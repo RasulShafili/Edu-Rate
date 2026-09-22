@@ -578,6 +578,15 @@ const migrations: Migration[] = [
          AND p.visible = TRUE;
     `,
   },
+  {
+    version: 26,
+    name: "clear placeholder biographies copied into professional profiles",
+    sql: `
+      UPDATE professional_profiles
+         SET biography = '', updated_at = NOW()
+       WHERE biography = 'EduRate icmasında universitet həyatını daha əlaqəli yaşamaq üçün buradayam.';
+    `,
+  },
 ];
 
 export const latestMigrationVersion = Math.max(...migrations.map((migration) => migration.version));

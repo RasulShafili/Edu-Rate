@@ -1400,3 +1400,67 @@ describe("Hesabın silinməsi", () => {
     assert.equal(denied.body.error.code, "ADMIN_SELF_DELETE_FORBIDDEN");
   });
 });
+
+describe("İş paneli", () => {
+  it("mentor gözləyən müraciəti görür, məlumatlarını redaktə edir; müəllim yalnız təsdiqlənmiş rəyləri görür", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const mentor = await createUser({ ...base, name: "Panel Mentoru", email: "workspace.mentor@example.az", role: "mentor" });
+    const mentorAuth = `Bearer ${createAccessToken(mentor)}`;
+    await request(app).get("/api/workspace").set("Authorization", mentorAuth).expect(200);
+    const catalog = await request(app).get("/api/mentors").expect(200);
+    const profile = catalog.body.data.find((item: { userId: string | null }) => item.userId === mentor.id);
+    // Yer tutucu "haqqında" cümləsi mentor bio-su kimi köçürülmür.
+    assert.equal(profile.biography, "");
+
+    // Ən köhnə müraciət gözləyir, sonra 13 müraciət rədd edilir.
+    const students = [];
+    for (let index = 0; index < 14; index += 1) {
+      const student = await createUser({ ...base, name: `Panel Tələbəsi ${index}`, email: `workspace.student${index}@example.az`, role: "student" });
+      students.push(`Bearer ${createAccessToken(student)}`);
+    }
+    const oldest = await request(app).post("/api/mentorship/requests").set("Authorization", students[0]).send({ mentorId: profile.id }).expect(201);
+    for (const auth of students.slice(1)) {
+      const created = await request(app).post("/api/mentorship/requests").set("Authorization", auth).send({ mentorId: profile.id }).expect(201);
+      await request(app).patch(`/api/workspace/mentorship/${created.body.data.id}`).set("Authorization", mentorAuth).send({ status: "rejected" }).expect(200);
+    }
+    const queue = await request(app).get("/api/workspace").set("Authorization", mentorAuth).expect(200);
+    // Reqressiya: siyahı 12-yə kəsilirdi və köhnə gözləyən müraciət görünmürdü.
+    assert.equal(queue.body.data.items.some((item: { id: string }) => item.id === oldest.body.data.id), true);
+
+    // Mentor praktik məlumatlarını redaktə edir; kataloqda görünür.
+    await request(app).patch("/api/workspace/mentor-profile").set("Authorization", mentorAuth)
+      .send({ availability: "Həftəiçi 18:00-dan sonra", meetingMode: "Hibrid", languages: ["Azərbaycan dili", "İngilis dili"], experienceYears: 4 }).expect(200);
+    const after = await request(app).get("/api/mentors").expect(200);
+    const edited = after.body.data.find((item: { id: string }) => item.id === profile.id);
+    assert.equal(edited.availability, "Həftəiçi 18:00-dan sonra");
+    assert.deepEqual(edited.languages, ["Azərbaycan dili", "İngilis dili"]);
+    assert.equal(edited.experienceYears, 4);
+    await request(app).patch("/api/workspace/mentor-profile").set("Authorization", students[0])
+      .send({ availability: "x", meetingMode: "Onlayn", languages: ["Azərbaycan dili"], experienceYears: 1 }).expect(403);
+    await request(app).patch("/api/workspace/mentor-profile").set("Authorization", mentorAuth)
+      .send({ availability: "x", meetingMode: "Onlayn", languages: [], experienceYears: 1 }).expect(422);
+
+    // Müəllim: gözləyən rəy sayılır, amma siyahıda yalnız təsdiqlənmiş rəy var.
+    const teacher = await createUser({ ...base, name: "Panel Müəllimi", email: "workspace.teacher@example.az", role: "teacher" });
+    const teacherAuth = `Bearer ${createAccessToken(teacher)}`;
+    await request(app).get("/api/workspace").set("Authorization", teacherAuth).expect(200);
+    const teachers = await request(app).get("/api/teachers").expect(200);
+    const teacherProfile = teachers.body.data.find((item: { userId: string | null }) => item.userId === teacher.id);
+    const review = await request(app).post("/api/reviews").set("Authorization", students[1])
+      .send({ teacherId: teacherProfile.id, course: "Riyazi analiz", semester: "2026-payız", criteria: { clarity: 5, subjectKnowledge: 4, objectivity: 4, communication: 5 } })
+      .expect(201);
+    const pendingView = await request(app).get("/api/workspace").set("Authorization", teacherAuth).expect(200);
+    assert.equal(pendingView.body.data.metrics.find((metric: { label: string }) => metric.label === "Gözləyən rəy").value, 1);
+    assert.equal(pendingView.body.data.items.length, 0);
+    await request(app).patch(`/api/admin/reviews/${review.body.data.id}`).set("Authorization", `Bearer ${reusableAdminToken}`).send({ status: "approved" }).expect(200);
+    const approvedView = await request(app).get("/api/workspace").set("Authorization", teacherAuth).expect(200);
+    assert.equal(approvedView.body.data.items.length, 1);
+    assert.equal(approvedView.body.data.items[0].course, "Riyazi analiz");
+    assert.equal(approvedView.body.data.items[0].userId, undefined);
+  });
+});

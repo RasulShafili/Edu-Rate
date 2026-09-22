@@ -33,6 +33,7 @@ import {
 import type { ProfileUpdateInput } from "../data/user";
 import { useT } from "../i18n/LanguageProvider";
 import { ApiError } from "../lib/api/client";
+import { METRIC_KEYS, STATUS_KEYS, TYPE_KEYS } from "../lib/workspace-labels";
 import {
   isAuthProviderUnavailable,
   useAuth,
@@ -46,46 +47,6 @@ const enterTransition = { duration: 0.62, ease };
 const viewportOnce = { once: true, margin: "-48px" } as const;
 
 const metricIcons: LucideIcon[] = [CalendarDays, UsersRound, Bookmark, BadgeCheck];
-
-/*
- * `/api/workspace` göstərici adlarını, element növlərini və statusları hazır
- * azərbaycanca və ya xam (`pending`, `open`) qaytarır. Profil əvvəl statusu
- * olduğu kimi göstərirdi — istifadəçi "pending" görürdü. Tanınan dəyərlər
- * tərcümə açarına çevrilir, tanınmayan dəyər olduğu kimi qalır.
- */
-const METRIC_KEYS: Record<string, string> = {
-  "Tədbir qeydiyyatı": "profile.metric.eventRegistrations",
-  "Klub üzvlüyü": "profile.metric.clubs",
-  "Mentorluq müraciəti": "profile.metric.mentorships",
-  "Dəstək bileti": "profile.metric.tickets",
-  "Təsdiqlənmiş rəy": "profile.metric.approvedReviews",
-  "Gözləyən rəy": "profile.metric.pendingReviews",
-  "Orta qiymət": "profile.metric.averageRating",
-  "Yeni müraciət": "profile.metric.newRequests",
-  "Qəbul edilib": "profile.metric.acceptedRequests",
-  "Ümumi müraciət": "profile.metric.totalRequests",
-  "İstifadəçi": "profile.metric.users",
-  "Tədbir": "profile.metric.events",
-  "Klub": "profile.metric.clubCount",
-};
-const TYPE_KEYS: Record<string, string> = {
-  "Tədbir": "profile.type.event",
-  "Klub": "profile.type.club",
-  "Mentor": "profile.type.mentor",
-  "Dəstək": "profile.type.support",
-};
-const STATUS_KEYS: Record<string, string> = {
-  pending: "profile.status.pending",
-  accepted: "profile.status.accepted",
-  rejected: "profile.status.rejected",
-  cancelled: "profile.status.cancelled",
-  open: "profile.status.open",
-  in_progress: "profile.status.in_progress",
-  resolved: "profile.status.resolved",
-  approved: "profile.status.approved",
-  "Qeydiyyat aktivdir": "profile.status.registered",
-  "Klub üzvü": "profile.status.member",
-};
 
 type ProfileWorkspace = {
   metrics: Array<{ label: string; value: string | number }>;
