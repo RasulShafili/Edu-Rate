@@ -415,6 +415,27 @@ köhnə gözləyən müraciət təzə qərarların arxasında qalırdı — "Yen
 siyahıda isə yox. Hər `slice`/`LIMIT` gördükdə soruş: kəsilən hissədə
 **əməl tələb edən** element qala bilərmi? Belədirsə, onları önə çək.
 
+### Göstəricinin hesablanmasını etiketi ilə tutuşdur
+Admin icmalında dörd ayrı "yalan" var idi və heç biri ekranda səhv görünmürdü:
+- **"Açıq tədbir"** bitməmiş HƏR tədbiri sayırdı — müəllimin yoxlanış gözləyən
+  qaralamaları da; **"Tələbə klubu"** gözləyən və məhdudlaşdırılmış klubları.
+- Hər kartda yaşıl **artım oxu** və "əvvəlki dövrlə müqayisə" — backend
+  `trend: "up"`-ı sabit yazırdı, heç bir müqayisə yox idi.
+- **"Platforma aktivliyi"** qrafiki `createdAt < ay sonu` sayırdı — yəni yığılmış
+  cəm; xətt heç vaxt enə bilməz, aktivliyi yox, böyüməni göstərir.
+- Axtarış placeholder-i **"ad və ya məlumata görə"** deyirdi, `filterRows` yalnız
+  adı yoxlayırdı.
+**Qayda:** hər rəqəm/qrafik/axtarış üçün backend-də onu quran sətri tap və
+filtr şərtini etiketin dediyi ilə söz-söz tutuşdur. Ox, faiz, "müqayisə" kimi
+törəmə göstəricidə hesablamanın **mövcud olduğunu** yoxla — sabit dəyər ola bilər.
+Düzəliş testi: qaralama yarat → "açıq" sayı dəyişməməli, "qaralama" +1 olmalıdır.
+
+### Sərbəst mətn + backend normallaşdırması = səssiz dəyişiklik
+Admin tədbir formasında kateqoriya sərbəst mətn idi, backend isə `normalizeCategory`
+ilə onu dörd dəyərə salırdı: tanınmayan hər söz ("İdman") səssizcə "Design"
+olurdu; redaktədə sahə ingiliscə "Technology" ilə açılırdı. Backend dəyəri
+çevirirsə, forma **seçim** olmalıdır — dəyər bazadakı kod, görünən ad lüğətdən.
+
 ### Silmə yollarını müqayisə et
 Admin istifadəçini silərkən peşəkar profilini gizlədirdi, istifadəçi özü
 silərkən yox — hesabını silən mentor kataloqda real adı ilə qalırdı. Eyni
@@ -443,6 +464,22 @@ for old, new in pairs:
     s = s.replace(old, new)
 io.open(path, "w", encoding="utf-8", newline="\n").write(s)  # yalnız sonda
 ```
+
+### Hər yamaq skriptinə yeni ad ver
+Admin 2-ci hissədə `Write` `patch_admin_backend.py`-ni yazmaqdan imtina etdi
+(1-ci hissədən qalmış, bu sessiyada oxunmamış fayl), eyni mesajdakı `Bash` isə
+**köhnə** skripti işə saldı. Yalnız köhnə skriptin nisbi yolları tapılmadığı
+üçün heç nə yazılmadı — başqa kataloqda olsaydı, köhnə yamaq ikinci dəfə
+tətbiq olunardı. **Qayda:** skript adına hissə/tarix qoy (`p2_backend.py`) və
+`Write` ilə `Bash`-i eyni mesajda birləşdirəndə `Write`-ın uğurunu yoxlamadan
+nəticəyə inanma.
+
+### Paralel sessiya eyni işçi qovluqda
+Ölü kod tapşırığı ayrı sessiyada, amma **eyni** qovluqda işlədi: `git status`-da
+onun stage-ə aldığı silinmələr və CSS dəyişikliyi görünürdü. Adi `git commit`
+onları mənim commit-imə qatardı. **Qayda:** belə halda yalnız öz fayllarını
+`git commit -- <yollar>` ilə commit et, onun toxunduğu fayllara (burada CSS,
+skill faylı) o bitənə qədər toxunma, və o dəyişən faylı redaktədən əvvəl yenidən oxu.
 
 ### Skript faylı yaz, heredoc yox
 Uzun Python `<<'PY'` heredoc-ları apostrof və dırnaq üzündən **iki dəfə** bash
@@ -531,6 +568,17 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
 - **`t()` cəm formasını bilmir.** `"{count} answers"` 1 üçün "1 answers" verir.
   EN/RU üçün saydan asılı olmayan forma yaz: `"Answers: {count}"`,
   `"Ответов: {count}"`. (Azərbaycan dilində problem yoxdur — say ilə isim tək qalır.)
+- **`t()` tapılmayan açarda açarın özünü qaytarır.** Bazadan gələn dəyəri
+  (`clubCategory.${x}`) açara çevirəndə naməlum dəyər ekranda
+  "clubCategory.Robotexnika" kimi görünər. Açar = nəticə olarsa xam dəyərə qayıt
+  (`labelOr(t, key, raw)`).
+- **Backend-in hazır mətnini göstərmə, xam sahədən qur.** Admin cədvəli
+  `detail`/`metric`-i backend-dən azərbaycanca alırdı (istifadəçi sətrində hətta
+  xam `student` rolu). Backend rəqəm/kod göndərsin (`counts`, `month`,
+  `emailVerified`), mətni interfeys qursun; köhnə backend üçün ehtiyat saxla.
+- **Ortaq komponentləri unutma.** Admin forması tərcümə olunsa da içindəki
+  `SecureImagePicker`/`ImageDraftPicker` azərbaycanca qalırdı — çıxarıcını
+  görünüşün **import etdiyi** komponentlərə də işlət.
 - Açar əlavə edib komponenti bağlamamaq mümkündür — `rating.*` açarları üç dildə
   hazır idi, komponent isə onları heç işlətmirdi. Açar sayı ilə kifayətlənmə,
   nəticəni brauzerdə dildən-dilə keçərək yoxla.
