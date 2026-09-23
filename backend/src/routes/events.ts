@@ -6,6 +6,7 @@ import {
   deleteEvent,
   findEventById,
   listEvents,
+  listEventsByCreator,
   listMyEventRegistrations,
   registerForEvent,
   updateEvent,
@@ -52,6 +53,20 @@ eventsRouter.get("/", async (_request, response) => {
 
 eventsRouter.get("/registrations/me", authenticate, async (request, response) => {
   response.json({ data: await listMyEventRegistrations(request.auth!.userId) });
+});
+
+// `/:eventId`-dən əvvəl olmalıdır, yoxsa "mine" tədbir id-si kimi tutulur.
+eventsRouter.get("/mine", authenticate, async (request, response) => {
+  const events = await listEventsByCreator(request.auth!.userId);
+  response.json({
+    data: events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      startAt: event.startAt,
+      status: event.adminStatus ?? "Açıq",
+      createdAt: event.createdAt,
+    })),
+  });
 });
 
 eventsRouter.get("/:eventId", async (request, response) => {

@@ -112,3 +112,31 @@ function getStableDateParts(value: string) {
     minute: match[5] ?? "00",
   };
 }
+
+const bakuFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Baku",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/**
+ * Tarix hissələri Bakı vaxtı ilə, yalnız rəqəm kimi. Ay adı lüğətdən gəlir —
+ * `Intl("az-AZ")` bəzi Chromium-larda ay adlarını qaytarmır. Əvvəl drawer tarixi
+ * ISO sətrindən (UTC) oxuyurdu: 00:00–04:00 arası başlayan tədbir kartda bir gün,
+ * drawer-də əvvəlki gün yazılırdı.
+ */
+export function bakuDateParts(value: string) {
+  const parts = Object.fromEntries(
+    bakuFormatter.formatToParts(new Date(value)).map((part) => [part.type, part.value]),
+  );
+  return {
+    day: parts.day ?? "",
+    month: Number(parts.month) || 1,
+    year: Number(parts.year) || 0,
+    time: `${parts.hour ?? "00"}:${parts.minute ?? "00"}`,
+  };
+}

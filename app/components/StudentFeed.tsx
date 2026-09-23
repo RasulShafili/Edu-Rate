@@ -20,6 +20,16 @@ import { FeedPostDialog } from "./FeedPostDialog";
 import { useT } from "../i18n/LanguageProvider";
 import { FeedCard } from "./FeedCard";
 import { EmptyState } from "./ui/Primitives";
+import useSWR from "swr";
+import { bakuDateParts } from "../lib/date";
+import { fetchMine, MySubmissions, type SubmissionItem } from "./MySubmissions";
+
+type MyFeedPost = { id: string; title: string; status: string; createdAt: string };
+const FEED_STATUS: Record<string, { key: string; tone: SubmissionItem["tone"] }> = {
+  pending: { key: "feed.mine.status.pending", tone: "pending" },
+  published: { key: "feed.mine.status.published", tone: "positive" },
+  rejected: { key: "feed.mine.status.rejected", tone: "negative" },
+};
 
 type StudentFeedProps = {
   announcements: readonly AnnouncementItem[];
@@ -32,6 +42,8 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
   const { user } = useAuth();
   const t = useT();
   const [postOpen, setPostOpen] = useState(false);
+  // Paylaşım əvvəlcə yoxlanışa gedir; ictimai lent yalnız dərc olunanı göstərir.
+  const myPosts = useSWR(user ? ["feed-mine", user.id] : null, () => fetchMine<MyFeedPost>("/api/network/feed/mine"), { revalidateOnFocus: false });
   const [activeFilter, setActiveFilter] = useState<NetworkFilter>("all");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isAppending, setIsAppending] = useState(false);
@@ -162,6 +174,21 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
             </div>
           </header>
 
+          {user ? (
+            <MySubmissions
+              headingId="feed-mine-title"
+              title={t("feed.mine.title")}
+              body={t("feed.mine.body")}
+              error={myPosts.error}
+              onRetry={() => void myPosts.mutate()}
+              items={(myPosts.data ?? []).map((item) => {
+                const status = FEED_STATUS[item.status] ?? FEED_STATUS.pending;
+                const date = bakuDateParts(item.createdAt);
+                return { id: item.id, title: item.title, meta: `${date.day} ${t(`month.${date.month}`)} ${date.year}`, statusLabel: t(status.key), tone: status.tone };
+              })}
+            />
+          ) : null}
+
           <p className="sr-only" role="status" aria-live="polite">
             {t("feed.srCount", { filter: t(`category.${activeFilter}`), count: filteredItems.length })}
           </p>
@@ -216,7 +243,7 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
         </section>
       </div>
 
-      <FeedPostDialog open={postOpen} onClose={() => setPostOpen(false)} />
+      <FeedPostDialog open={postOpen} onClose={() => { setPostOpen(false); void myPosts.mutate(); }} />
     </section>
   );
 }

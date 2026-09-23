@@ -194,6 +194,24 @@ export async function initializeBusinessDatabase() {
   }
 }
 
+/**
+ * İstifadəçinin yaratdığı tədbirlər (hər vəziyyətdə). Əvvəl müəllim qaralamasını
+ * göndərəndən sonra onun təsdiqləndiyini və ya silindiyini heç yerdə görmürdü.
+ */
+export async function listEventsByCreator(userId: string): Promise<EventRecord[]> {
+  if (!databasePool) {
+    return [...memoryEvents.values()]
+      .filter((event) => event.createdBy === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 30);
+  }
+  const result = await databasePool.query(
+    "SELECT * FROM events WHERE created_by = $1 ORDER BY created_at DESC LIMIT 30",
+    [userId],
+  );
+  return result.rows.map(mapEvent);
+}
+
 export async function listEvents(publicOnly = true): Promise<EventRecord[]> {
   if (!databasePool) {
     return Promise.all([...memoryEvents.values()]

@@ -172,6 +172,38 @@ export async function updateAnnouncement(id:string,input:Partial<AnnouncementInp
 export async function deleteAnnouncement(id:string){if(!databasePool)return memoryAnnouncements.delete(id);const result=await databasePool.query("DELETE FROM announcements WHERE id=$1",[id]);return Boolean(result.rowCount);}
 export async function createFeedPost(userId:string,input:{title:string;summary:string;tags:string[]},source:string){const id=randomUUID();const initials=source.split(/\s+/).slice(0,2).map((part)=>part[0]?.toLocaleUpperCase("az")).join("");if(!databasePool){const item:AdminFeedRecord={id,kind:"post",category:"clubs",...input,source,sourceInitials:initials,publishedAt:new Date().toISOString(),timeLabel:"indi",tone:"blue",status:"pending",userId};memoryFeed.set(id,item);return item;}const result=await databasePool.query(`INSERT INTO feed_posts(id,kind,category,title,summary,source,source_initials,published_at,tone,tags,status,user_id) VALUES($1,'post','clubs',$2,$3,$4,$5,NOW(),'blue',$6,'pending',$7) RETURNING *`,[id,input.title,input.summary,source,initials,input.tags,userId]);return result.rows[0];}
 
+/** İstifadəçinin göndərdiyi elanlar — dərc olunana qədər ictimai siyahıda görünmür. */
+export async function listAnnouncementsByCreator(userId: string) {
+  if (!databasePool) {
+    return [...memoryAnnouncements.values()]
+      .filter((item) => item.createdBy === userId)
+      .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+      .slice(0, 30)
+      .map((item) => ({ id: item.id, title: item.title, category: item.category, status: item.status, createdAt: item.publishedAt }));
+  }
+  const result = await databasePool.query(
+    "SELECT id, title, category, status, published_at FROM announcements WHERE created_by = $1 ORDER BY published_at DESC LIMIT 30",
+    [userId],
+  );
+  return result.rows.map((row) => ({ id: String(row.id), title: String(row.title), category: String(row.category), status: String(row.status), createdAt: new Date(row.published_at).toISOString() }));
+}
+
+/** İstifadəçinin lent paylaşımları: gözləyən, dərc olunan və rədd edilən. */
+export async function listFeedPostsByAuthor(userId: string) {
+  if (!databasePool) {
+    return [...memoryFeed.values()]
+      .filter((item) => item.userId === userId)
+      .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+      .slice(0, 30)
+      .map((item) => ({ id: item.id, title: item.title, status: item.status, createdAt: item.publishedAt }));
+  }
+  const result = await databasePool.query(
+    "SELECT id, title, status, published_at FROM feed_posts WHERE user_id = $1 ORDER BY published_at DESC LIMIT 30",
+    [userId],
+  );
+  return result.rows.map((row) => ({ id: String(row.id), title: String(row.title), status: String(row.status), createdAt: new Date(row.published_at).toISOString() }));
+}
+
 export async function listAdminFeed(status?: FeedStatus) {
   if (!databasePool) return [...memoryFeed.values()].filter((item) => !status || item.status === status).sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt));
   const result=await databasePool.query(`SELECT * FROM feed_posts ${status?"WHERE status=$1":""} ORDER BY published_at DESC LIMIT 200`,status?[status]:[]);

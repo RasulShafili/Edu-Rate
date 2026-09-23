@@ -1475,6 +1475,51 @@ describe("İş paneli", () => {
   });
 });
 
+describe("Göndərilənlərin taleyi", () => {
+  it("müəllim öz tədbirinin, müəllif öz elanı və paylaşımının vəziyyətini görür", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const teacher = await createUser({ ...base, name: "Tale Müəllim", email: "tale.teacher@example.az", role: "teacher" });
+    const other = await createUser({ ...base, name: "Digər Müəllim", email: "tale.other@example.az", role: "teacher" });
+    const teacherAuth = `Bearer ${createAccessToken(teacher)}`;
+    const otherAuth = `Bearer ${createAccessToken(other)}`;
+    const ownerAuth = `Bearer ${reusableAdminToken}`;
+
+    await request(app).get("/api/events/mine").expect(401);
+    const start = Date.now() + 10 * 86_400_000;
+    const created = await request(app).post("/api/events").set("Authorization", teacherAuth).send({
+      title: "Tale tədbiri", category: "Technology", description: "Qısa təsvir mətni", longDescription: "Ətraflı məlumat mətni burada yazılıb",
+      location: "Zal 4", city: "Xankəndi", organizer: "Tale Müəllim", startAt: new Date(start).toISOString(),
+      endAt: new Date(start + 7_200_000).toISOString(), registrationDeadline: new Date(start - 3_600_000).toISOString(), capacity: 30,
+    }).expect(201);
+    const mine = await request(app).get("/api/events/mine").set("Authorization", teacherAuth).expect(200);
+    assert.deepEqual(mine.body.data.map((item: { id: string; status: string }) => [item.id, item.status]), [[created.body.data.id, "Qaralama"]]);
+    // Başqa müəllim onu görmür; "mine" tədbir id-si kimi tutulmur.
+    assert.equal((await request(app).get("/api/events/mine").set("Authorization", otherAuth).expect(200)).body.data.length, 0);
+    await request(app).patch(`/api/admin/events/${created.body.data.id}`).set("Authorization", ownerAuth).send({ status: "Açıq" }).expect(200);
+    assert.equal((await request(app).get("/api/events/mine").set("Authorization", teacherAuth).expect(200)).body.data[0].status, "Açıq");
+
+    const now = Date.now();
+    const announcement = await request(app).post("/api/network/announcements").set("Authorization", teacherAuth).send({
+      category: "faculties", title: "Tale elanı", summary: "Fakültə üzrə yeni cədvəl dərc olunub.",
+      startsAt: new Date(now).toISOString(), expiresAt: new Date(now + 86_400_000).toISOString(),
+    }).expect(202);
+    const myAnnouncements = await request(app).get("/api/network/announcements/mine").set("Authorization", teacherAuth).expect(200);
+    assert.deepEqual(myAnnouncements.body.data.map((item: { id: string; status: string }) => [item.id, item.status]), [[announcement.body.data.id, "draft"]]);
+
+    const post = await request(app).post("/api/network/feed").set("Authorization", teacherAuth).send({ title: "Tale paylaşımı", summary: "Kitabxana şənbə günü də açıqdır.", tags: [] }).expect(202);
+    await request(app).patch(`/api/admin/feed/${post.body.data.id}`).set("Authorization", ownerAuth).send({ status: "rejected" }).expect(200);
+    const myPosts = await request(app).get("/api/network/feed/mine").set("Authorization", teacherAuth).expect(200);
+    assert.deepEqual(myPosts.body.data.map((item: { id: string; status: string }) => [item.id, item.status]), [[post.body.data.id, "rejected"]]);
+    assert.equal((await request(app).get("/api/network/feed/mine").set("Authorization", otherAuth).expect(200)).body.data.length, 0);
+    await request(app).get("/api/network/feed/mine").expect(401);
+  });
+});
+
 describe("Admin paneli", () => {
   it("icmal qaralama tədbirini açıq saymır, axtarış e-poçtu da tapır", async () => {
     const ownerAuth = `Bearer ${reusableAdminToken}`;

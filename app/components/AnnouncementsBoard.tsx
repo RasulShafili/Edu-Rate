@@ -15,12 +15,17 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import useSWR from "swr";
 import type { AnnouncementItem, NetworkFilter, NetworkTone } from "../data/network";
 import { networkFilters } from "../data/network";
-import { formatDateWithMonths, isExpired } from "../lib/date";
+import { bakuDateParts, formatDateWithMonths, isExpired } from "../lib/date";
 import { EmptyState } from "./ui/Primitives";
 import { useAuth } from "./AuthProvider";
 import { AnnouncementSubmissionDialog } from "./AnnouncementSubmissionDialog";
+import { fetchMine, MySubmissions } from "./MySubmissions";
+
+type MyAnnouncement = { id: string; title: string; category: string; status: string; createdAt: string };
+const ADMIN_ROLES = ["owner_admin", "admin", "assistant_admin"];
 import { useT } from "../i18n/LanguageProvider";
 
 /** Ay adlari lugetden gelir ki, tarix secilmis dilde yazilsin. */
@@ -48,6 +53,10 @@ export function AnnouncementsBoard({ items, activeFilter, onFilterChange, reduce
   const [stateOverrides, setStateOverrides] = useState<Record<string, { read?: boolean; bookmarked?: boolean }>>({});
   const [compactLimit, setCompactLimit] = useState(4);
   const [submissionOpen,setSubmissionOpen]=useState(false);
+  // Göndərilən elan qaralama kimi yoxlanışa gedir; lövhə yalnız dərc olunanı göstərir.
+  // Adminlər öz elanlarını idarəetmə panelində görür.
+  const showMine=Boolean(user&&!ADMIN_ROLES.includes(user.accessRole??""));
+  const mine=useSWR(showMine?["announcements-mine",user?.id]:null,()=>fetchMine<MyAnnouncement>("/api/network/announcements/mine"),{revalidateOnFocus:false});
   /**
    * Yadda saxlama serverdə saxlanılırdı, amma saxlanmış elanları görmək üçün
    * interfeysdə heç bir yer yox idi — düymə heç nəyə aparmırdı. Bu görünüş
@@ -93,6 +102,8 @@ export function AnnouncementsBoard({ items, activeFilter, onFilterChange, reduce
         {user?<button type="button" className="announcement-submit-trigger" onClick={()=>setSubmissionOpen(true)}><Plus size={16}/>{t("ann.submit")}</button>:null}
       </header>
 
+      {showMine?<MySubmissions headingId="announcements-mine-title" title={t("ann.mine.title")} body={t("ann.mine.body")} error={mine.error} onRetry={()=>void mine.mutate()} items={(mine.data??[]).map((item)=>{const date=bakuDateParts(item.createdAt);return{id:item.id,title:item.title,meta:`${t(`category.${item.category}`)} · ${date.day} ${t(`month.${date.month}`)} ${date.year}`,statusLabel:t(item.status==="published"?"ann.mine.status.published":"ann.mine.status.draft"),tone:item.status==="published"?"positive":"pending"};})}/>:null}
+
       <div className="announcement-filter-bar">
         <span aria-hidden="true"><SlidersHorizontal size={15} /></span>
         <div className="announcement-filters" role="group" aria-label={t("ann.filterLabel")}>
@@ -137,7 +148,7 @@ export function AnnouncementsBoard({ items, activeFilter, onFilterChange, reduce
       )}
 
       {archived.length > 0 && <details className="announcement-archive"><summary>{t("ann.archive")} <span>{archived.length}</span></summary><div>{archived.map((item) => <AnnouncementCompact key={item.id} item={item} archived read={readState(item)} bookmarked={bookmarkState(item)} onRead={() => void updateState("read",item.id,readState(item))} onBookmark={() => void updateState("bookmarked",item.id,bookmarkState(item))} />)}</div></details>}
-      <AnnouncementSubmissionDialog open={submissionOpen} onClose={()=>setSubmissionOpen(false)}/>
+      <AnnouncementSubmissionDialog open={submissionOpen} onClose={()=>{setSubmissionOpen(false);void mine.mutate();}}/>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { createAnnouncement, createFeedPost, findAnnouncementById, getAnnouncementReactionState, listAnnouncements, listFeed, recordAnnouncementView, setAnnouncementReaction, setAnnouncementUserState } from "../db/network.js";
+import { createAnnouncement, createFeedPost, findAnnouncementById, getAnnouncementReactionState, listAnnouncements, listAnnouncementsByCreator, listFeed, listFeedPostsByAuthor, recordAnnouncementView, setAnnouncementReaction, setAnnouncementUserState } from "../db/network.js";
 import { authenticate, optionalAuthenticate } from "../middleware/authenticate.js";
 import { findUserById } from "../db/database.js";
 import { ApiError } from "../lib/api-error.js";
@@ -44,6 +44,15 @@ networkRouter.patch("/announcements/:id/state",authenticate,async(request,respon
 networkRouter.get("/feed", async (request, response) => {
   const { category } = querySchema.parse(request.query);
   response.json({ data: await listFeed(category) });
+});
+
+// Göndərənin öz siyahıları: ictimai sorğular yalnız dərc olunanı qaytarır, ona görə
+// "yoxlanışa göndərildi" deyiləndən sonra elanın/paylaşımın taleyi görünmürdü.
+networkRouter.get("/announcements/mine", authenticate, async (request, response) => {
+  response.json({ data: await listAnnouncementsByCreator(request.auth!.userId) });
+});
+networkRouter.get("/feed/mine", authenticate, async (request, response) => {
+  response.json({ data: await listFeedPostsByAuthor(request.auth!.userId) });
 });
 
 networkRouter.post("/feed", authenticate, async (request, response) => {

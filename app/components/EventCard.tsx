@@ -3,12 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, MapPin } from "lucide-react";
 import { type CSSProperties } from "react";
-import {
-  eventCategoryLabels,
-  eventMonthLabels,
-  eventMonthLongLabels,
-  type Event,
-} from "../data/events";
+import type { Event } from "../data/events";
+import { useLanguage } from "../i18n/LanguageProvider";
 import { getDeadlineStatus, getTemporalStatus } from "../lib/date";
 
 type EventCardProps = {
@@ -18,6 +14,7 @@ type EventCardProps = {
 };
 
 export function EventCard({ event, index, onSelect }: EventCardProps) {
+  const { language, t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const temporalStatus = getTemporalStatus(event.startAt, event.endAt);
   const registrationOpen = getDeadlineStatus(event.registrationDeadline) === "open" && event.availableSpots > 0 && temporalStatus !== "finished";
@@ -40,7 +37,7 @@ export function EventCard({ event, index, onSelect }: EventCardProps) {
         type="button"
         onClick={() => onSelect(event)}
         className="event-card-button"
-        aria-label={`${event.title} tədbirinin təfərrüatlarına bax`}
+        aria-label={t("events.card.open", { title: event.title })}
       >
         <div
           className={`event-art${event.imageUrl ? " has-image" : ""}`}
@@ -53,17 +50,17 @@ export function EventCard({ event, index, onSelect }: EventCardProps) {
           <div className="event-art-orbit event-art-orbit-one" />
           <div className="event-art-orbit event-art-orbit-two" />
           <div className="event-art-core" />
-          <span className="event-category">{eventCategoryLabels[event.category]}</span>
+          <span className="event-category">{t(`eventCategory.${event.category}`)}</span>
           <span className="event-time">{event.time}</span>
         </div>
 
         <div className="event-card-content">
           <div
             className="event-date"
-            aria-label={`${event.date} ${eventMonthLongLabels[event.month]}`}
+            aria-label={`${event.date} ${t(`month.${event.monthIndex}`)}`}
           >
             <span>{event.date}</span>
-            <small>{eventMonthLabels[event.month]}</small>
+            <small>{t(`monthShort.${event.monthIndex}`).toLocaleUpperCase(language)}</small>
           </div>
           <div className="event-copy">
             <div className="event-title-row">
@@ -74,14 +71,16 @@ export function EventCard({ event, index, onSelect }: EventCardProps) {
             </div>
             <p>{event.description}</p>
             <span className={`event-registration-status${registrationOpen ? " is-open" : " is-closed"}`}>
-              {registrationOpen ? `${event.availableSpots} yer qalıb` : temporalStatus === "finished" ? "Tədbir bitib" : "Qeydiyyat bağlıdır"}
+              {registrationOpen
+                ? t("events.spotsLeft", { count: event.availableSpots })
+                : t(temporalStatus === "finished" ? "events.finished" : "events.registrationClosed")}
             </span>
             <span className="event-location">
-              <MapPin size={13} strokeWidth={1.8} />
+              <MapPin size={13} strokeWidth={1.8} aria-hidden="true" />
               {event.city} · {event.location}
             </span>
             <span className="event-organizer">{event.organizer}</span>
-            <span className="event-primary-action">Ətraflı bax</span>
+            <span className="event-primary-action">{t("events.more")}</span>
           </div>
         </div>
       </button>

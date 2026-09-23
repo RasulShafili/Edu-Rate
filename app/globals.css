@@ -4484,6 +4484,23 @@ a { color: inherit; text-decoration: none; }
 .clubs-pending li small { color:#6b817d; font-size:11.5px; }
 .clubs-pending__mark { display:grid; width:36px; height:36px; flex:none; place-items:center; border-radius:12px; background:rgba(39,95,84,.12); color:#173c35; font-size:13px; font-weight:750; }
 .clubs-pending li a { min-height:36px; display:inline-flex; align-items:center; padding:0 14px; border-radius:11px; background:#16423c; color:#fff; font-size:12.5px; font-weight:650; text-decoration:none; }
+/* Göndərənin öz tədbir/elan/paylaşımlarının vəziyyəti (MySubmissions). */
+.my-submissions { display:grid; gap:12px; margin:0 0 18px; padding:18px 20px; border:1px solid rgba(223,180,95,.42); border-radius:20px; background:rgba(223,180,95,.10); }
+.my-submissions > header { display:grid; gap:4px; }
+.my-submissions h2 { display:flex; align-items:center; gap:7px; margin:0; color:#6f5312; font-size:16px; letter-spacing:-0.01em; }
+.my-submissions > header p { margin:0; color:#6e5a2c; font-size:13px; line-height:1.5; }
+.my-submissions ul { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+.my-submissions li { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 12px; border:1px solid rgba(223,180,95,.34); border-radius:14px; background:rgba(255,255,255,.78); }
+.my-submissions li > div { display:grid; gap:2px; min-width:0; flex:1 1 180px; }
+.my-submissions li strong { color:#173c35; font-size:14px; overflow-wrap:anywhere; }
+.my-submissions li small { color:#50655f; font-size:12px; }
+.my-submissions__status { display:inline-flex; min-height:28px; align-items:center; padding:0 11px; border-radius:999px; font-size:12px; font-weight:700; }
+.my-submissions__status.is-pending { background:#fdf1d8; color:#6f5312; }
+.my-submissions__status.is-positive { background:#e3f2ec; color:#1d5a4c; }
+.my-submissions__status.is-negative { background:#fbe7e7; color:#8a2a2a; }
+.my-submissions__status.is-neutral { background:#eef1f0; color:#44524f; }
+.my-submissions__error { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0; color:#8a2a2a; font-size:13px; }
+.my-submissions__error button { display:inline-flex; min-height:36px; align-items:center; gap:5px; padding:0 12px; border:1px solid #e3c9c9; border-radius:10px; background:#fff; color:#6b2222; font-weight:650; }
 
 /* Klub səhifəsində yoxlanış zolağı */
 .club-pending-banner { display:flex; align-items:flex-start; gap:10px; margin:0 0 18px; padding:14px 16px; border:1px solid rgba(223,180,95,.45); border-radius:16px; background:rgba(223,180,95,.12); color:#6f5312; font-size:13.5px; line-height:1.55; }

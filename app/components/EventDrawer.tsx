@@ -5,12 +5,34 @@ import { ArrowRight, CalendarDays, Check, Clock3, MapPin, Sparkles, X, CalendarP
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import {
-  eventCategoryLabels,
-  type Event,
-} from "../data/events";
-import { formatAzDate, getDeadlineStatus, getTemporalStatus } from "../lib/date";
+import type { Event } from "../data/events";
+import { useT } from "../i18n/LanguageProvider";
+import { bakuDateParts, getDeadlineStatus, getTemporalStatus } from "../lib/date";
 import { useAuth } from "./AuthProvider";
+
+/** Qeydiyyat xətası backend kodundan tərcümə açarına; mətn azərbaycanca gəlirdi. */
+const REGISTRATION_ERRORS: Record<string, string> = {
+  EVENT_FULL: "events.error.full",
+  REGISTRATION_CLOSED: "events.error.closed",
+  ALREADY_REGISTERED: "events.error.already",
+  EVENT_NOT_PUBLISHED: "events.error.notPublished",
+  EVENT_NOT_FOUND: "events.error.notFound",
+  REGISTRATION_NOT_FOUND: "events.error.registrationNotFound",
+};
+
+function registrationErrorKey(status: number, code: string | undefined, fallback: string) {
+  if (status === 401) return "admin.error.session";
+  return (code && REGISTRATION_ERRORS[code]) || fallback;
+}
+
+class RegistrationError extends Error {
+  readonly key: string;
+
+  constructor(key: string) {
+    super(key);
+    this.key = key;
+  }
+}
 
 type EventDrawerProps = {
   event: Event | null;
@@ -18,6 +40,7 @@ type EventDrawerProps = {
 };
 
 export function EventDrawer({ event, onClose }: EventDrawerProps) {
+  const t = useT();
   const { user } = useAuth();
   const userId = user?.id;
   const [registeredEventIds, setRegisteredEventIds] = useState<Set<string>>(() => new Set());
@@ -35,6 +58,8 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
     : false;
   const isRegistered = event ? registeredEventIds.has(event.id) : false;
   const isRegistrationStateLoading = Boolean(userId && loadedRegistrationUserId !== userId);
+  const startParts = event ? bakuDateParts(event.startAt) : null;
+  const startDate = startParts ? `${startParts.day} ${t(`month.${startParts.month}`)} ${startParts.year}` : "";
 
   useEffect(() => {
     if (!userId) return;
@@ -46,11 +71,11 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
       signal: controller.signal,
     })
       .then(async (response) => {
-        const payload = await response.json() as {
+        const payload = await response.json().catch(() => null) as {
           data?: Array<{ id: string; availableSpots: number }>;
-          error?: { message?: string };
-        };
-        if (!response.ok) throw new Error(payload.error?.message ?? "Tədbir qeydiyyatları yüklənmədi.");
+          error?: { code?: string };
+        } | null;
+        if (!response.ok || !payload) throw new RegistrationError(registrationErrorKey(response.status, payload?.error?.code, "events.error.registrationsLoad"));
         const registrations = payload.data ?? [];
         setRegisteredEventIds(new Set(registrations.map((item) => item.id)));
         setAvailableSpotsByEvent(Object.fromEntries(registrations.map((item) => [item.id, item.availableSpots])));
@@ -58,7 +83,7 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setRegistrationError(error instanceof Error ? error.message : "Tədbir qeydiyyatları yüklənmədi.");
+        setRegistrationError(error instanceof RegistrationError ? error.key : "events.error.registrationsLoad");
         setLoadedRegistrationUserId(userId);
       });
 
@@ -74,27 +99,27 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
       const response = await fetch(`/api/events/${encodeURIComponent(event.id)}/registrations`, {
         method: isRegistered ? "DELETE" : "POST",
       });
-      const payload = await response.json() as {
+      const payload = await response.json().catch(() => null) as {
         data?: { registered: boolean; event: { id: string; availableSpots: number } };
-        error?: { message?: string };
-      };
-      if (!response.ok) throw new Error(payload.error?.message ?? "Qeydiyyat tamamlanmadı.");
+        error?: { code?: string };
+      } | null;
+      if (!response.ok) throw new RegistrationError(registrationErrorKey(response.status, payload?.error?.code, "events.error.register"));
       setRegisteredEventIds((current) => {
         const next = new Set(current);
         if (isRegistered) next.delete(event.id);
         else next.add(event.id);
         return next;
       });
-      const updatedEvent = payload.data?.event;
+      const updatedEvent = payload?.data?.event;
       if (updatedEvent) {
         setAvailableSpotsByEvent((current) => ({
           ...current,
           [updatedEvent.id]: updatedEvent.availableSpots,
         }));
       }
-      setRegistrationFeedback(isRegistered ? "Tədbir qeydiyyatın geri çəkildi." : "Tədbirə qeydiyyatdan keçdin.");
+      setRegistrationFeedback(isRegistered ? "events.drawer.withdrawn" : "events.drawer.registered");
     } catch (error) {
-      setRegistrationError(error instanceof Error ? error.message : "Qeydiyyat tamamlanmadı.");
+      setRegistrationError(error instanceof RegistrationError ? error.key : "events.error.register");
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +176,7 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
           <motion.button
             type="button"
             className="drawer-backdrop"
-            aria-label="Tədbir təfərrüatlarını bağla"
+            aria-label={t("events.drawer.close")}
             onClick={onClose}
           />
 
@@ -172,13 +197,13 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
           >
             <div className="drawer-noise" aria-hidden="true" />
             <div className="drawer-topline">
-              <span>Tədbir / {eventCategoryLabels[event.category]}</span>
+              <span>{t("events.drawer.path", { category: t(`eventCategory.${event.category}`) })}</span>
               <button
                 ref={closeRef}
                 type="button"
                 onClick={onClose}
                 className="drawer-close"
-                aria-label="Tədbir təfərrüatlarını bağla"
+                aria-label={t("events.drawer.close")}
               >
                 <X size={20} strokeWidth={1.6} />
               </button>
@@ -189,55 +214,48 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
               style={event.imageUrl?{backgroundImage:`linear-gradient(135deg,rgba(8,37,31,.08),rgba(8,37,31,.5)),url("${event.imageUrl}")`}:undefined}
               aria-hidden="true"
             >
-              <motion.div
-                className="drawer-orb drawer-orb-one"
-                animate={reduceMotion ? undefined : { rotate: 360 }}
-                transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="drawer-orb drawer-orb-two"
-                animate={reduceMotion ? undefined : { rotate: -360 }}
-                transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-              />
+              {/* Əvvəl hər iki orb sonsuz fırlanırdı — dekorativ sonsuz animasiya olmasın. */}
+              <div className="drawer-orb drawer-orb-one" />
+              <div className="drawer-orb drawer-orb-two" />
               <Sparkles size={26} strokeWidth={1.25} />
             </div>
 
             <div className="drawer-content">
-              <span className="drawer-kicker">Tədbir məlumatı</span>
+              <span className="drawer-kicker">{t("events.drawer.kicker")}</span>
               <h2 id="event-drawer-title">{event.title}</h2>
               <p className="drawer-description">{event.longDescription}</p>
 
               <div className="drawer-facts">
                 <div>
                   <CalendarDays size={17} />
-                  <span>{formatAzDate(event.startAt)}</span>
+                  <span>{startDate}</span>
                 </div>
                 <div><Clock3 size={17} /><span>{event.time}</span></div>
                 <div><MapPin size={17} /><span>{event.location}, {event.city}</span></div>
               </div>
 
               <div className="drawer-hosts">
-                <span>Təşkilatçı</span>
+                <span>{t("events.drawer.organizer")}</span>
                 <p>{event.organizer}</p>
-                <span>Qonaqlar</span>
+                <span>{t("events.drawer.speakers")}</span>
                 <p>{event.speakers.join(" · ")}</p>
               </div>
 
               <div className="drawer-bottom">
-                <span>{event.capacity} · {availableSpots} boş yer</span>
+                <span>{t("events.drawer.capacity", { capacity: event.capacity, spots: availableSpots })}</span>
                 {registrationOpen || isRegistered ? (
                   user ? (
                     <button type="button" className={`reserve-button${isRegistered ? " is-registered" : ""}`} onClick={() => void toggleRegistration()} disabled={isSubmitting || isRegistrationStateLoading}>
-                      {isRegistrationStateLoading ? "Yoxlanılır…" : isSubmitting ? (isRegistered ? "Geri çəkilir…" : "Qeydiyyat edilir…") : isRegistered ? "Qeydiyyatı geri çək" : "Qeydiyyatdan keç"}
+                      {t(isRegistrationStateLoading ? "events.drawer.checking" : isSubmitting ? (isRegistered ? "events.drawer.withdrawing" : "events.drawer.registering") : isRegistered ? "events.drawer.withdraw" : "events.drawer.register")}
                       {isRegistered ? <Check size={17} /> : <ArrowRight size={17} />}
                     </button>
                   ) : (
                     <Link className="reserve-button" href="/auth?returnTo=%2Fevents">
-                      Qeydiyyat üçün daxil ol <ArrowRight size={17} />
+                      {t("events.drawer.signIn")} <ArrowRight size={17} />
                     </Link>
                   )
                 ) : (
-                  <span className="event-registration-closed">Qeydiyyat bağlıdır</span>
+                  <span className="event-registration-closed">{t("events.registrationClosed")}</span>
                 )}
               </div>
               <div className="drawer-share-row">
@@ -246,7 +264,7 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
                   href={`/api/events/${encodeURIComponent(event.id)}/calendar`}
                   download
                 >
-                  <CalendarPlus size={15} /> Təqvimə əlavə et
+                  <CalendarPlus size={15} aria-hidden="true" /> {t("events.drawer.calendar")}
                 </a>
                 <a
                   className="calendar-download"
@@ -254,11 +272,11 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <Share2 size={15} /> Paylaşım şəkli
+                  <Share2 size={15} aria-hidden="true" /> {t("events.drawer.share")}
                 </a>
               </div>
-              {registrationError && <p className="event-registration-error" role="alert">{registrationError}</p>}
-              <span className="sr-only" aria-live="polite">{registrationFeedback}</span>
+              {registrationError && <p className="event-registration-error" role="alert">{t(registrationError)}</p>}
+              <span className="sr-only" aria-live="polite">{registrationFeedback ? t(registrationFeedback) : ""}</span>
             </div>
           </motion.aside>
         </motion.div>
