@@ -317,6 +317,15 @@ chunk-dadır. Etibarlı yol: brauzerdə canlı səhifəni aç, `window.next?.ver
 oxu. **Hər markeri əvvəlcə lokal production build-də (`.next/static/chunks`)
 və HTML-in həqiqətən yüklədiyi faylda sına**, sonra canlıda gözlə.
 
+**Admin 2-ci hissədə eyni tələ bir daha:** tərcümə açarı markerini düzgün
+yoxladım (lokal build 1, production 0), sonra isə gözləmək üçün **başqa**,
+yoxlanmamış marker qoydum — `/events` HTML-inin chunk siyahısının heşi. 13 dəqiqə
+"dəyişmədi" dedi, halbuki deploy çoxdan olmuşdu: dəyişən kod (lüğət, CSS) HTML-in
+sadaladığı chunk-larda deyil, dinamik yüklənir. Brauzerdə yüklənmiş resursları
+(`performance.getEntriesByType('resource')`) yoxlayanda açar 0→1 idi.
+**Qayda:** gözləmə döngüsü də markerdir — onu da əvvəlcə yoxla, ya da birbaşa
+təsdiqlənmiş markeri döngüdə işlət.
+
 ### Backend dəyişikliyi yalnız girişlə görünürsə
 Render-in pulsuz planı boş qalanda yatır; soyuq başlanğıc da `/api/health`
 `uptime`-ını sıfırlayır. Ona görə kiçik `uptime` **deploy sübutu deyil**.
