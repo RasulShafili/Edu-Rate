@@ -296,6 +296,14 @@ for f in $JS; do B=$(curl -s "$URL$f")
 Anonim `curl` istifadəçiyə bağlı interfeysi görmür — markeri ya ictimai
 hissədən, ya da JS/CSS paketindən seç.
 
+### Asılılıq yeniləməsinin markeri: `window.next.version`
+Next 16.2.12 → 16.3.6 yeniləməsində chunk-larda `"16.3.6"` sətrini curl ilə
+axtardım: 20 cəhd boyunca köhnə=0, yeni=0 — 10 dəqiqə boşa getdi. Versiya
+`window.next={version:"16.3.6"}` şəklində HTML-in skript siyahısında olmayan
+chunk-dadır. Etibarlı yol: brauzerdə canlı səhifəni aç, `window.next?.version`
+oxu. **Hər markeri əvvəlcə lokal production build-də (`.next/static/chunks`)
+və HTML-in həqiqətən yüklədiyi faylda sına**, sonra canlıda gözlə.
+
 ### Backend dəyişikliyi yalnız girişlə görünürsə
 Render-in pulsuz planı boş qalanda yatır; soyuq başlanğıc da `/api/health`
 `uptime`-ını sıfırlayır. Ona görə kiçik `uptime` **deploy sübutu deyil**.
@@ -521,7 +529,8 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
 6. **Davamlılıq:** yeniləmədən sonra qalırmı?
 7. **Mobil:** 375px — üfüqi sürüşmə yox, toxunma hədəfi ≥44px.
 8. **Dil:** AZ ⇄ EN ⇄ RU.
-9. **Yoxlama:** `npm test` (frontend + backend), `npm run build`.
+9. **Yoxlama:** `.github/workflows/ci.yml`-in addımlarını **eyni ardıcıllıqla,
+   `TZ=UTC` ilə** işlət (§16) — təkcə `npm test` + `npm run build` kifayət deyil.
 10. **Commit + push**, sonra **canlı saytdan marker yoxla**.
 11. Plan faylını yenilə; bu fayla yeni dərs əlavə et.
 
@@ -629,3 +638,63 @@ Backend girişi 15 dəqiqədə 10 dəfə ilə məhdudlaşdırır. Hər yoxlama s
 yenidən daxil olmaq bu limiti bir sessiyada bitirdi (`RATE_LIMITED`). Hər
 hesaba skriptdə **bir dəfə** daxil ol və tokeni təkrar işlət; limit bitərsə
 QA serverini yenidən başlat.
+
+---
+
+## 16. CI: nəticəsini görmürəm, ona görə push-dan əvvəl təkrarla
+
+**Baş verdi:** GitHub Actions-in frontend işi ~10 push ardıcıl yıxıldı və mən
+heç birini görmədim — istifadəçi e-poçtlardan tapdı. `gh` quraşdırılmayıb, repo
+özəldir, Actions API giriş istəyir: **CI nəticəsi mənə görünmür.** Vercel CI-dən
+asılı deyil, ona görə deploy markeri "hər şey qaydasındadır" deyirdi.
+
+Üç ayrı səbəb bir-birini gizlədirdi:
+1. **`npm audit`** — kodu heç kim dəyişmədən yıxıldı: 8 sentyabrda `next`
+   (iki kritik RCE), `sharp`, `js-yaml` üçün xəbərdarlıq dərc olundu. Build də,
+   test də audit etmir.
+2. **Lint xətaları** — öz düzəlişlərim gətirmişdi (build lint etmir).
+3. **`tests/date.test.mjs`** — lokalda keçir, CI-də yıxılır: CI **UTC**-dədir,
+   maşın **Bakı (UTC+4)**. Test girişləri `+04:00` ilə yazılmışdı, funksiya isə
+   lokal həftə hesablayır. 24 avqustdan bəri belə idi; audit bir addım əvvəl
+   dayandırdığı üçün görünmürdü.
+
+**Qayda — hər push-dan əvvəl `ci.yml`-in addımları, eyni sıra ilə:**
+
+```bash
+export TZ=UTC
+npm ci && npm audit --audit-level=high && npm run lint && npm test && \
+  EDURATE_API_BASE_URL=https://edurate-api.onrender.com \
+  NEXT_PUBLIC_SITE_URL=https://edu-rate-nu.vercel.app \
+  EDURATE_APP_ORIGIN=https://edu-rate-nu.vercel.app npm run build
+cd backend && npm ci && npm audit --audit-level=high && npm run typecheck && npm test && npm run build
+```
+
+- `TZ=UTC` vacibdir — tarixlə bağlı test yalnız Bakı vaxtında keçə bilər.
+- Bir addım yıxılanda sonrakılar heç işləmir; düzəldəndən sonra **bütün
+  siyahını yenidən** işlət, yoxsa növbəti gizli səhv növbəti push-da çıxır.
+- Push-dan sonra hesabatda açıq de: "CI nəticəsini görə bilmirəm, lokal
+  təkrarı keçdi".
+
+### Asılılıq yeniləməsindən sonra tüstü yoxlaması
+Next minor yeniləməsi davranışı dəyişə bilər. Yoxlanan siyahı: bütün marşrutlar
+(anonim), qorunan səhifələr kuki ilə, BFF (kuki ilə 200, kukisiz 401), CSRF
+(yad `Origin` → 403), təzə tabda konsol, dil keçidi (`<html lang>`).
+
+**Yalançı reqressiya (tutuldu):** kukisiz `/profile` 200 qaytardı — "qoruma
+itib" kimi göründü. Əslində axın daxilində yönləndirmədir: gövdədə
+`NEXT_REDIRECT;replace;/auth?…;307` və `<meta http-equiv="refresh">`. Production
+(köhnə versiya) eyni cavabı verdi. **Anomaliyanı reqressiya adlandırmazdan əvvəl
+canlı saytla müqayisə et** — tab başlığının tərcümə olunmaması və `notFound()`
+200-ü də köhnə davranış çıxdı.
+
+## 17. Lokal serverlər: preview alətləri ilə
+
+`preview_start` `C:\FIGHTBASE\.claude\launch.json`-u oxuyur (işçi qovluq odur).
+Orada `edurate-api` (qa-server, `node --env-file=backend/.env … tsx`) və
+`edurate-dev` konfiqurasiyaları var. `next.config.ts`-də
+`turbopack.root: process.cwd()` olduğu üçün Next dev **Edu-Rate qovluğundan**
+başlamalıdır, yoxsa Turbopack "distDirRoot should not navigate out of the
+projectPath" deyib panik edir (versiya səhvi deyil). Ona görə `edurate-dev`
+scratchpad-dəki `edurate-dev.mjs` launcher-i işlədir (`process.chdir` + Next
+bin). Scratchpad təmizlənibsə launcher-i yenidən yaz; yolda boşluq var —
+`fileURLToPath` işlət, `URL.pathname` yox (`%20` verir).
