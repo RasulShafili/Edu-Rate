@@ -112,9 +112,14 @@ export function ScheduleExperience() {
    */
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    setNow(new Date());
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
+    // setState effektin içində birbaşa yox, taymerdə — lint qaydası (set-state-in-effect).
+    const tick = () => setNow(new Date());
+    const first = window.setTimeout(tick, 0);
+    const timer = window.setInterval(tick, 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {

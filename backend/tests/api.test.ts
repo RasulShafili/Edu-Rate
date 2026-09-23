@@ -1238,8 +1238,13 @@ describe("Klub görünürlüyü və silmə səlahiyyəti", () => {
       .expect(201);
     assert.ok(seeded.body.data);
     await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", studentAuth).expect(403);
-    await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", assistantAuth).expect(403);
     await request(app).delete("/api/clubs/silinecek-klub").set("Authorization", ownerAuth).expect(204);
+    // API sənədinə görə admin köməkçisinin klub CRUD səlahiyyəti var (admin marşrutu
+    // artıq icazə verirdi) — bu marşrut indi onunla eynidir.
+    await request(app).post("/api/admin/clubs").set("Authorization", ownerAuth)
+      .send({ name: "Köməkçinin Sildiyi Klub", slug: "komekci-klub", category: "Akademik", coordinatorInitials: "KK", status: "Aktiv" })
+      .expect(201);
+    await request(app).delete("/api/clubs/komekci-klub").set("Authorization", assistantAuth).expect(204);
   });
 });
 
@@ -1462,5 +1467,57 @@ describe("İş paneli", () => {
     assert.equal(approvedView.body.data.items.length, 1);
     assert.equal(approvedView.body.data.items[0].course, "Riyazi analiz");
     assert.equal(approvedView.body.data.items[0].userId, undefined);
+  });
+});
+
+describe("Admin paneli", () => {
+  it("adi admin rol yüksəldə və administrator hesabını dəyişə bilmir (D3); elanın prioriteti dərcdə qalır", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const admin = await createUser({ ...base, name: "Adi Admin", email: "d3.admin@example.az", role: "admin" });
+    const otherAdmin = await createUser({ ...base, name: "Digər Admin", email: "d3.other@example.az", role: "admin" });
+    const assistant = await createUser({ ...base, name: "D3 Köməkçi", email: "d3.assistant@example.az", role: "assistant_admin" });
+    const student = await createUser({ ...base, name: "D3 Tələbə", email: "d3.student@example.az", role: "student" });
+    const adminAuth = `Bearer ${createAccessToken(admin)}`;
+    const ownerAuth = `Bearer ${reusableAdminToken}`;
+
+    // Reqressiya D3: adi admin tələbəni admin / admin köməkçisi edirdi.
+    const escalation = await request(app).patch(`/api/admin/users/${student.id}`).set("Authorization", adminAuth).send({ role: "admin" }).expect(403);
+    assert.equal(escalation.body.error.code, "ROLE_ESCALATION_FORBIDDEN");
+    await request(app).patch(`/api/admin/users/${student.id}`).set("Authorization", adminAuth).send({ role: "assistant_admin" }).expect(403);
+    // Reqressiya D4 (backend tərəfi): başqa admini tələbəyə endirmək və ya məhdudlaşdırmaq.
+    const demotion = await request(app).patch(`/api/admin/users/${otherAdmin.id}`).set("Authorization", adminAuth).send({ role: "student" }).expect(403);
+    assert.equal(demotion.body.error.code, "PRIVILEGED_USER_MODIFICATION_FORBIDDEN");
+    await request(app).patch(`/api/admin/users/${assistant.id}`).set("Authorization", adminAuth).send({ status: "Məhdudlaşdırılıb" }).expect(403);
+    // Adi istifadəçi ilə işləmək olar.
+    const renamed = await request(app).patch(`/api/admin/users/${student.id}`).set("Authorization", adminAuth).send({ name: "D3 Tələbə Yeni", role: "teacher" }).expect(200);
+    assert.equal(renamed.body.data.role, "teacher");
+    // Platforma sahibi administrator rolu verə bilir.
+    await request(app).patch(`/api/admin/users/${student.id}`).set("Authorization", ownerAuth).send({ role: "assistant_admin" }).expect(200);
+    // Cədvəldə sabit "Real hesab" yox, real e-poçt vəziyyəti.
+    const users = await request(app).get("/api/admin/users?pageSize=100").set("Authorization", ownerAuth).expect(200);
+    const row = users.body.data.items.find((item: { id: string }) => item.id === student.id);
+    assert.equal(typeof row.emailVerified, "boolean");
+    assert.notEqual(row.metric, "Real hesab");
+
+    // Reqressiya: "Yayımla" (yalnız status) prioriteti sıfırlayırdı, yalnız başlıq
+    // dəyişən PATCH isə elanı qaralamaya qaytarırdı.
+    const now = Date.now();
+    const created = await request(app).post("/api/admin/announcements").set("Authorization", ownerAuth).send({
+      category: "official", title: "Prioritetli elan", summary: "İmtahan cədvəli dəyişib, yeni saatlara baxın.",
+      source: "Tədris şöbəsi", sourceInitials: "TŞ", tone: "lime",
+      startsAt: new Date(now - 60_000).toISOString(), expiresAt: new Date(now + 86_400_000).toISOString(), priority: true,
+    }).expect(201);
+    const id = created.body.data.id as string;
+    const published = await request(app).patch(`/api/admin/announcements/${id}`).set("Authorization", ownerAuth).send({ status: "published" }).expect(200);
+    assert.equal(published.body.data.priority, true);
+    assert.equal(published.body.data.status, "published");
+    const retitled = await request(app).patch(`/api/admin/announcements/${id}`).set("Authorization", ownerAuth).send({ title: "Prioritetli elan (yenilənib)" }).expect(200);
+    assert.equal(retitled.body.data.status, "published");
+    assert.equal(retitled.body.data.priority, true);
   });
 });

@@ -34,12 +34,16 @@ export function isAssignableUserRole(value: unknown): value is AssignableUserRol
   return value === "student" || value === "mentor" || value === "teacher";
 }
 
+/**
+ * Administrator hesablarını yalnız platforma sahibi dəyişir — `canEditPrivilegedUsers`
+ * ilə eyni qayda. Əvvəl adi admin digər adminləri redaktə edə bilirdi (D4) və backend
+ * də buna icazə verirdi (D3).
+ */
 export function canEditUserRole(
   actorRole: AdminAccessRole,
   targetRole: string,
 ): boolean {
   if (actorRole === "owner_admin") return true;
-  if (actorRole === "admin") return targetRole !== "owner_admin";
   return isAssignableUserRole(targetRole);
 }
 

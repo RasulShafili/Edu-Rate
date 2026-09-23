@@ -40,7 +40,7 @@ import {
   synchronizeProfessionalProfilesForUser,
 } from "../db/professionals.js";
 import { listAudit, writeAudit } from "../db/audit.js";
-import { createAnnouncement, deleteAnnouncement, deleteFeedPost, listAdminAnnouncements, listAdminFeed, updateAnnouncement, updateFeedPostStatus } from "../db/network.js";
+import { createAnnouncement, deleteAnnouncement, deleteFeedPost, findAnnouncementById, listAdminAnnouncements, listAdminFeed, updateAnnouncement, updateFeedPostStatus } from "../db/network.js";
 import { decideMentorApplication, listMentorApplications } from "../db/mentor-applications.js";
 import { ensureClubConversation, listContentReports, updateContentReport } from "../db/messaging.js";
 import { createActionToken } from "../db/auth-security.js";
@@ -84,7 +84,12 @@ const eventSchema = z.object({
   place: z.string().trim().min(2).max(180),
   status: z.enum(["Açıq", "Qaralama", "Tamamlanıb"]).optional(),
 });
-const announcementSchema=z.object({category:z.enum(["official","faculties","clubs","scholarship","events"]),title:z.string().trim().min(3).max(180),summary:z.string().trim().min(10).max(800),source:z.string().trim().min(2).max(140),sourceInitials:z.string().trim().min(1).max(8),tone:z.enum(["lime","lilac","blue","coral","mint","gold"]),startsAt:z.string().datetime({offset:true}),expiresAt:z.string().datetime({offset:true}),priority:z.boolean().default(false),status:z.enum(["draft","published"]).default("draft")});
+const announcementFields={category:z.enum(["official","faculties","clubs","scholarship","events"]),title:z.string().trim().min(3).max(180),summary:z.string().trim().min(10).max(800),source:z.string().trim().min(2).max(140),sourceInitials:z.string().trim().min(1).max(8),tone:z.enum(["lime","lilac","blue","coral","mint","gold"]),startsAt:z.string().datetime({offset:true}),expiresAt:z.string().datetime({offset:true}),priority:z.boolean(),status:z.enum(["draft","published"])};
+const announcementSchema=z.object({...announcementFields,priority:announcementFields.priority.default(false),status:announcementFields.status.default("draft")});
+// `.partial()` sahədəki `default()`-u yenə tətbiq edir: "Yayımla" (yalnız status)
+// elanın prioritetini sıfırlayırdı, yalnız başlıq dəyişən PATCH isə dərc olunmuş
+// elanı qaralamaya qaytarırdı. PATCH sxemi default-suzdur.
+const announcementPatchSchema=z.object(announcementFields).partial();
 
 adminRouter.get("/overview", async (_request, response) => {
   const [users, events, platform, audit, clubs] = await Promise.all([listUsers(10_000), listEvents(false), getPlatformCounts(), listAudit(6), listClubs()]);
@@ -175,8 +180,17 @@ adminRouter.patch("/users/:id", async (request, response) => {
   const patch = userSchema.partial().parse(request.body);
   const target = await findUserById(id);
   if (!target) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
-  if (request.auth!.role !== "owner_admin" && (target.role === "owner_admin" || patch.role === "owner_admin")) {
-    throw new ApiError(403, "OWNER_MODIFICATION_FORBIDDEN", "Platforma sahibinin hesabını yalnız başqa platforma sahibi dəyişə bilər.");
+  // D3: əvvəl burada yalnız `owner_admin` qorunurdu — adi admin API ilə istənilən
+  // istifadəçini admin/admin köməkçisi edə, digər adminləri tələbəyə endirə və ya
+  // məhdudlaşdıra bilirdi. İnterfeysin öz qaydası (`canAssignElevatedRoles`,
+  // `canEditPrivilegedUsers`) bunları yalnız platforma sahibinə verir.
+  if (request.auth!.role !== "owner_admin") {
+    if (isElevatedRole(target.role)) {
+      throw new ApiError(403, "PRIVILEGED_USER_MODIFICATION_FORBIDDEN", "Administrator hesablarını yalnız platforma sahibi dəyişə bilər.");
+    }
+    if (patch.role !== undefined && isElevatedRole(patch.role)) {
+      throw new ApiError(403, "ROLE_ESCALATION_FORBIDDEN", "Administrator rollarını yalnız platforma sahibi verə bilər.");
+    }
   }
   if (
     id === request.auth!.userId &&
@@ -220,20 +234,26 @@ adminRouter.get("/clubs", async (request, response) => {
   response.json({ data: paginate(filterRows(clubs, request.query), request.query) });
 });
 
+// Klub və tədbir əməliyyatları əvvəl audit jurnalına yazılmırdı — elan, rəy,
+// şikayət kimi digər admin əməliyyatlarından fərqli olaraq izsiz qalırdı.
 adminRouter.post("/clubs", async (request, response) => {
   const club = await createClub(clubSchema.parse(request.body), request.auth!.userId);
   await ensureClubConversation(club);
+  await writeAudit(request.auth!.userId, "Klub yaradıldı", "club", club.id);
   response.status(201).json({ data: toAdminClub(club) });
 });
 
 adminRouter.patch("/clubs/:id", async (request, response) => {
   const club = await updateClub(z.string().parse(request.params.id), clubSchema.partial().parse(request.body));
   if (!club) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  await writeAudit(request.auth!.userId, "Klub yeniləndi", "club", club.id);
   response.json({ data: toAdminClub(club) });
 });
 
 adminRouter.delete("/clubs/:id", async (request, response) => {
-  if (!(await deleteClub(z.string().parse(request.params.id)))) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  const id = z.string().parse(request.params.id);
+  if (!(await deleteClub(id))) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  await writeAudit(request.auth!.userId, "Klub silindi", "club", id);
   response.status(204).send();
 });
 
@@ -245,6 +265,7 @@ adminRouter.get("/events", async (request, response) => {
 adminRouter.post("/events", async (request, response) => {
   const input = eventSchema.parse(request.body);
   const event = await createEvent(toEventInput(input), request.auth!.userId);
+  await writeAudit(request.auth!.userId, "Tədbir yaradıldı", "event", event.id);
   response.status(201).json({ data: toAdminEvent(event, input.status) });
 });
 
@@ -275,11 +296,14 @@ adminRouter.patch("/events/:id", async (request, response) => {
     registrationDeadline: patch.startAt ? generated.registrationDeadline : current.registrationDeadline,
     adminStatus: patch.status ?? current.adminStatus,
   });
+  await writeAudit(request.auth!.userId, "Tədbir yeniləndi", "event", id, patch.status ? { status: patch.status } : {});
   response.json({ data: toAdminEvent(event!, patch.status) });
 });
 
 adminRouter.delete("/events/:id", async (request, response) => {
-  if (!(await deleteEvent(z.string().parse(request.params.id)))) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
+  const id = z.string().parse(request.params.id);
+  if (!(await deleteEvent(id))) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
+  await writeAudit(request.auth!.userId, "Tədbir silindi", "event", id);
   response.status(204).send();
 });
 
@@ -295,7 +319,22 @@ adminRouter.post("/announcements",async(request,response)=>{
   }
   response.status(201).json({data:item});
 });
-adminRouter.patch("/announcements/:id",async(request,response)=>{const id=z.string().parse(request.params.id);const item=await updateAnnouncement(id,announcementSchema.partial().parse(request.body));if(!item)throw new ApiError(404,"ANNOUNCEMENT_NOT_FOUND","Elan tapılmadı.");await writeAudit(request.auth!.userId,"Elan yeniləndi","announcement",id);response.json({data:item});});
+adminRouter.patch("/announcements/:id",async(request,response)=>{
+  const id=z.string().parse(request.params.id);
+  const input=announcementPatchSchema.parse(request.body);
+  const before=await findAnnouncementById(id);
+  const item=await updateAnnouncement(id,input);
+  if(!item)throw new ApiError(404,"ANNOUNCEMENT_NOT_FOUND","Elan tapılmadı.");
+  await writeAudit(request.auth!.userId,"Elan yeniləndi","announcement",id);
+  // İnterfeys elanı həmişə qaralama kimi yaradır və "Yayımla" ilə bu marşrutdan
+  // dərc edir; push isə yalnız birbaşa dərc olunmuş yaradılanda gedirdi — yəni
+  // interfeysdən heç vaxt getmirdi.
+  if(input.status==="published"&&before?.status!=="published"){
+    void sendPush({title:"Yeni elan",body:String((item as {title?:unknown}).title??""),url:"/feed",tag:`announcement-${id}`})
+      .catch((error)=>console.error("Push bildirişi göndərilmədi.",error));
+  }
+  response.json({data:item});
+});
 adminRouter.delete("/announcements/:id",async(request,response)=>{const id=z.string().parse(request.params.id);if(!await deleteAnnouncement(id))throw new ApiError(404,"ANNOUNCEMENT_NOT_FOUND","Elan tapılmadı.");await writeAudit(request.auth!.userId,"Elan silindi","announcement",id);response.status(204).send();});
 
 adminRouter.get("/feed",async(request,response)=>{
@@ -374,6 +413,10 @@ adminRouter.patch("/mentor-applications/:id", async (request, response) => {
   response.json({ data: application });
 });
 
+function isElevatedRole(role: string) {
+  return role === "admin" || role === "assistant_admin" || role === "owner_admin";
+}
+
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join("");
 }
@@ -383,7 +426,9 @@ function toAdminUser(user: UserRecord) {
     kind: "users", id: user.id, name: user.name, email: user.email, initials: initials(user.name), role: user.role,
     university: user.university, faculty: user.faculty, connectionCount: 0, joinedAt: user.createdAt,
     lastActiveAt: user.updatedAt, detail: `${user.role} · ${user.faculty}`, status: user.status,
-    metric: "Real hesab", updatedAt: user.updatedAt,
+    // Əvvəl hər istifadəçi üçün sabit "Real hesab" yazılırdı — heç nə bildirmirdi.
+    emailVerified: Boolean(user.emailVerifiedAt),
+    metric: user.emailVerifiedAt ? "E-poçt təsdiqlənib" : "E-poçt təsdiqlənməyib", updatedAt: user.updatedAt,
   };
 }
 

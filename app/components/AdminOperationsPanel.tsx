@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, FileText, Flag, Inbox, Megaphone, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, FileText, Flag, Inbox, Megaphone, Plus, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { uploadSecureImage } from "../lib/media-upload";
 import { ImageDraftPicker } from "./ImageDraftPicker";
@@ -111,7 +111,9 @@ export function AdminOperationsPanel() {
     setBusyId("new");
     setError("");
     try {
-      const startsAt=new Date(Date.now()+24*60*60*1000).toISOString();
+      // Əvvəl başlama vaxtı "indidən 24 saat sonra" idi — bu gün dərc olunan elanın
+      // kartında sabahın tarixi yazılırdı.
+      const startsAt=new Date().toISOString();
       const expiresAt=new Date(Date.now()+30*24*60*60*1000).toISOString();
       const response=await fetch("/api/admin/announcements",{
         method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
@@ -201,6 +203,11 @@ export function AdminOperationsPanel() {
                 {tab === "support-tickets" && item.status !== "resolved" && (
                   <button disabled={busyId === item.id} onClick={() => void changeStatus(item, item.status === "open" ? "in_progress" : "resolved")}>
                     <Check size={14} /> {item.status === "open" ? "İcraya al" : "Həll et"}
+                  </button>
+                )}
+                {tab === "support-tickets" && item.status === "resolved" && (
+                  <button disabled={busyId === item.id} onClick={() => void changeStatus(item, "open")}>
+                    <RotateCcw size={14} /> Yenidən aç
                   </button>
                 )}
                 {tab === "reports" && (item.status === "open" || item.status === "reviewing") && <>

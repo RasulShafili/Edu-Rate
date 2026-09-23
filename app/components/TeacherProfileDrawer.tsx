@@ -10,7 +10,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import type { Teacher } from "../types/professionals";
 import { formatDecimalScore, formatInteger } from "../lib/number-format";
@@ -25,6 +25,8 @@ type TeacherProfileDrawerProps = {
   onExitComplete: () => void;
   onChooseForRating: (teacher: Teacher) => void;
 };
+
+const subscribeNoop = () => () => {};
 
 export function TeacherProfileDrawer({
   teacher,
@@ -48,8 +50,10 @@ export function TeacherProfileDrawer({
    * atıb yenidən qururdu — konsolda "Hydration failed" xətası bundan gəlirdi.
    * `mounted` bayrağı ilk render-i hər iki tərəfdə eyni (null) saxlayır.
    */
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Serverdə və hidrasiya render-ində `false`, sonra `true` — portal yalnız
+  // brauzerdə qurulur. `useEffect(() => setMounted(true))` eyni işi görürdü,
+  // amma effekt içində setState lint qaydasını pozurdu.
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
 
   useEffect(() => {
     if (!teacher) return;

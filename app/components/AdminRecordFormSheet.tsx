@@ -11,14 +11,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import type {
   AdminClub,
@@ -32,6 +25,8 @@ import type {
 } from "../data/admin";
 import { SecureImagePicker } from "./SecureImagePicker";
 import { ImageDraftPicker } from "./ImageDraftPicker";
+
+const subscribeNoop = () => () => {};
 
 export type AdminRecordSheetMode = "create" | "edit" | "delete";
 
@@ -74,8 +69,10 @@ export function AdminRecordFormSheet({
   userRoleOnly,
 }: AdminRecordFormSheetProps) {
   const reducedMotion = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // Serverdə və hidrasiya render-ində `false`, sonra `true` — portal yalnız
+  // brauzerdə qurulur. `useEffect(() => setMounted(true))` eyni işi görürdü,
+  // amma effekt içində setState lint qaydasını pozurdu.
+  const mounted = useSyncExternalStore(subscribeNoop, () => true, () => false);
   const titleId = useId();
   const descriptionId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -400,6 +397,9 @@ function UserFields({
           )}
           {record?.role === "mentor" ? <option value="mentor">Mentor (köhnə)</option> : null}
           {record?.role === "owner_admin" ? <option value="owner_admin">Platforma sahibi (köhnə)</option> : null}
+          {!canAssignElevatedRoles && (record?.role === "admin" || record?.role === "assistant_admin") ? (
+            <option value={record.role}>{record.role === "admin" ? "Administrator" : "Admin köməkçisi"} (cari)</option>
+          ) : null}
         </select>
       </Field>
       <Field label="Universitet" name="university" required>

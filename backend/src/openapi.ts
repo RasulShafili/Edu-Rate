@@ -517,7 +517,7 @@ export const openApiDocument = {
         type: "string",
         enum: ["student", "mentor", "teacher", "assistant_admin", "admin", "owner_admin"],
         description:
-          "admin: tam səlahiyyət; assistant_admin: klub/tədbir CRUD və adi istifadəçilərə student/mentor/teacher rolu vermək; digər rollar: standart istifadəçi səlahiyyətləri.",
+          "owner_admin: tam səlahiyyət, istifadəçi yaratma/silmə və administrator rolları vermək; admin: bütün məzmun, adi istifadəçilərin məlumatı, rolu və statusu (administrator hesablarını dəyişə və administrator rolu verə bilməz); assistant_admin: məzmun moderasiyası — klub/tədbir CRUD, elanlar, lent, rəylər, şikayətlər, dəstək müraciətləri, mentor müraciətləri — və adi istifadəçilərə student/mentor/teacher rolu vermək; başqasının profil şəklini silə bilməz; digər rollar: standart istifadəçi səlahiyyətləri.",
       },
       HealthResponse: {
         type: "object",

@@ -35,8 +35,12 @@ export function CookieConsent() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setConsent(readConsent());
-    setReady(true);
+    // setState effektin içində birbaşa yox, taymerdə — lint qaydası (set-state-in-effect).
+    const timer = window.setTimeout(() => {
+      setConsent(readConsent());
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function choose(value: Consent) {

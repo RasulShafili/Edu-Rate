@@ -225,7 +225,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
     ) {
       setFeedback({
         id: Date.now(),
-        message: "Admin köməkçisi administrator hesablarını və öz hesabını dəyişə bilməz.",
+        message: "Administrator hesablarını (öz hesabın daxil) yalnız platforma sahibi dəyişə bilər.",
       });
       return;
     }

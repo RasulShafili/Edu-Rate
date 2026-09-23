@@ -31,7 +31,10 @@ const CLUB_LEADERSHIP = ["owner_admin", "admin", "assistant_admin"] as const;
  * `admin` isə bilirdi — səlahiyyət pilləsi tərsinə işləyirdi. Silmə dağıdıcı
  * əməliyyat olduğu üçün `assistant_admin` bilərəkdən kənarda saxlanılır.
  */
-const CLUB_DELETERS = ["owner_admin", "admin"] as const;
+// API sənədi admin köməkçisinə "klub/tədbir CRUD" verir və admin paneli də ona
+// silmə düyməsi göstərir; `/api/admin/clubs/:id` artıq icazə verirdi. Yalnız bu
+// marşrut onu kənarda saxlayırdı — qaydalar bir-birinə zidd idi.
+const CLUB_DELETERS = ["owner_admin", "admin", "assistant_admin"] as const;
 
 function isLeadershipRole(role: string) {
   return (CLUB_LEADERSHIP as readonly string[]).includes(role);
