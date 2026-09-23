@@ -1756,7 +1756,6 @@ body {
 /* Admin and technical page */
 .kuds-shell .admin-dashboard { display: block !important; min-height: auto !important; padding: 0 !important; }
 .kuds-shell .admin-main { min-width: 0 !important; padding: 0 !important; }
-.kuds-shell .admin-sidebar { display: none !important; }
 .kuds-shell .admin-header { margin: 0 0 24px !important; padding: 0 0 20px !important; border-color: var(--kuds-border) !important; }
 .kuds-shell .admin-header :is(h1, h2, p, span) { color: var(--kuds-text) !important; }
 .kuds-shell .admin-header p,
