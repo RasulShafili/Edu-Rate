@@ -286,7 +286,8 @@ marker həm köhnə, həm yeni kodda "tapılmadı" verirdi.
 xas mətnin **getdiyini** və yeni koda xas açarın **gəldiyini** eyni anda yoxla:
 
 ```bash
-JS=$(curl -s "$URL/<yol>" | grep -o '/_next/static/chunks/[^"]*\.js' | sort -u)
+JS=$(curl -s "$URL/<yol>" | grep -oE '/_next/static/[a-z/]*chunks/[^"\\ ]*\.js' | sort -u)
+echo "fayl sayi: $(echo "$JS" | wc -w)"   # 0 -> naxis sehvdir, netice hec ne subut etmir
 for f in $JS; do B=$(curl -s "$URL$f")
   echo "$B" | grep -q '<KOHNE METN>' && OLD=$((OLD+1))
   echo "$B" | grep -q '<YENI ACAR>'  && NEW=$((NEW+1)); done
@@ -295,6 +296,18 @@ for f in $JS; do B=$(curl -s "$URL$f")
 
 Anonim `curl` istifadəçiyə bağlı interfeysi görmür — markeri ya ictimai
 hissədən, ya da JS/CSS paketindən seç.
+
+**Next 16.3.6-dan bəri aktiv yolu dəyişib:** `/_next/static/immutable/chunks/`.
+Köhnə `'/_next/static/chunks/'` naxışı canlı HTML-də **heç bir fayl** tapmır və
+marker 0/0 verir — "köhnə mətn getdi" kimi oxunur (Ölü admin kodu sessiyasında
+baza ölçüsündə tutuldu). Ona görə yuxarıdakı naxış `[a-z/]*chunks` işlədir və
+fayl sayını çap edir.
+
+**Yalnız silmə olan dəyişiklikdə "yeni açar" yoxdur.** Onda ikinci tərəf
+**nəzarət sinfidir**: eyni CSS/JS faylında qalan canlı bir sinif (məsələn
+`admin-table-action`). Keçid şərti: `OLD=0` **və** `CTRL>0` **və** fayl sayı > 0.
+Push-dan **əvvəl** canlıda baza ölç (`OLD>0, CTRL>0`), lokal build-də isə
+gözlənilən son halı (`OLD=0, CTRL>0`) — hər iki tərəf ölçülmüş olsun.
 
 ### Asılılıq yeniləməsinin markeri: `window.next.version`
 Next 16.2.12 → 16.3.6 yeniləməsində chunk-larda `"16.3.6"` sətrini curl ilə
@@ -457,8 +470,15 @@ cəhddə "0 dəfə" deyib dayandı. Fayl tipinə görə təxmin etmə; **hər fa
 aşkarla (`file <yol>` və ya aşağıdakı kod). Git `autocrlf` işlədir, ona görə
 repoda LF, işçi nüsxədə qarışıqdır.
 
-Köhnə qeyd: `app/globals.css`, `app/kuds.css` **CRLF** sətir sonu
-işlədir. `newline=""` ilə oxuyanda çoxsətirli lövbərdəki `\n` **heç vaxt uyğun
+**Git Bash-da `grep $'\r'` ilə yoxlama yalandır.** Windows üçün GNU grep
+faylı oxuyarkən CR-ı atır, ona görə CRLF faylı "LF" kimi göstərir. Ölü admin
+kodu sessiyasında `kuds.css`-i belə "LF" saydım; baytlarla oxuyan skript
+düzgün olaraq CRLF tapdı. Yalnız bayt səviyyəsində yoxla:
+`python -c "import sys;print(b'\r\n' in open(sys.argv[1],'rb').read())" <fayl>`
+və ya `file <fayl>`.
+
+Köhnə qeyd (artıq etibarsız — hər dəfə ölç): `app/globals.css`, `app/kuds.css` **CRLF** sətir sonu
+işlədir (sentyabr 2026-da `globals.css` işçi nüsxədə LF, `kuds.css` CRLF idi). `newline=""` ilə oxuyanda çoxsətirli lövbərdəki `\n` **heç vaxt uyğun
 gəlmir** — lövbər tapılmır, skript isə düzgün işləyir. Faylın öz sonluğunu
 aşkarla (`eol = "\r\n" if "\r\n" in text else "\n"`) və lövbəri onunla qur;
 yazarkən də `newline=""` saxla, yoxsa bütün fayl bir commit-də dəyişmiş görünür.
@@ -471,7 +491,7 @@ keşi faylı başlanğıc versiyasında saxlayırdı. Üslub ölçməzdən əvv�
 CSS-i yoxla, fərqlidirsə dev serveri dayandır, **`.next/dev`-i sil**, yenidən başlat:
 
 ```bash
-CSS=$(curl -s localhost:3000/<yol> | grep -o '/_next/static/chunks/[^"]*\.css' | sort -u)
+CSS=$(curl -s localhost:3000/<yol> | grep -oE '/_next/static/[a-z/]*chunks/[^"\\ ]*\.css' | sort -u)
 for f in $CSS; do curl -s "localhost:3000$f" | grep -c '<yeni-qayda>'; done
 ```
 
@@ -534,6 +554,20 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
 10. **Commit + push**, sonra **canlı saytdan marker yoxla**.
 11. Plan faylını yenilə; bu fayla yeni dərs əlavə et.
 
+**Eyni işçi qovluqda başqa sessiya ola bilər.** Ölü admin kodu sessiyasında
+iş gedərkən başqa sessiya eyni repoda iki commit etdi (`tests/date.test.mjs`,
+bu fayl) — başlanğıcdakı "dəyişdirilmiş" fayl birdən təmiz göründü. Qaydalar:
+- Başlanğıcda gördüyün yad dəyişikliyi (izlənməyən `AGENTS.md`/`CLAUDE.md`,
+  başqasının fayl dəyişikliyi) **öz commit-inə qatma**.
+- Commit-i **yol siyahısı ilə** et: `git commit -F msg -- <yol1> <yol2>` —
+  `-a` və `git add -A` yox. Sonra `git show --stat HEAD` ilə yalnız öz
+  fayllarını gör.
+- Commit və push-dan əvvəl `git fetch` + `git log`: HEAD dəyişibmi?
+- Bu faylı redaktə etməzdən əvvəl onu **yenidən oxu** — o biri sessiya da
+  buraya yazır.
+- `npm ci` `node_modules`-i silir və o biri sessiyanın dev serverini yıxa
+  bilər; `package.json`/lock dəyişməyibsə onu atla və bunu açıq de.
+
 ---
 
 ## 13. Əhatədən kənar (istifadəçinin qərarı)
@@ -566,6 +600,27 @@ canlı siniflərlə eyni qaydanın içində olur
 (`:is(.event-card, .peer-card, .community-card-shell)`). Bütün qaydanı silmək
 canlı kartların üslubunu aparır. Skriptə qoru qoy: bir sətri **yalnız** onun
 bütün selektorları ölü sinfə aid olduqda sil, əks halda `SystemExit` at.
+
+**Qalan tərəfdaşın canlılığını da yoxla — amma onu öz başına silmə.**
+`.admin-sidebar, .admin-skeleton__sidebar { … }` siyahısında
+`.admin-skeleton__sidebar` saxlanmalı idi, çünki ölü komponent onu render
+etmirdi. Yoxlayanda məlum oldu ki, onu **heç bir** TSX render etmir — o da
+əvvəldən ölü idi. Belə tapıntını istifadəçiyə ayrıca bildir; əhatəni səssizcə
+genişləndirmə.
+
+**Kaskad: silinən faylın idxallarını tərsinə yoxla.** Komponent silinəndə
+yalnız onun işlətdiyi köməkçilər də ölür. `AdminClientAccessGate` silinəndə
+`app/lib/auth/admin-session.ts` (`parseAdminSessionPayload`) və
+`AdminSkeleton`-ın `scope="gate"` qolu (`.admin-access-skeleton*` CSS ilə)
+istifadəçisiz qaldı. Silinən faylın **hər idxalı** üçün
+`grep -rn '<ixrac adi>'` işlət; tək istifadəçi silinən fayldırsa, bunu
+hesabatda göstər.
+
+**Sinfin adını daşıyan xüsusi xassə də ölü ola bilər.** `--admin-sidebar-width`
+canlı `.admin-dashboard` qaydasında elan olunurdu, onu isə yalnız ölü
+`.admin-sidebar` oxuyurdu. Prefiks grep-i bunu tutur; yalnız elan sətrini sil
+(bütün gövdəsi bu xassə olan qaydanı isə tam), qalan qaydaya toxunma. Əvvəlcə
+`grep -rn 'var(--<ad>'` ilə başqa oxuyan olmadığını təsdiqlə.
 
 **Sonda sıfırı təsdiqlə:** `grep -rn '<sinif-prefiksi>'` boş qaytarmalıdır,
 sonra `npx tsc --noEmit` + `npm test` + `npm run build`. Build vacibdir — CSS-i
