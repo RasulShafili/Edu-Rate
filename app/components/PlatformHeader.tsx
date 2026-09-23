@@ -36,7 +36,7 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
         <div className="platform-breadcrumb" aria-label="Səhifə yolu">
           <span>EduRate</span>
           <ChevronRight size={14} aria-hidden="true" />
-          <strong>{t(routeLabelKeys[pathname] ?? context.label)}</strong>
+          <strong>{t(routeLabelKeys[pathname] ?? context.labelKey)}</strong>
         </div>
       </div>
 

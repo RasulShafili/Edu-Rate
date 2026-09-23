@@ -23,10 +23,11 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { formatAzDate } from "../lib/date";
+import { bakuDateParts } from "../lib/date";
 import {
   getPlatformRouteContext,
   platformSearchItems,
+  platformSectionCount,
   type PlatformRouteContext,
 } from "../data/platform-shell";
 import { useAuth } from "./AuthProvider";
@@ -55,16 +56,34 @@ type UtilityContentProps = {
 
 const utilityTabs: readonly {
   id: UtilityTab;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
 }[] = [
-  { id: "search", label: "Axtarış", icon: Search },
-  { id: "shortcuts", label: "Qısa yollar", icon: Command },
-  { id: "updates", label: "Bildirişlər", icon: Bell },
+  { id: "search", labelKey: "rail.tab.search", icon: Search },
+  { id: "shortcuts", labelKey: "rail.tab.shortcuts", icon: Command },
+  { id: "updates", labelKey: "rail.tab.updates", icon: Bell },
 ];
 
 function normalizeSearchValue(value: string) {
   return value.trim().toLocaleLowerCase("az");
+}
+
+/**
+ * Axtarış tərcümə olunmuş ad və təsvirdə də aparılır — əvvəl yalnız
+ * azərbaycanca mətnə baxırdı, EN/RU istifadəçisi "events" yazanda heç nə tapmırdı.
+ */
+function searchPlatform(query: string, t: (key: string) => string) {
+  const normalizedQuery = normalizeSearchValue(query);
+  if (!normalizedQuery) return platformSearchItems.slice(0, 6);
+  return platformSearchItems.filter((item) =>
+    normalizeSearchValue(`${t(`rail.search.${item.key}`)} ${t(`rail.search.${item.key}.desc`)} ${item.keywords}`).includes(normalizedQuery),
+  );
+}
+
+/** Tarix Bakı vaxtı ilə: "5 okt" və "18:30". */
+function shortBakuDate(value: string, t: (key: string) => string) {
+  const parts = bakuDateParts(value);
+  return { day: String(Number(parts.day)), month: t(`monthShort.${parts.month}`), time: parts.time };
 }
 
 function UtilityContent({
@@ -80,12 +99,12 @@ function UtilityContent({
   const t = useT();
   const { user } = useAuth();
   const [upcomingEvents,setUpcomingEvents]=useState<Array<{id:string;title:string;startAt:string;location:string}>>([]);
-  const [activeAnnouncements,setActiveAnnouncements]=useState<Array<{id:string;title:string;dateLabel:string;source:string}>>([]);
+  const [activeAnnouncements,setActiveAnnouncements]=useState<Array<{id:string;title:string;startsAt:string;expiresAt?:string;source:string}>>([]);
   const [incomingConnections,setIncomingConnections]=useState<Array<{id:string;name:string}>>([]);
   const [unreadConversations,setUnreadConversations]=useState<Array<{id:string;peerName:string;unreadCount:number}>>([]);
   const [connectionActionId,setConnectionActionId]=useState<string|null>(null);
   const [connectionActionError,setConnectionActionError]=useState("");
-  useEffect(()=>{let cancelled=false;void Promise.all([fetch("/api/catalog/events",{cache:"no-store"}),fetch("/api/network",{cache:"no-store"})]).then(async([eventsResponse,networkResponse])=>{const eventsPayload=await eventsResponse.json() as {data?:Array<{id:string;title:string;startAt:string;location:string}>};const networkPayload=await networkResponse.json() as {data?:{announcements?:Array<{id:string;title:string;dateLabel:string;source:string}>}};if(!cancelled){setUpcomingEvents((eventsPayload.data??[]).filter((item)=>new Date(item.startAt).getTime()>=Date.now()).slice(0,3));setActiveAnnouncements((networkPayload.data?.announcements??[]).slice(0,3));}}).catch(()=>undefined);return()=>{cancelled=true;};},[]);
+  useEffect(()=>{let cancelled=false;void Promise.all([fetch("/api/catalog/events",{cache:"no-store"}),fetch("/api/network",{cache:"no-store"})]).then(async([eventsResponse,networkResponse])=>{const eventsPayload=await eventsResponse.json() as {data?:Array<{id:string;title:string;startAt:string;location:string}>};const networkPayload=await networkResponse.json() as {data?:{announcements?:Array<{id:string;title:string;startsAt:string;expiresAt?:string;source:string}>}};if(!cancelled){setUpcomingEvents((eventsPayload.data??[]).filter((item)=>new Date(item.startAt).getTime()>=Date.now()).slice(0,3));/* Lövhə kimi: müddəti bitmiş elan "son elanlar"da göstərilmir. */setActiveAnnouncements((networkPayload.data?.announcements??[]).filter((item)=>!item.expiresAt||new Date(item.expiresAt).getTime()>Date.now()).slice(0,3));}}).catch(()=>undefined);return()=>{cancelled=true;};},[]);
   useEffect(() => {
     if (!user || activeTab !== "updates") return;
     let cancelled = false;
@@ -102,7 +121,7 @@ function UtilityContent({
       const names = new Map((usersPayload.data ?? []).map((entry) => [entry.id, entry.name]));
       setIncomingConnections((connectionsPayload.data ?? [])
         .filter((entry) => entry.status === "pending" && entry.recipientId === user.id)
-        .map((entry) => ({ id: entry.id, name: names.get(entry.requesterId) ?? "EduRate istifadəçisi" })));
+        .map((entry) => ({ id: entry.id, name: names.get(entry.requesterId) ?? "" })));
       setUnreadConversations((conversationsPayload.data ?? [])
         .filter((entry) => entry.unreadCount > 0)
         .map((entry) => ({ id: entry.id, peerName: entry.peer.name, unreadCount: entry.unreadCount })));
@@ -121,25 +140,18 @@ function UtilityContent({
         body: decision === "accept" ? JSON.stringify({}) : undefined,
       });
       if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-        throw new Error(payload?.error?.message ?? "Əlaqə sorğusu yenilənmədi.");
+        // Mətn yox, açar: backend-in azərbaycanca mesajı EN/RU-da da görünürdü.
+        throw new Error(response.status === 401 ? "admin.error.session" : "rail.connectionFailed");
       }
       setIncomingConnections((current) => current.filter((item) => item.id !== connectionId));
       window.dispatchEvent(new CustomEvent("edurate:connections-changed"));
     } catch (error) {
-      setConnectionActionError(error instanceof Error ? error.message : "Əlaqə sorğusu yenilənmədi.");
+      setConnectionActionError(error instanceof Error && error.message === "admin.error.session" ? error.message : "rail.connectionFailed");
     } finally {
       setConnectionActionId(null);
     }
   }
-  const filteredItems = useMemo(() => {
-    const normalizedQuery = normalizeSearchValue(query);
-    if (!normalizedQuery) return platformSearchItems.slice(0, 6);
-
-    return platformSearchItems.filter((item) =>
-      normalizeSearchValue(`${item.label} ${item.description} ${item.keywords}`).includes(normalizedQuery),
-    );
-  }, [query]);
+  const filteredItems = useMemo(() => searchPlatform(query, t), [query, t]);
 
   if (activeTab === "search") {
     return (
@@ -160,7 +172,7 @@ function UtilityContent({
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Bölmə axtar…"
+            placeholder={t("rail.searchPlaceholder")}
             autoComplete="off"
             onKeyDown={(event) => {
               if (event.key !== "ArrowDown") return;
@@ -172,7 +184,7 @@ function UtilityContent({
         </form>
 
         <div className="platform-search-summary" aria-live="polite">
-          <span>{query ? "Axtarış nəticələri" : "Tez keçidlər"}</span>
+          <span>{t(query ? "rail.searchResults" : "rail.quickLinks")}</span>
           <strong>{filteredItems.length}</strong>
         </div>
 
@@ -191,13 +203,13 @@ function UtilityContent({
           {filteredItems.length > 0 ? filteredItems.map((item) => (
             <Link key={item.href} href={item.href} onClick={onNavigate}>
               <span>
-                <strong>{item.label}</strong>
-                <small>{item.description}</small>
+                <strong>{t(`rail.search.${item.key}`)}</strong>
+                <small>{t(`rail.search.${item.key}.desc`)}</small>
               </span>
               <ArrowUpRight size={15} aria-hidden="true" />
             </Link>
           )) : (
-            <p className="platform-search-empty">Bu sorğuya uyğun bölmə tapılmadı.</p>
+            <p className="platform-search-empty">{t("rail.searchEmpty")}</p>
           )}
         </div>
       </div>
@@ -206,19 +218,19 @@ function UtilityContent({
 
   if (activeTab === "shortcuts") {
     return (
-      <div id={`${idPrefix}-shortcuts`} className="platform-utility-content" role="tabpanel" aria-label="Səhifə qısa yolları">
+      <div id={`${idPrefix}-shortcuts`} className="platform-utility-content" role="tabpanel" aria-label={t("rail.shortcutsLabel")}>
         <div className="platform-context-card">
-          <span>{context.label}</span>
-          <h3>{context.title}</h3>
-          <small><i aria-hidden="true" />{context.metric}</small>
+          <span>{t(context.labelKey)}</span>
+          <h3>{t(`rail.ctx.${context.key}.title`)}</h3>
+          <small><i aria-hidden="true" />{t(`rail.ctx.${context.key}.metric`, { count: platformSectionCount })}</small>
         </div>
 
         <div className="platform-shortcut-list">
           {context.shortcuts.map((shortcut) => (
             <Link key={shortcut.href} href={shortcut.href} onClick={onNavigate}>
               <span>
-                <strong>{shortcut.label}</strong>
-                <small>{shortcut.description}</small>
+                <strong>{t(`rail.sc.${shortcut.key}`)}</strong>
+                <small>{t(`rail.sc.${shortcut.key}.desc`)}</small>
               </span>
               <ArrowUpRight size={15} aria-hidden="true" />
             </Link>
@@ -229,23 +241,23 @@ function UtilityContent({
   }
 
   return (
-    <div id={`${idPrefix}-updates`} className="platform-utility-content" role="tabpanel" aria-label="Bildirişlər">
+    <div id={`${idPrefix}-updates`} className="platform-utility-content" role="tabpanel" aria-label={t("rail.tab.updates")}>
       <section className="platform-update-group" aria-labelledby={`${idPrefix}-notifications-title`}>
         <header>
           <Bell size={15} aria-hidden="true" />
-          <h3 id={`${idPrefix}-notifications-title`}>Sənə gələnlər</h3>
+          <h3 id={`${idPrefix}-notifications-title`}>{t("rail.forYou")}</h3>
         </header>
         {!user ? (
           <Link href="/auth" onClick={onNavigate}>
             <span className="platform-update-dot" aria-hidden="true" />
-            <span><strong>Bildirişləri görmək üçün daxil ol</strong><small>Hesab bildirişləri girişdən sonra görünür.</small></span>
+            <span><strong>{t("rail.signInForUpdates")}</strong><small>{t("rail.signInForUpdatesHint")}</small></span>
           </Link>
         ) : incomingConnections.length || unreadConversations.length ? (
           <>
             {incomingConnections.map((connection) => (
               <article key={connection.id} className="platform-connection-request">
                 <span className="platform-update-dot" aria-hidden="true" />
-                <span><strong>{connection.name}</strong><small>Əlaqə sorğusu göndərib</small></span>
+                <span><strong>{connection.name || t("rail.someone")}</strong><small>{t("rail.connectionRequest")}</small></span>
                 <div className="platform-connection-actions">
                   <button
                     type="button"
@@ -253,14 +265,14 @@ function UtilityContent({
                     onClick={() => void decideConnection(connection.id, "accept")}
                     disabled={connectionActionId === connection.id}
                   >
-                    <Check size={13} aria-hidden="true" /> Qəbul et
+                    <Check size={13} aria-hidden="true" /> {t("rail.accept")}
                   </button>
                   <button
                     type="button"
                     onClick={() => void decideConnection(connection.id, "reject")}
                     disabled={connectionActionId === connection.id}
                   >
-                    <UserX size={13} aria-hidden="true" /> Rədd et
+                    <UserX size={13} aria-hidden="true" /> {t("rail.reject")}
                   </button>
                 </div>
               </article>
@@ -268,39 +280,46 @@ function UtilityContent({
             {unreadConversations.map((conversation) => (
               <Link key={conversation.id} href="/community" onClick={onNavigate}>
                 <span className="platform-update-dot" aria-hidden="true" />
-                <span><strong>{conversation.peerName}: yeni mesaj</strong><small>{conversation.unreadCount} oxunmamış mesaj</small></span>
+                <span><strong>{t("rail.newMessage", { name: conversation.peerName })}</strong><small>{t("rail.unread", { count: conversation.unreadCount })}</small></span>
               </Link>
             ))}
           </>
         ) : (
-          <p className="platform-search-empty">Hazırda yeni hesab bildirişi yoxdur.</p>
+          <p className="platform-search-empty">{t("rail.noUpdates")}</p>
         )}
-        {connectionActionError ? <p className="platform-connection-error" role="alert">{connectionActionError}</p> : null}
+        {connectionActionError ? <p className="platform-connection-error" role="alert">{t(connectionActionError)}</p> : null}
       </section>
       <section className="platform-update-group" aria-labelledby={`${idPrefix}-events-title`}>
         <header>
           <CalendarDays size={15} aria-hidden="true" />
-          <h3 id={`${idPrefix}-events-title`}>Yaxın tədbirlər</h3>
+          <h3 id={`${idPrefix}-events-title`}>{t("rail.upcomingEvents")}</h3>
         </header>
-        {upcomingEvents.map((event) => (
-          <Link key={event.id} href="/events" onClick={onNavigate}>
-            <time dateTime={event.startAt}><strong>{new Date(event.startAt).getDate()}</strong>{formatAzDate(event.startAt)}</time>
-            <span><strong>{event.title}</strong><small>{new Intl.DateTimeFormat("az-AZ",{hour:"2-digit",minute:"2-digit"}).format(new Date(event.startAt))} · {event.location}</small></span>
-          </Link>
-        ))}
+        {upcomingEvents.map((event) => {
+          // Əvvəl gün brauzerin saat qurşağı, ay isə UTC ISO sətrindən götürülürdü
+          // və "ay" yerinə bütün tarix ("5 oktyabr 2026") yazılırdı.
+          const date = shortBakuDate(event.startAt, t);
+          return (
+            <Link key={event.id} href="/events" onClick={onNavigate}>
+              <time dateTime={event.startAt}><strong>{date.day}</strong>{date.month}</time>
+              <span><strong>{event.title}</strong><small>{date.time} · {event.location}</small></span>
+            </Link>
+          );
+        })}
+        {upcomingEvents.length === 0 ? <p className="platform-search-empty">{t("rail.noEvents")}</p> : null}
       </section>
 
       <section className="platform-update-group" aria-labelledby={`${idPrefix}-announcements-title`}>
         <header>
           <Sparkles size={15} aria-hidden="true" />
-          <h3 id={`${idPrefix}-announcements-title`}>Son elanlar</h3>
+          <h3 id={`${idPrefix}-announcements-title`}>{t("rail.latestAnnouncements")}</h3>
         </header>
         {activeAnnouncements.map((announcement) => (
           <Link key={announcement.id} href="/feed" onClick={onNavigate}>
             <span className="platform-update-dot" aria-hidden="true" />
-            <span><strong>{announcement.title}</strong><small>{announcement.dateLabel} · {announcement.source}</small></span>
+            <span><strong>{announcement.title}</strong><small>{(() => { const date = shortBakuDate(announcement.startsAt, t); return `${date.day} ${date.month}`; })()} · {announcement.source}</small></span>
           </Link>
         ))}
+        {activeAnnouncements.length === 0 ? <p className="platform-search-empty">{t("rail.noAnnouncements")}</p> : null}
       </section>
     </div>
   );
@@ -344,15 +363,7 @@ export function PlatformUtilityRail({
     onMobileClose();
   }, [closeDesktopPanel, onMobileClose]);
 
-  const firstSearchResult = useMemo(() => {
-    const normalizedQuery = normalizeSearchValue(query);
-    const results = normalizedQuery
-      ? platformSearchItems.filter((item) =>
-          normalizeSearchValue(`${item.label} ${item.description} ${item.keywords}`).includes(normalizedQuery),
-        )
-      : platformSearchItems;
-    return results[0];
-  }, [query]);
+  const firstSearchResult = useMemo(() => searchPlatform(query, t)[0], [query, t]);
 
   useEffect(() => {
     const visibleTab = activeTab ?? (mobileOpen || desktopOpen ? "search" : null);
@@ -402,9 +413,9 @@ export function PlatformUtilityRail({
 
   return (
     <>
-      <aside className="platform-right-rail" aria-label="Səhifə alətləri">
-        <span className="platform-rail-status" aria-label={`Hazırkı bölmə: ${context.label}`}>{context.label.slice(0, 1)}</span>
-        <div role="tablist" aria-label="Qlobal alətlər">
+      <aside className="platform-right-rail" aria-label={t("rail.pageTools")}>
+        <span className="platform-rail-status" aria-label={t("rail.currentSection", { section: t(context.labelKey) })}>{t(context.labelKey).slice(0, 1)}</span>
+        <div role="tablist" aria-label={t("rail.globalTools")}>
           {utilityTabs.map((tab) => {
             const Icon = tab.icon;
             const selected = displayedDesktopTab === tab.id;
@@ -414,12 +425,12 @@ export function PlatformUtilityRail({
                 type="button"
                 className={`platform-utility-tab${selected ? " is-active" : ""}`}
                 onClick={(event) => toggleDesktopTab(tab.id, event.currentTarget)}
-                aria-label={tab.label}
+                aria-label={t(tab.labelKey)}
                 aria-selected={selected}
                 aria-expanded={selected}
                 aria-controls="platform-desktop-utility-panel"
                 role="tab"
-                data-label={tab.label}
+                data-label={t(tab.labelKey)}
               >
                 <Icon size={18} aria-hidden="true" />
               </button>
@@ -437,11 +448,11 @@ export function PlatformUtilityRail({
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 18, scale: 0.99 }}
             transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 34 }}
-            aria-label={`${utilityTabs.find((tab) => tab.id === displayedDesktopTab)?.label} paneli`}
+            aria-label={t(utilityTabs.find((tab) => tab.id === displayedDesktopTab)?.labelKey ?? "rail.tab.search")}
           >
             <header className="platform-utility-panel-header">
-              <div><span>Səhifə alətləri</span><h2>{utilityTabs.find((tab) => tab.id === displayedDesktopTab)?.label}</h2></div>
-              <button type="button" onClick={() => closeDesktopPanel()} aria-label="Alətlər panelini bağla"><X size={17} /></button>
+              <div><span>{t("rail.pageTools")}</span><h2>{t(utilityTabs.find((tab) => tab.id === displayedDesktopTab)?.labelKey ?? "rail.tab.search")}</h2></div>
+              <button type="button" onClick={() => closeDesktopPanel()} aria-label={t("rail.closePanel")}><X size={17} aria-hidden="true" /></button>
             </header>
             <UtilityContent
               activeTab={displayedDesktopTab}
@@ -460,24 +471,24 @@ export function PlatformUtilityRail({
       <AnimatePresence>
         {mobileOpen && (
           <motion.div className="platform-mobile-utility-layer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <button type="button" className="platform-mobile-utility-backdrop" onClick={onMobileClose} aria-label="Alətlər panelini bağla" />
+            <button type="button" className="platform-mobile-utility-backdrop" onClick={onMobileClose} aria-label={t("rail.closePanel")} />
             <motion.aside
               id="platform-mobile-utility-sheet"
               className="platform-mobile-utility-sheet"
               role="dialog"
               aria-modal="true"
-              aria-label="Səhifə alətləri"
+              aria-label={t("rail.pageTools")}
               initial={reducedMotion ? false : { x: "100%" }}
               animate={{ x: 0 }}
               exit={reducedMotion ? { opacity: 0 } : { x: "100%" }}
               transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 36 }}
             >
               <header className="platform-mobile-utility-header">
-                <div><span>{context.label}</span><strong>Səhifə alətləri</strong></div>
-                <button type="button" onClick={onMobileClose} aria-label="Alətlər panelini bağla"><X size={19} /></button>
+                <div><span>{t(context.labelKey)}</span><strong>{t("rail.pageTools")}</strong></div>
+                <button type="button" onClick={onMobileClose} aria-label={t("rail.closePanel")}><X size={19} aria-hidden="true" /></button>
               </header>
 
-              <div className="platform-mobile-utility-tabs" role="tablist" aria-label="Qlobal alətlər">
+              <div className="platform-mobile-utility-tabs" role="tablist" aria-label={t("rail.globalTools")}>
                 {utilityTabs.map((tab) => {
                   const Icon = tab.icon;
                   const selected = displayedMobileTab === tab.id;
@@ -492,7 +503,7 @@ export function PlatformUtilityRail({
                       aria-controls="platform-mobile-utility-content"
                     >
                       <Icon size={15} aria-hidden="true" />
-                      {tab.label}
+                      {t(tab.labelKey)}
                     </button>
                   );
                 })}

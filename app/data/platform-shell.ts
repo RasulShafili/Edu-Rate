@@ -1,185 +1,196 @@
 import { accountRoutes, platformRoutes } from "./navigation";
 
+/**
+ * Sağ panelin məzmunu. Mətn burada yox, lüğətdədir: `rail.ctx.<key>.*`,
+ * `rail.sc.<key>` / `rail.sc.<key>.desc`, `rail.search.<key>`. Əvvəl hamısı
+ * azərbaycanca yazılmışdı və EN/RU interfeysdə də azərbaycanca görünürdü.
+ */
 export type PlatformShortcut = {
   href: string;
-  label: string;
-  description: string;
+  key: string;
 };
 
 export type PlatformRouteContext = {
-  label: string;
-  title: string;
-  description: string;
-  metric: string;
+  key: string;
+  labelKey: string;
   shortcuts: readonly PlatformShortcut[];
 };
 
 const homeContext: PlatformRouteContext = {
-  label: "Ana səhifə",
-  title: "Platformanın mərkəzi",
-  description: "EduRate-in bütün imkanlarına sakit və sürətli başlanğıc nöqtəsi.",
-  metric: "9 əsas istiqamət",
+  key: "home",
+  labelKey: "nav.home",
   shortcuts: [
-    { href: "/events", label: "Tədbirləri kəşf et", description: "Yeni görüş və təcrübələrə bax." },
-    { href: "/community", label: "İcmanı aç", description: "Ortaq maraqları olan insanları tap." },
-    { href: "/teachers", label: "Müəllim seç", description: "Meyarlar üzrə rəyləri müqayisə et." },
+    { href: "/events", key: "discoverEvents" },
+    { href: "/community", key: "openCommunity" },
+    { href: "/teachers", key: "chooseTeacher" },
   ],
 };
 
+// Əvvəl `/schedule`, `/questions` və `/workspace` üçün kontekst yox idi — bu
+// səhifələrdə panel "Ana səhifə" kontekstini göstərirdi.
 const routeContexts: Record<string, PlatformRouteContext> = {
-  "/events": {
-    label: "Tədbirlər",
-    title: "Tədbir alətləri",
-    description: "Kateqoriyaları süzgəcdən keçir və uyğun görüşün detallarını aç.",
-    metric: "Yayımlanmış tədbirlər",
+  "/schedule": {
+    key: "schedule",
+    labelKey: "nav.schedule",
     shortcuts: [
-      { href: "/events#events", label: "Tədbir kataloqu", description: "Bütün kateqoriyaları bir yerdə gör." },
-      { href: "/feed", label: "Kampus yenilikləri", description: "Elan və xəbərləri izlə." },
+      { href: "/events", key: "discoverEvents" },
+      { href: "/feed", key: "campusNews" },
+    ],
+  },
+  "/events": {
+    key: "events",
+    labelKey: "nav.events",
+    shortcuts: [
+      { href: "/events#events", key: "eventCatalogue" },
+      { href: "/feed", key: "campusNews" },
     ],
   },
   "/community": {
-    label: "İcma",
-    title: "İcma alətləri",
-    description: "Tələbələri maraq sahəsinə görə kəşf et, əlaqə qur və söhbətə başla.",
-    metric: "Aktiv icma üzvləri",
+    key: "community",
+    labelKey: "nav.community",
     shortcuts: [
-      { href: "/community#peers", label: "İcma kataloqu", description: "Uyğun insanları və maraqları gör." },
-      { href: "/clubs", label: "Klublara bax", description: "Daimi kampus icmalarını kəşf et." },
+      { href: "/community#peers", key: "communityDirectory" },
+      { href: "/clubs", key: "browseClubs" },
     ],
   },
   "/teachers": {
-    label: "Müəllimlər",
-    title: "Müəllim alətləri",
-    description: "Müəllimi seç, bacarıqlar üzrə qiymətləndir və əsaslandırılmış rəy yaz.",
-    metric: "4 obyektiv meyar",
+    key: "teachers",
+    labelKey: "nav.teachers",
     shortcuts: [
-      { href: "/teachers#available-teachers-track", label: "Müəllimləri müqayisə et", description: "Mövcud müəllim kartlarını nəzərdən keçir." },
-      { href: "/teachers#teacher-rating-panel", label: "Qiymətləndirmə paneli", description: "Seçilmiş müəllim üçün rəy göndər." },
+      { href: "/teachers#available-teachers-track", key: "compareTeachers" },
+      { href: "/teachers#teacher-rating-panel", key: "ratingPanel" },
     ],
   },
   "/mentors": {
-    label: "Mentorlar",
-    title: "Mentorluq alətləri",
-    description: "Təcrübə sahəsini və uyğun vaxtı yoxla, sonra mentorluq sorğusu göndər.",
-    metric: "Təsdiqlənmiş mentor profilləri",
+    key: "mentors",
+    labelKey: "nav.mentors",
     shortcuts: [
-      { href: "/mentors#mentors", label: "Mentorları tap", description: "Profil və uyğunluq məlumatlarını aç." },
-      { href: "/support", label: "Dəstəyə müraciət et", description: "Əlavə kömək üçün dəstək mərkəzinə keç." },
+      { href: "/mentors#mentors", key: "findMentors" },
+      { href: "/support", key: "contactSupport" },
+    ],
+  },
+  "/questions": {
+    key: "questions",
+    labelKey: "nav.questions",
+    shortcuts: [
+      { href: "/mentors", key: "findMentors" },
+      { href: "/support", key: "contactSupport" },
     ],
   },
   "/support": {
-    label: "Dəstək",
-    title: "Dəstək alətləri",
-    description: "Tez-tez verilən suallara bax və ehtiyac olarsa müraciət yarat.",
-    metric: "1 iş günü ərzində cavab",
+    key: "support",
+    labelKey: "nav.support",
     shortcuts: [
-      { href: "/support#support", label: "Tez-tez verilən suallar", description: "Hazır cavabları sürətlə tap." },
-      { href: "/support#ticket-name", label: "Müraciət göndər", description: "Dəstək komandası üçün sorğu yarat." },
+      { href: "/support#support", key: "faq" },
+      // `#ticket-name` yalnız anonim formada var idi; mövzu sahəsi hər iki halda var.
+      { href: "/support#ticket-topic", key: "sendRequest" },
     ],
   },
   "/feed": {
-    label: "Elanlar",
-    title: "Elanlar alətləri",
-    description: "Rəsmi elanları, klub yeniliklərini və fakültə xəbərlərini izlə.",
-    metric: "Gündəlik yenilənən şəbəkə",
+    key: "feed",
+    labelKey: "nav.feed",
     shortcuts: [
-      { href: "/feed#announcements-title", label: "Vacib elanlar", description: "Ən yeni rəsmi məlumatlara bax." },
-      { href: "/feed#student-feed-stream-title", label: "Tələbə yenilikləri", description: "Paylaşım və xəbərlərə davam et." },
+      { href: "/feed#announcements-title", key: "importantAnnouncements" },
+      { href: "/feed#student-feed-stream-title", key: "studentNews" },
     ],
   },
   "/clubs": {
-    label: "Klublar",
-    title: "Klub alətləri",
-    description: "Tələbə klublarını və təşkilatlarını bir kataloqda kəşf et.",
-    metric: "Aktiv tələbə klubları",
+    key: "clubs",
+    labelKey: "nav.clubs",
     shortcuts: [
-      { href: "/clubs#clubs-list-title", label: "Klub kataloqu", description: "Bütün tələbə klublarına bax." },
+      { href: "/clubs#clubs-list-title", key: "clubCatalogue" },
     ],
   },
   "/admin": {
-    label: "İdarəetmə",
-    title: "İdarəetmə alətləri",
-    description: "Platforma göstəricilərinə, cədvəllərə və idarəetmə axınlarına keç.",
-    metric: "Canlı analitika · çevik nəzarət",
+    key: "admin",
+    labelKey: "nav.admin",
     shortcuts: [
-      { href: "/admin#admin-overview", label: "Ümumi göstəricilər", description: "Platformanın cari vəziyyətini izlə." },
-      { href: "/admin#admin-data", label: "Məlumat cədvəlləri", description: "İstifadəçi, klub və tədbirləri idarə et." },
+      { href: "/admin#admin-overview", key: "adminOverview" },
+      { href: "/admin#admin-data", key: "adminData" },
     ],
   },
   "/profile": {
-    label: "Profilim",
-    title: "Profil alətləri",
-    description: "Şəxsi məlumatlarını, maraqlarını və son fəaliyyətini bir yerdə gör.",
-    metric: "Şəxsi öyrənmə məkanı",
+    key: "profile",
+    labelKey: "nav.profile",
     shortcuts: [
-      { href: "/profile#profile-title", label: "Profil xülasəsi", description: "Şəxsi məlumat və fəaliyyətə bax." },
-      { href: "/support", label: "Hesab dəstəyi", description: "Hesab ilə bağlı kömək al." },
+      { href: "/profile#profile-title", key: "profileSummary" },
+      { href: "/support", key: "accountSupport" },
+    ],
+  },
+  "/workspace": {
+    key: "workspace",
+    labelKey: "nav.workspace",
+    shortcuts: [
+      { href: "/workspace#workspace-title", key: "workspaceOverview" },
+      { href: "/profile", key: "profileSummary" },
     ],
   },
   "/settings": {
-    label: "Parametrlər",
-    title: "Hesab seçimləri",
-    description: "Bildiriş seçimlərini və şəxsi təcrübəni idarə et.",
-    metric: "Cihazda yadda saxlanılır",
+    key: "settings",
+    labelKey: "nav.settings",
     shortcuts: [
-      { href: "/settings#settings-title", label: "Bildiriş seçimləri", description: "Vacib yenilik və xatırlatmaları idarə et." },
-      { href: "/privacy", label: "Məxfilik", description: "Məlumat istifadəsi prinsiplərinə bax." },
+      { href: "/settings#settings-title", key: "notificationSettings" },
+      { href: "/privacy", key: "privacy" },
     ],
   },
   "/privacy": {
-    label: "Məxfilik",
-    title: "Məxfilik məlumatları",
-    description: "Şəxsi məlumatların istifadəsi ilə tanış ol.",
-    metric: "Aydın məlumat siyasəti",
+    key: "privacy",
+    labelKey: "rail.label.privacy",
     shortcuts: [],
   },
   "/terms": {
-    label: "İstifadə şərtləri",
-    title: "Platforma qaydaları",
-    description: "Təhlükəsiz və hörmətli istifadə qaydalarını oxu.",
-    metric: "İcma qaydaları",
+    key: "terms",
+    labelKey: "rail.label.terms",
     shortcuts: [],
   },
   "/auth": {
-    label: "Daxil ol",
-    title: "Hesab alətləri",
-    description: "EduRate hesabına təhlükəsiz daxil ol və ya yeni profil yarat.",
-    metric: "Təhlükəsiz giriş",
+    key: "auth",
+    labelKey: "nav.signIn",
     shortcuts: [
-      { href: "/auth#auth-title", label: "Giriş paneli", description: "Hesabına daxil olmağa davam et." },
-      { href: "/support", label: "Giriş dəstəyi", description: "Problem yaranarsa cavab tap." },
+      { href: "/auth#auth-title", key: "signInPanel" },
+      { href: "/support", key: "signInSupport" },
     ],
   },
 };
 
+const searchKeyByHref: Record<string, string> = {
+  "/": "home",
+  "/schedule": "schedule",
+  "/events": "events",
+  "/community": "community",
+  "/teachers": "teachers",
+  "/mentors": "mentors",
+  "/questions": "questions",
+  "/support": "support",
+  "/feed": "feed",
+  "/clubs": "clubs",
+  "/profile": "profile",
+  "/workspace": "workspace",
+  "/settings": "settings",
+  "/auth": "auth",
+};
+
+/**
+ * Axtarış bəndləri. `keywords` azərbaycanca saxlanır ki, AZ açar sözlərlə də
+ * tapılsın; tərcümə olunmuş ad və təsvir axtarışa paneldə əlavə olunur.
+ */
 export const platformSearchItems = [
-  {
-    href: "/",
-    label: "Ana səhifə",
-    description: "EduRate platformasının ümumi görünüşü",
-    keywords: "ana panel başlanğıc platforma",
-  },
+  { href: "/", keywords: "ana panel başlanğıc platforma" },
   ...platformRoutes.map((route) => ({
     href: route.href,
-    label: route.label,
-    description: route.description,
     keywords: `${route.label} ${route.title} ${route.description}`,
   })),
   ...accountRoutes.map((route) => ({
     href: route.href,
-    label: route.label,
-    description: route.href === "/profile"
-      ? "Şəxsi məlumat və fəaliyyət"
-      : route.href === "/settings"
-        ? "Bildiriş və hesab seçimləri"
-        : "Giriş və qeydiyyat",
     keywords: route.href === "/profile"
       ? "profil hesab məlumat"
       : route.href === "/settings"
         ? "parametrlər bildiriş seçim"
-        : "daxil ol qeydiyyat hesab",
+        : route.href === "/workspace"
+          ? "iş paneli müəllim mentor"
+          : "daxil ol qeydiyyat hesab",
   })),
-] as const;
+].map((item) => ({ ...item, key: searchKeyByHref[item.href] ?? "home" }));
 
 export function isPlatformRouteCurrent(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -195,3 +206,5 @@ export function getPlatformRouteContext(pathname: string): PlatformRouteContext 
 
   return matchingPath ? routeContexts[matchingPath] : homeContext;
 }
+
+export const platformSectionCount = platformRoutes.length;
