@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getDeadlineStatus, getTemporalStatus, getUpcomingItems, isExpired, isThisWeek } from "../app/lib/date.ts";
+import { formatDateTimeWithMonths, formatDateWithMonths, getDeadlineStatus, getTemporalStatus, getUpcomingItems, isExpired, isThisWeek } from "../app/lib/date.ts";
 
 const now = new Date("2026-07-29T12:00:00+04:00");
 
@@ -39,4 +39,14 @@ test("gələcək və davam edən tədbirlər xronoloji sıralanır", () => {
 
 test("etibarsız tarix səssizcə qəbul edilmir", () => {
   assert.throws(() => getTemporalStatus("yoxdur", "2026-08-01", now), RangeError);
+});
+
+test("tarix Bakı vaxtı ilə yazılır, prosesin saat qurşağından asılı deyil", () => {
+  const months = Array.from({ length: 12 }, (_, index) => `m${index + 1}`);
+  // Backend UTC qaytarır; əvvəl saat olduğu kimi (4 saat geri) yazılırdı.
+  assert.equal(formatDateTimeWithMonths("2026-09-23T18:48:00.000Z", months), "23 m9 · 22:48");
+  // 20:00Z-dən sonrası Bakıda növbəti gündür.
+  assert.equal(formatDateTimeWithMonths("2026-09-30T21:30:00.000Z", months), "1 m10 · 01:30");
+  assert.equal(formatDateWithMonths("2026-12-31T20:15:00.000Z", months), "1 m1 2027");
+  assert.equal(formatDateWithMonths("2026-07-29T12:00:00+04:00", months), "29 m7 2026");
 });

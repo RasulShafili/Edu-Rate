@@ -99,18 +99,17 @@ function toTimestamp(value: string): number {
   return timestamp;
 }
 
+/**
+ * Tarix hissələri həmişə Bakı vaxtı ilə. Əvvəl ISO sətri olduğu kimi oxunurdu;
+ * backend UTC ("…T18:48Z") qaytardığı üçün sayt saatı Bakıdan 4 saat geri
+ * yazırdı, 00:00–04:00 arasında isə günü də səhv göstərirdi. Saat qurşağı sabit
+ * verildiyi üçün server və brauzer eyni nəticəni verir — hidrasiya pozulmur.
+ */
 function getStableDateParts(value: string) {
   toTimestamp(value);
-  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(value);
-  if (!match) throw new RangeError(`Etibarsız ISO tarixi: ${value}`);
-
-  return {
-    year: Number(match[1]),
-    month: Number(match[2]),
-    day: Number(match[3]),
-    hour: match[4] ?? "00",
-    minute: match[5] ?? "00",
-  };
+  const parts = bakuDateParts(value);
+  const [hour = "00", minute = "00"] = parts.time.split(":");
+  return { year: parts.year, month: parts.month, day: Number(parts.day), hour, minute };
 }
 
 const bakuFormatter = new Intl.DateTimeFormat("en-GB", {
