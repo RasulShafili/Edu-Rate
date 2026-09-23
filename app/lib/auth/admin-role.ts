@@ -46,8 +46,3 @@ export function canEditUserRole(
   if (actorRole === "owner_admin") return true;
   return isAssignableUserRole(targetRole);
 }
-
-export function getAdminRoleLabel(role: AdminAccessRole): string {
-  if (role === "owner_admin") return "Platforma sahibi";
-  return role === "admin" ? "Administrator" : "Admin köməkçisi";
-}

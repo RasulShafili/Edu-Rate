@@ -3196,11 +3196,6 @@ a { color: inherit; text-decoration: none; }
     radial-gradient(circle at 58% 36%, rgba(185, 167, 255, 0.1), transparent 30%),
     #ebeae3;
 }
-.admin-access-skeleton__card { display: flex; min-height: 360px; align-items: center; justify-content: center; flex-direction: column; }
-.admin-access-skeleton__card .admin-skeleton { display: block; }
-.admin-access-skeleton__card .admin-skeleton--account { width: 58px; height: 58px; border-radius: 18px; }
-.admin-access-skeleton__card .admin-skeleton--eyebrow { width: 132px; height: 9px; margin-top: 24px; }
-.admin-access-skeleton__card .admin-skeleton--title { width: min(100%, 430px); height: 54px; margin-top: 16px; }
 
 .admin-main { min-width: 0; padding: 58px clamp(24px, 4.2vw, 70px) 120px; }
 .admin-header { display: flex; width: min(100%, 1420px); margin: 0 auto 54px; align-items: flex-end; justify-content: space-between; gap: 36px; }
@@ -4413,6 +4408,10 @@ a { color: inherit; text-decoration: none; }
 .admin-announcement-form footer { display: flex; justify-content: flex-end; gap: 8px; }
 .admin-announcement-form footer button { min-height: 37px; padding: 0 13px; border: 1px solid #d5e2df; border-radius: 10px; background: #fff; color: #365f57; font-weight: 750; }
 .admin-announcement-form footer button[type="submit"] { border-color: #2f7467; background: #2f7467; color: #fff; }
+/* Elanın 30 gün qüvvədə qaldığı və qaralama kimi yarandığı forma altında deyilir. */
+.admin-announcement-form__note { grid-column: 1 / -1; margin: 0; color: #4d6b64; font-size: 12px; line-height: 1.5; }
+.admin-operations__confirm { align-self: center; color: #7a2e2e; font-size: 12px; font-weight: 700; }
+.admin-chart-card__empty { display: grid; min-height: 200px; margin: 26px 0 0; place-items: center; color: #4d6b64; font-size: 13px; }
 .admin-announcement-image { display: grid; grid-column: 1 / -1; gap: 6px; color: #315f57; font-size: 12px; font-weight: 750; }
 .admin-announcement-image input { width: 100%; }
 .admin-announcement-image small { color: #718782; font-weight: 500; }

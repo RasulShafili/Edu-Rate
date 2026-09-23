@@ -5,6 +5,7 @@ import { LockKeyhole, MoreHorizontal, Pencil, Plus, RefreshCw, Search, Trash2, X
 import { useState, type KeyboardEvent } from "react";
 import type { AdminRecordStatus } from "../data/admin";
 import type { AdminUserRole } from "../data/admin";
+import { useT } from "../i18n/LanguageProvider";
 import { AdminDataControls } from "./AdminDataControls";
 import { AdminSkeleton } from "./AdminSkeleton";
 
@@ -48,35 +49,7 @@ type AdminDataTableProps = {
   total: number;
 };
 
-type TableConfig = {
-  label: string;
-  singular: string;
-  detailLabel: string;
-  metricLabel: string;
-};
-
 const tableKinds: readonly AdminTableKind[] = ["users", "clubs", "events"];
-
-const tableConfig: Record<AdminTableKind, TableConfig> = {
-  users: {
-    label: "İstifadəçilər",
-    singular: "istifadəçi",
-    detailLabel: "Əlaqə və rol",
-    metricLabel: "Fəallıq",
-  },
-  clubs: {
-    label: "Klublar",
-    singular: "klub",
-    detailLabel: "Kateqoriya",
-    metricLabel: "Üzvlər",
-  },
-  events: {
-    label: "Tədbirlər",
-    singular: "tədbir",
-    detailLabel: "Tarix və məkan",
-    metricLabel: "İştirak",
-  },
-};
 
 export function AdminDataTable({
   activeKind,
@@ -104,12 +77,17 @@ export function AdminDataTable({
   status,
   total,
 }: AdminDataTableProps) {
+  const t = useT();
   const reducedMotion = useReducedMotion();
-  const [selectedRow, setSelectedRow] = useState<AdminTableRow | null>(null);
-  const config = tableConfig[activeKind];
+  // Sətrin surəti yox, id saxlanır: dil dəyişəndə və ya siyahı yenilənəndə
+  // inspektor köhnə mətni göstərməsin.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedRow = rows.find((row) => row.id === selectedId) ?? null;
+  const label = t(`admin.tab.${activeKind}`);
+  const metricLabel = t(`admin.table.metric.${activeKind}`);
 
   function selectKind(kind: AdminTableKind) {
-    setSelectedRow(null);
+    setSelectedId(null);
     onKindChange(kind);
   }
 
@@ -138,17 +116,14 @@ export function AdminDataTable({
     <section id="admin-data" className="admin-data-section" aria-labelledby="admin-data-title">
       <header className="admin-data-section__heading">
         <div>
-          <span>Məlumat idarəetməsi</span>
-          <h2 id="admin-data-title">Platformanı bir yerdən idarə et.</h2>
+          <span>{t("admin.data.eyebrow")}</span>
+          <h2 id="admin-data-title">{t("admin.data.title")}</h2>
         </div>
-        <p>
-          Qeydiyyatları yoxla, vəziyyəti izlə və vacib əməliyyatlara sakit bir iş
-          sahəsindən çat.
-        </p>
+        <p>{t("admin.data.text")}</p>
       </header>
 
       <div className="admin-data-toolbar">
-        <div className="admin-data-tabs" role="tablist" aria-label="Məlumat cədvəlini seç">
+        <div className="admin-data-tabs" role="tablist" aria-label={t("admin.data.tablist")}>
           {tableKinds.map((kind) => (
             <button
               key={kind}
@@ -161,7 +136,7 @@ export function AdminDataTable({
               onClick={() => selectKind(kind)}
               onKeyDown={(event) => handleTabKeyDown(event, kind)}
             >
-              <span>{tableConfig[kind].label}</span>
+              <span>{t(`admin.tab.${kind}`)}</span>
               {activeKind === kind && (
                 <motion.span
                   className="admin-data-tabs__active"
@@ -182,12 +157,12 @@ export function AdminDataTable({
             disabled={mutationPending}
           >
             <Plus size={16} aria-hidden="true" />
-            Yeni {config.singular}
+            {t(`admin.table.create.${activeKind}`)}
           </button>
         ) : (
           <span className="admin-permission-badge">
             <LockKeyhole size={14} aria-hidden="true" />
-            Məhdud səlahiyyət
+            {t("admin.data.restricted")}
           </span>
         )}
       </div>
@@ -224,29 +199,29 @@ export function AdminDataTable({
           <AdminSkeleton scope="table" />
         ) : error ? (
           <div className="admin-error-state" role="alert">
-            <span>Məlumat alınmadı</span>
-            <h3>Cədvəli hazırda göstərə bilmirik.</h3>
-            <p>Bağlantını yoxlayıb yenidən cəhd et.</p>
+            <span>{t("admin.data.errorEyebrow")}</span>
+            <h3>{t("admin.data.errorTitle")}</h3>
+            <p>{t("admin.data.errorText")}</p>
             <button type="button" onClick={onRetry}>
               <RefreshCw size={15} aria-hidden="true" />
-              Yenidən yoxla
+              {t("common.retry")}
             </button>
           </div>
         ) : (
           <div className="admin-table-shell">
             <table className="admin-data-table">
               <caption className="sr-only">
-                {config.label}: bu səhifədə {rows.length}, ümumilikdə {total} nəticə
+                {t("admin.table.caption", { label, shown: rows.length, total })}
               </caption>
               <thead className="admin-data-table__header">
                 <tr>
-                  <th scope="col">{config.label}</th>
-                  <th scope="col">{config.detailLabel}</th>
-                  <th scope="col">{config.metricLabel}</th>
-                  <th scope="col">Vəziyyət</th>
-                  <th scope="col">Yenilənmə</th>
+                  <th scope="col">{label}</th>
+                  <th scope="col">{t(`admin.table.detail.${activeKind}`)}</th>
+                  <th scope="col">{metricLabel}</th>
+                  <th scope="col">{t("admin.table.status")}</th>
+                  <th scope="col">{t("admin.table.updated")}</th>
                   <th scope="col">
-                    <span className="sr-only">Əməliyyatlar</span>
+                    <span className="sr-only">{t("admin.table.actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -288,11 +263,11 @@ export function AdminDataTable({
                           type="button"
                           className="admin-table-action"
                           onClick={() =>
-                            setSelectedRow((current) => (current?.id === row.id ? null : row))
+                            setSelectedId((current) => (current === row.id ? null : row.id))
                           }
                           aria-expanded={selectedRow?.id === row.id}
                           aria-controls="admin-row-inspector"
-                          aria-label={`${row.name} adlı ${config.singular} üçün detalları göstər`}
+                          aria-label={t("admin.table.details", { name: row.name })}
                           disabled={mutationPending}
                         >
                           <MoreHorizontal size={18} aria-hidden="true" />
@@ -307,8 +282,8 @@ export function AdminDataTable({
             {rows.length === 0 && (
               <div className="admin-table-empty" role="status">
                 <Search size={20} aria-hidden="true" />
-                <strong>Uyğun nəticə tapılmadı.</strong>
-                <span>Axtarış sözünü dəyişib yenidən yoxla.</span>
+                <strong>{t("admin.table.empty")}</strong>
+                <span>{t("admin.table.emptyHint")}</span>
               </div>
             )}
 
@@ -324,21 +299,21 @@ export function AdminDataTable({
                   transition={{ duration: reducedMotion ? 0 : 0.24 }}
                 >
                   <div>
-                    <span>Seçilmiş qeyd</span>
+                    <span>{t("admin.inspector.eyebrow")}</span>
                     <strong>{selectedRow.name}</strong>
                     <small>{selectedRow.detail}</small>
                   </div>
                   <dl>
                     <div>
-                      <dt>{config.metricLabel}</dt>
+                      <dt>{metricLabel}</dt>
                       <dd>{selectedRow.metric}</dd>
                     </div>
                     <div>
-                      <dt>Vəziyyət</dt>
+                      <dt>{t("admin.table.status")}</dt>
                       <dd>{selectedRow.status}</dd>
                     </div>
                     <div>
-                      <dt>Yenilənmə</dt>
+                      <dt>{t("admin.table.updated")}</dt>
                       <dd>{selectedRow.updatedAt}</dd>
                     </div>
                   </dl>
@@ -348,12 +323,12 @@ export function AdminDataTable({
                       type="button"
                       onClick={() => {
                         onEdit(selectedRow.id);
-                        setSelectedRow(null);
+                        setSelectedId(null);
                       }}
                       disabled={mutationPending}
                     >
                       <Pencil size={15} aria-hidden="true" />
-                      Redaktə et
+                      {t("admin.inspector.edit")}
                     </button>
                     )}
                     {canDelete && (
@@ -362,25 +337,25 @@ export function AdminDataTable({
                       className="is-danger"
                       onClick={() => {
                         onDelete(selectedRow.id);
-                        setSelectedRow(null);
+                        setSelectedId(null);
                       }}
                       disabled={mutationPending}
                     >
                       <Trash2 size={15} aria-hidden="true" />
-                      Sil
+                      {t("common.delete")}
                     </button>
                     )}
                     {(!canEdit || !(canEditRow?.(selectedRow) ?? true)) && !canDelete && (
                       <span className="admin-row-inspector__read-only">
                         <LockKeyhole size={14} aria-hidden="true" />
-                        Bu bölmə yalnız baxış üçündür.
+                        {t("admin.inspector.readOnly")}
                       </span>
                     )}
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedRow(null)}
-                    aria-label="Seçilmiş qeydin detallarını bağla"
+                    onClick={() => setSelectedId(null)}
+                    aria-label={t("admin.inspector.close")}
                   >
                     <X size={16} aria-hidden="true" />
                   </button>

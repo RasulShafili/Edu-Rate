@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import type { CSSProperties } from "react";
+import { useT } from "../i18n/LanguageProvider";
 
 export type AdminActivityPoint = {
   label: string;
@@ -45,12 +46,19 @@ const cursorStyle = { stroke: "rgba(68, 118, 108, 0.34)", strokeWidth: 1 };
 const barCursorStyle = { fill: "rgba(68, 118, 108, 0.06)" };
 const distributionColors = ["#44766c", "#4f8fa3", "#7c68c5", "#c96d4e"];
 
+/**
+ * Birinci qrafik hər ayın SONUNA qədər yaradılmış qeydlərin cəmini göstərir
+ * (backend `createdAt < ay sonu` sayır). Əvvəl "Platforma aktivliyi" adlanırdı —
+ * halbuki xətt heç vaxt enə bilmir və aktivliyi yox, böyüməni ölçür.
+ * İkincisi "kontent bölgüsü" deyil, klubların kateqoriyalar üzrə sayıdır.
+ */
 export function AdminCharts({ activity, distribution }: AdminChartsProps) {
+  const t = useT();
   const reducedMotion = useReducedMotion();
   const animationDuration = reducedMotion ? 0 : 1050;
 
   return (
-    <section className="admin-charts-grid" aria-label="Platformanın analitik qrafikləri">
+    <section className="admin-charts-grid" aria-label={t("admin.charts.label")}>
       <motion.figure
         className="admin-chart-card admin-chart-card--activity"
         initial={reducedMotion ? false : { opacity: 0, y: 18 }}
@@ -60,20 +68,20 @@ export function AdminCharts({ activity, distribution }: AdminChartsProps) {
       >
         <header className="admin-chart-card__header">
           <div>
-            <span>Son 6 ay</span>
-            <h2>Platforma aktivliyi</h2>
+            <span>{t("admin.charts.growth.eyebrow")}</span>
+            <h2>{t("admin.charts.growth.title")}</h2>
           </div>
           <div className="admin-chart-legend" aria-hidden="true">
-            <span className="is-users">İstifadəçilər</span>
-            <span className="is-clubs">Klublar</span>
-            <span className="is-events">Tədbirlər</span>
+            <span className="is-users">{t("admin.tab.users")}</span>
+            <span className="is-clubs">{t("admin.tab.clubs")}</span>
+            <span className="is-events">{t("admin.tab.events")}</span>
           </div>
         </header>
 
         <div
           className="admin-chart-card__canvas"
           role="img"
-          aria-label="Son altı ay üzrə istifadəçi, klub və tədbir aktivliyi"
+          aria-label={t("admin.charts.growth.aria")}
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={[...activity]} margin={{ top: 12, right: 8, left: -22, bottom: 0 }}>
@@ -94,14 +102,15 @@ export function AdminCharts({ activity, distribution }: AdminChartsProps) {
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#64748b", fontSize: 10 }}
+                tick={{ fill: "#64748b", fontSize: 11 }}
                 width={44}
+                allowDecimals={false}
               />
               <Tooltip contentStyle={tooltipStyle} cursor={cursorStyle} />
               <Area
                 type="monotone"
                 dataKey="users"
-                name="İstifadəçilər"
+                name={t("admin.tab.users")}
                 stroke="#44766c"
                 strokeWidth={2.4}
                 fill="url(#admin-users-fill)"
@@ -112,7 +121,7 @@ export function AdminCharts({ activity, distribution }: AdminChartsProps) {
               <Area
                 type="monotone"
                 dataKey="clubs"
-                name="Klublar"
+                name={t("admin.tab.clubs")}
                 stroke="#4f8fa3"
                 strokeWidth={1.8}
                 fill="transparent"
@@ -124,7 +133,7 @@ export function AdminCharts({ activity, distribution }: AdminChartsProps) {
               <Area
                 type="monotone"
                 dataKey="events"
-                name="Tədbirlər"
+                name={t("admin.tab.events")}
                 stroke="#7c68c5"
                 strokeWidth={1.8}
                 fill="transparent"
@@ -136,9 +145,6 @@ export function AdminCharts({ activity, distribution }: AdminChartsProps) {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <figcaption className="sr-only">
-          İstifadəçi, klub və tədbir aktivliyinin aylıq müqayisəsi.
-        </figcaption>
       </motion.figure>
 
       <motion.figure
@@ -154,56 +160,57 @@ export function AdminCharts({ activity, distribution }: AdminChartsProps) {
       >
         <header className="admin-chart-card__header">
           <div>
-            <span>Canlı mənzərə</span>
-            <h2>Kontent bölgüsü</h2>
+            <span>{t("admin.charts.clubs.eyebrow")}</span>
+            <h2>{t("admin.charts.clubs.title")}</h2>
           </div>
-          <span className="admin-chart-card__status">Yenilənib</span>
         </header>
 
-        <div
-          className="admin-chart-card__canvas"
-          role="img"
-          aria-label="Platformadakı kontentin kateqoriyalar üzrə bölgüsü"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={[...distribution]} margin={{ top: 14, right: 2, left: -30, bottom: 0 }}>
-              <CartesianGrid stroke="rgba(30,41,59,0.1)" strokeDasharray="4 7" vertical={false} />
-              <XAxis
-                dataKey="label"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#64748b", fontSize: 10 }}
-                dy={10}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "#64748b", fontSize: 10 }}
-              />
-              <Tooltip contentStyle={tooltipStyle} cursor={barCursorStyle} />
-              <Bar
-                dataKey="value"
-                name="Say"
-                radius={[8, 8, 2, 2]}
-                maxBarSize={42}
-                isAnimationActive={!reducedMotion}
-                animationDuration={animationDuration}
-                animationEasing="ease-out"
-              >
-                {distribution.map((entry, index) => (
-                  <Cell
-                    key={entry.label}
-                    fill={distributionColors[index % distributionColors.length]}
-                    fillOpacity={0.88}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <figcaption className="sr-only">
-          Aktiv kontent kateqoriyalarının say üzrə müqayisəsi.
-        </figcaption>
+        {distribution.length === 0 ? (
+          <p className="admin-chart-card__empty">{t("admin.charts.clubs.empty")}</p>
+        ) : (
+          <div
+            className="admin-chart-card__canvas"
+            role="img"
+            aria-label={t("admin.charts.clubs.aria")}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[...distribution]} margin={{ top: 14, right: 2, left: -30, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(30,41,59,0.1)" strokeDasharray="4 7" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  allowDecimals={false}
+                />
+                <Tooltip contentStyle={tooltipStyle} cursor={barCursorStyle} />
+                <Bar
+                  dataKey="value"
+                  name={t("admin.charts.count")}
+                  radius={[8, 8, 2, 2]}
+                  maxBarSize={42}
+                  isAnimationActive={!reducedMotion}
+                  animationDuration={animationDuration}
+                  animationEasing="ease-out"
+                >
+                  {distribution.map((entry, index) => (
+                    <Cell
+                      key={entry.label}
+                      fill={distributionColors[index % distributionColors.length]}
+                      fillOpacity={0.88}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </motion.figure>
     </section>
   );

@@ -472,6 +472,11 @@ describe("EduRate API", () => {
     const overview = await request(app).get("/api/admin/overview").set("Authorization", authorization).expect(200);
     assert.equal(overview.body.data.metrics.length, 4);
     assert.equal(overview.body.data.activity.length, 6);
+    assert.match(overview.body.data.activity[5].month, /^\d{4}-\d{2}$/);
+    for (const metric of overview.body.data.metrics) {
+      assert.equal(metric.trend, undefined);
+      assert.equal(typeof metric.counts.value, "number");
+    }
     for (let index = 1; index < overview.body.data.activity.length; index += 1) {
       assert.ok(overview.body.data.activity[index].users >= overview.body.data.activity[index - 1].users);
       assert.ok(overview.body.data.activity[index].clubs >= overview.body.data.activity[index - 1].clubs);
@@ -1471,6 +1476,30 @@ describe("İş paneli", () => {
 });
 
 describe("Admin paneli", () => {
+  it("icmal qaralama tədbirini açıq saymır, axtarış e-poçtu da tapır", async () => {
+    const ownerAuth = `Bearer ${reusableAdminToken}`;
+    const readEvents = async () => {
+      const overview = await request(app).get("/api/admin/overview").set("Authorization", ownerAuth).expect(200);
+      return overview.body.data.metrics.find((metric: { id: string }) => metric.id === "events").counts;
+    };
+    const before = await readEvents();
+    const startAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+    const draft = { name: "İcmal qaralaması", category: "Technology", organizer: "QA", startAt, capacity: 20, place: "Zal 1" };
+    await request(app).post("/api/admin/events").set("Authorization", ownerAuth).send({ ...draft, status: "Qaralama" }).expect(201);
+    const afterDraft = await readEvents();
+    // Reqressiya: qaralama "Açıq tədbir" sayına düşürdü.
+    assert.equal(afterDraft.value, before.value);
+    assert.equal(afterDraft.pending, before.pending + 1);
+    assert.equal(afterDraft.total, before.total + 1);
+    await request(app).post("/api/admin/events").set("Authorization", ownerAuth).send({ ...draft, name: "İcmal açıq tədbiri", status: "Açıq" }).expect(201);
+    assert.equal((await readEvents()).value, before.value + 1);
+
+    const { createUser } = await import("../src/db/database.js");
+    const target = await createUser({ passwordHash: "x", name: "Axtarış Hədəfi", email: "unikal.axtaris@example.az", role: "student", university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" });
+    const found = await request(app).get("/api/admin/users?search=unikal.axtaris").set("Authorization", ownerAuth).expect(200);
+    assert.deepEqual(found.body.data.items.map((item: { id: string }) => item.id), [target.id]);
+  });
+
   it("adi admin rol yüksəldə və administrator hesabını dəyişə bilmir (D3); elanın prioriteti dərcdə qalır", async () => {
     const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
       import("../src/db/database.js"),

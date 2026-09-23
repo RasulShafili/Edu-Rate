@@ -12,37 +12,13 @@ import type {
   AdminCollectionKind,
   AdminRecordStatus,
 } from "../data/admin";
+import { useT } from "../i18n/LanguageProvider";
 
-type StatusOption = {
-  label: string;
-  value: AdminRecordStatus | "all";
-};
-
-const statusOptions: Record<AdminCollectionKind, readonly StatusOption[]> = {
-  users: [
-    { value: "all", label: "Bütün vəziyyətlər" },
-    { value: "Aktiv", label: "Aktiv" },
-    { value: "Gözləmədə", label: "Diqqət · Gözləmədə" },
-    { value: "Məhdudlaşdırılıb", label: "Diqqət · Məhdudlaşdırılıb" },
-  ],
-  clubs: [
-    { value: "all", label: "Bütün vəziyyətlər" },
-    { value: "Aktiv", label: "Aktiv" },
-    { value: "Gözləmədə", label: "Diqqət · Gözləmədə" },
-    { value: "Məhdudlaşdırılıb", label: "Diqqət · Məhdudlaşdırılıb" },
-  ],
-  events: [
-    { value: "all", label: "Bütün vəziyyətlər" },
-    { value: "Açıq", label: "Açıq" },
-    { value: "Qaralama", label: "Diqqət · Qaralama" },
-    { value: "Tamamlanıb", label: "Tamamlanıb" },
-  ],
-};
-
-const collectionLabels: Record<AdminCollectionKind, string> = {
-  users: "İstifadəçilər",
-  clubs: "Klublar",
-  events: "Tədbirlər",
+/** Dəyərlər bazadakı vəziyyətlərdir (azərbaycanca); görünən ad lüğətdən gəlir. */
+const statusOptions: Record<AdminCollectionKind, readonly AdminRecordStatus[]> = {
+  users: ["Aktiv", "Gözləmədə", "Məhdudlaşdırılıb"],
+  clubs: ["Aktiv", "Gözləmədə", "Məhdudlaşdırılıb"],
+  events: ["Açıq", "Qaralama", "Tamamlanıb"],
 };
 
 export type AdminDataControlsProps = {
@@ -72,13 +48,14 @@ export function AdminDataControls({
   status,
   total,
 }: AdminDataControlsProps) {
+  const t = useT();
   const searchId = useId();
   const statusId = useId();
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
   const rangeStart = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const rangeEnd = Math.min(safePage * pageSize, total);
-  const label = collectionLabels[kind];
+  const label = t(`admin.tab.${kind}`);
 
   useEffect(() => {
     if (page > totalPages) onPageChange(totalPages);
@@ -89,20 +66,21 @@ export function AdminDataControls({
       <div className="admin-server-controls__query">
         <label className="admin-data-search" htmlFor={searchId}>
           <Search size={16} aria-hidden="true" />
-          <span className="sr-only">{label} daxilində axtar</span>
+          <span className="sr-only">{t("admin.search.label", { label })}</span>
           <input
             id={searchId}
             type="search"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Ad və ya məlumata görə axtar…"
+            // Backend istifadəçini ad və e-poçtla, klub və tədbiri adla axtarır.
+            placeholder={t(kind === "users" ? "admin.search.placeholder.users" : "admin.search.placeholder.other")}
             autoComplete="off"
           />
         </label>
 
         <label className="admin-status-filter" htmlFor={statusId}>
           <SlidersHorizontal size={16} aria-hidden="true" />
-          <span className="sr-only">Vəziyyətə görə filtrlə</span>
+          <span className="sr-only">{t("admin.filter.label")}</span>
           <select
             id={statusId}
             value={status}
@@ -110,9 +88,10 @@ export function AdminDataControls({
               onStatusChange(event.target.value as AdminRecordStatus | "all")
             }
           >
-            {statusOptions[kind].map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            <option value="all">{t("admin.filter.all")}</option>
+            {statusOptions[kind].map((value) => (
+              <option key={value} value={value}>
+                {t(`admin.status.${value}`)}
               </option>
             ))}
           </select>
@@ -123,23 +102,23 @@ export function AdminDataControls({
           className="admin-data-refresh-button"
           onClick={onRefresh}
           disabled={loading}
-          aria-label="Cədvəli yenilə"
+          aria-label={t("admin.table.refresh")}
         >
           <RefreshCw size={16} aria-hidden="true" />
         </button>
       </div>
 
-      <nav className="admin-pagination" aria-label={`${label} səhifələri`}>
+      <nav className="admin-pagination" aria-label={t("admin.pagination.label", { label })}>
         <p aria-live="polite">
           <strong>{rangeStart}–{rangeEnd}</strong>
-          <span> / {total} nəticə</span>
+          <span> {t("admin.pagination.results", { total })}</span>
         </p>
         <div>
           <button
             type="button"
             onClick={() => onPageChange(safePage - 1)}
             disabled={safePage <= 1 || loading}
-            aria-label="Əvvəlki səhifə"
+            aria-label={t("admin.pagination.prev")}
           >
             <ChevronLeft size={17} aria-hidden="true" />
           </button>
@@ -150,7 +129,7 @@ export function AdminDataControls({
             type="button"
             onClick={() => onPageChange(safePage + 1)}
             disabled={safePage >= totalPages || loading}
-            aria-label="Növbəti səhifə"
+            aria-label={t("admin.pagination.next")}
           >
             <ChevronRight size={17} aria-hidden="true" />
           </button>

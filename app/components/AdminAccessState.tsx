@@ -1,5 +1,8 @@
+"use client";
+
 import { ArrowLeft, KeyRound, ShieldAlert, WifiOff } from "lucide-react";
 import Link from "next/link";
+import { useT } from "../i18n/LanguageProvider";
 
 export type AdminAccessDeniedState =
   | { status: "signed-out"; signInHref: string }
@@ -11,33 +14,13 @@ type AdminAccessStateProps = {
 };
 
 const content = {
-  "signed-out": {
-    eyebrow: "Qorunan iş sahəsi",
-    title: "Davam etmək üçün daxil ol.",
-    description:
-      "İdarəetmə mərkəzi yalnız təsdiqlənmiş administrator sessiyası ilə açılır.",
-    action: "Hesaba daxil ol",
-    icon: KeyRound,
-  },
-  forbidden: {
-    eyebrow: "Giriş məhduddur",
-    title: "Bu bölmə yalnız administrator üçündür.",
-    description:
-      "Hesabın aktivdir, lakin idarəetmə icazəsi yoxdur. Girişin səhv məhdudlaşdırıldığını düşünürsənsə, platforma rəhbəri ilə əlaqə saxla.",
-    action: "Platformaya qayıt",
-    icon: ShieldAlert,
-  },
-  unavailable: {
-    eyebrow: "Sessiya yoxlanılır",
-    title: "İcazə xidmətinə indi qoşula bilmirik.",
-    description:
-      "Təhlükəsizliyə görə idarəetmə paneli bağlı saxlanıldı. Bağlantı bərpa olunanda yenidən yoxla.",
-    action: "Yenidən yoxla",
-    icon: WifiOff,
-  },
+  "signed-out": { prefix: "admin.access.signedOut", action: "admin.access.signedOut.action", icon: KeyRound },
+  forbidden: { prefix: "admin.access.forbidden", action: "admin.access.forbidden.action", icon: ShieldAlert },
+  unavailable: { prefix: "admin.access.unavailable", action: "common.retry", icon: WifiOff },
 } as const;
 
 export function AdminAccessState({ access }: AdminAccessStateProps) {
+  const t = useT();
   const state = content[access.status];
   const Icon = state.icon;
   const href =
@@ -60,14 +43,14 @@ export function AdminAccessState({ access }: AdminAccessStateProps) {
         <span className="profile-empty-mark" aria-hidden="true">
           <Icon size={20} />
         </span>
-        <span className="profile-kicker">{state.eyebrow}</span>
-        <h1 id="admin-access-title">{state.title}</h1>
-        <p>{state.description}</p>
+        <span className="profile-kicker">{t(`${state.prefix}.eyebrow`)}</span>
+        <h1 id="admin-access-title">{t(`${state.prefix}.title`)}</h1>
+        <p>{t(`${state.prefix}.text`)}</p>
         <Link href={href} className="profile-empty-action">
           {access.status !== "signed-out" && (
             <ArrowLeft size={16} aria-hidden="true" />
           )}
-          {state.action}
+          {t(state.action)}
         </Link>
       </div>
     </section>

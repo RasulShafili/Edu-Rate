@@ -25,6 +25,7 @@ import type {
 } from "../data/admin";
 import { SecureImagePicker } from "./SecureImagePicker";
 import { ImageDraftPicker } from "./ImageDraftPicker";
+import { useT } from "../i18n/LanguageProvider";
 
 const subscribeNoop = () => () => {};
 
@@ -49,11 +50,15 @@ type AdminRecordFormSheetProps = {
   userRoleOnly: boolean;
 };
 
-const labels: Record<AdminCollectionKind, { singular: string; plural: string }> = {
-  users: { singular: "istifadəçi", plural: "İstifadəçilər" },
-  clubs: { singular: "klub", plural: "Klublar" },
-  events: { singular: "tədbir", plural: "Tədbirlər" },
-};
+/** Dəyərlər bazadakı adlardır (azərbaycanca); görünən ad `clubCategory.*` açarındandır. */
+const clubCategories = ["Texnologiya", "Akademik", "Yaradıcılıq", "Sosial təsir", "Mədəniyyət", "İdman"] as const;
+/**
+ * Backend tədbir kateqoriyasını bu dörd dəyərə çevirir (`normalizeCategory`). Əvvəl
+ * sahə sərbəst mətn idi: yazılan "İdman" kimi tanınmayan söz səssizcə "Design"
+ * kimi saxlanırdı, redaktədə isə sahə ingiliscə "Technology" ilə açılırdı.
+ */
+const eventCategories = ["Technology", "Design", "Culture", "Wellness"] as const;
+const userStatuses = ["Aktiv", "Gözləmədə", "Məhdudlaşdırılıb"] as const;
 
 export function AdminRecordFormSheet({
   canAssignElevatedRoles,
@@ -78,7 +83,7 @@ export function AdminRecordFormSheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const config = labels[kind];
+  const t = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -131,16 +136,8 @@ export function AdminRecordFormSheet({
     await onSubmit(createSubmission(kind, formData));
   }
 
-  const title =
-    mode === "create"
-      ? `Yeni ${config.singular} yarat`
-      : mode === "edit"
-        ? `${capitalize(config.singular)} məlumatını yenilə`
-        : `${capitalize(config.singular)} qeydini sil?`;
-  const description =
-    mode === "delete"
-      ? "Bu əməliyyat geri qaytarılmır. Təsdiqdən əvvəl qeydi bir daha yoxla."
-      : "Yalnız vacib məlumatları daxil et. Dəyişikliklər REST API-yə təhlükəsiz göndəriləcək.";
+  const title = t(`admin.sheet.title.${mode}.${kind}`);
+  const description = t(mode === "delete" ? "admin.sheet.description.delete" : "admin.sheet.description.form");
 
   /**
    * Portal yalnız quraşdırmadan SONRA render olunur.
@@ -189,7 +186,7 @@ export function AdminRecordFormSheet({
             <header className="admin-record-sheet__header">
               <span className="admin-record-sheet__eyebrow">
                 {mode === "create" ? <Plus size={15} /> : mode === "edit" ? <Pencil size={15} /> : <Trash2 size={15} />}
-                {config.plural} / {mode === "create" ? "Yeni qeyd" : mode === "edit" ? "Redaktə" : "Silmə"}
+                {t(`admin.tab.${kind}`)} / {t(`admin.sheet.eyebrow.${mode}`)}
               </span>
               <h2 id={titleId}>{title}</h2>
               <p id={descriptionId}>{description}</p>
@@ -198,7 +195,7 @@ export function AdminRecordFormSheet({
                 className="admin-record-sheet__close"
                 onClick={onClose}
                 disabled={pending}
-                aria-label="Pəncərəni bağla"
+                aria-label={t("admin.sheet.close")}
               >
                 <X size={18} aria-hidden="true" />
               </button>
@@ -206,7 +203,7 @@ export function AdminRecordFormSheet({
 
             {mode === "delete" ? (
               <DeleteConfirmation
-                name={record?.name ?? "Bu qeyd"}
+                name={record?.name ?? ""}
                 error={error}
                 pending={pending}
                 onCancel={onClose}
@@ -252,11 +249,11 @@ export function AdminRecordFormSheet({
 
                 <footer className="admin-record-form__footer">
                   <button type="button" onClick={onClose} disabled={pending}>
-                    Ləğv et
+                    {t("common.cancel")}
                   </button>
                   <button type="submit" className="is-primary" disabled={pending}>
                     <Check size={16} aria-hidden="true" />
-                    {pending ? "Yadda saxlanılır…" : mode === "create" ? "Qeyd yarat" : "Yadda saxla"}
+                    {pending ? t("admin.sheet.saving") : mode === "create" ? t("admin.sheet.create") : t("common.save")}
                   </button>
                 </footer>
               </form>
@@ -277,7 +274,11 @@ type ClubLeaderMember = { id: string; name: string; role: "leader" | "member"; i
  * üzvü lider təyin edə / liderlikdən çıxara bilər (klubu yaradan daimi liderdir).
  */
 function ClubLeadersManager({ clubId }: { clubId: string }) {
+  const t = useT();
   const [members, setMembers] = useState<ClubLeaderMember[] | null>(null);
+  // Əvvəl yüklənmə xətası udulurdu (`catch(() => undefined)`) və "Üzvlər yüklənir…"
+  // həmişəlik qalırdı.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
 
@@ -287,8 +288,11 @@ function ClubLeadersManager({ clubId }: { clubId: string }) {
       .then(async (response) => {
         const payload = (await response.json().catch(() => null)) as { data?: { members: ClubLeaderMember[] } } | null;
         if (response.ok && payload?.data) setMembers(payload.data.members);
+        else setLoadFailed(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!controller.signal.aborted) setLoadFailed(true);
+      });
     return () => controller.abort();
   }, [clubId]);
 
@@ -299,13 +303,13 @@ function ClubLeadersManager({ clubId }: { clubId: string }) {
       const response = await fetch(`/api/clubs/${encodeURIComponent(clubId)}/leaders/${encodeURIComponent(member.id)}`, {
         method: member.role === "leader" ? "DELETE" : "PATCH",
       });
-      const payload = (await response.json().catch(() => null)) as { data?: ClubLeaderMember; error?: { message?: string } } | null;
-      if (!response.ok || !payload?.data) throw new Error(payload?.error?.message || "Liderlik dəyişdirilmədi.");
+      const payload = (await response.json().catch(() => null)) as { data?: ClubLeaderMember } | null;
+      if (!response.ok || !payload?.data) throw new Error("leader");
       const updated = payload.data;
       setMembers((current) => current?.map((item) => (item.id === member.id ? updated : item)) ?? current);
-      setMessage(member.role === "leader" ? "Liderlik səlahiyyəti götürüldü." : "Yeni lider təyin edildi.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Liderlik dəyişdirilmədi.");
+      setMessage(member.role === "leader" ? "club.leaderRemoved" : "club.leaderChanged");
+    } catch {
+      setMessage("club.leaderFailed");
     } finally {
       setBusy("");
     }
@@ -315,11 +319,11 @@ function ClubLeadersManager({ clubId }: { clubId: string }) {
     <section className="club-leader-manager">
       <header>
         <div>
-          <small>KLUB RƏHBƏRLİYİ</small>
-          <h3>Liderləri idarə et</h3>
-          <p>Klubu yaradan şəxs daimi liderdir. Üzvlər arasından lider təyin et və ya liderliyi geri götür.</p>
+          <small>{t("club.leadersEyebrow")}</small>
+          <h3>{t("club.leadersTitle")}</h3>
+          <p>{t("club.leadersBody")}</p>
         </div>
-        <Crown size={22} />
+        <Crown size={22} aria-hidden="true" />
       </header>
       <div>
         {members
@@ -331,21 +335,21 @@ function ClubLeadersManager({ clubId }: { clubId: string }) {
                   </span>
                   <div>
                     <strong>{member.name}</strong>
-                    <small>{member.isCreator ? "Klubun yaradıcısı · Lider" : member.role === "leader" ? "Lider" : "Üzv"}</small>
+                    <small>{t(member.isCreator ? "club.roleCreator" : member.role === "leader" ? "club.roleLeader" : "club.roleMember")}</small>
                   </div>
                   {!member.isCreator ? (
                     <button type="button" disabled={busy === member.id} onClick={() => void change(member)}>
-                      {member.role === "leader" ? <><Trash2 size={14} />Liderlikdən çıxar</> : <><UserPlus size={14} />Lider et</>}
+                      {member.role === "leader" ? <><Trash2 size={14} aria-hidden="true" />{t("club.demote")}</> : <><UserPlus size={14} aria-hidden="true" />{t("club.promote")}</>}
                     </button>
                   ) : (
-                    <Crown size={17} aria-label="Lider" />
+                    <Crown size={17} aria-label={t("club.roleLeader")} />
                   )}
                 </article>
               ))
-            : <p className="club-leader-empty">Hələ üzv yoxdur — üzvlər qoşulduqca burada görünəcək.</p>
-          : <p className="club-leader-empty">Üzvlər yüklənir…</p>}
+            : <p className="club-leader-empty">{t("club.membersNone")}</p>
+          : <p className="club-leader-empty" role={loadFailed ? "alert" : undefined}>{t(loadFailed ? "admin.leaders.loadFailed" : "club.membersLoading")}</p>}
       </div>
-      {message ? <p className="club-leader-empty" role="status">{message}</p> : null}
+      {message ? <p className="club-leader-empty" role="status">{t(message)}</p> : null}
     </section>
   );
 }
@@ -361,17 +365,19 @@ function UserFields({
   canAssignElevatedRoles,
   roleOnly,
 }: FieldProps<AdminUser> & { canAssignElevatedRoles: boolean; roleOnly: boolean }) {
+  const t = useT();
+  const roleName = (role: string) => t(`role.${role}`);
   if (roleOnly) {
     return (
       <>
         <p className="admin-permission-note" role="note">
-          Yalnız adi istifadəçi rolu dəyişdirilə bilər. Administrator rolları əsas administrator tərəfindən idarə olunur.
+          {t("admin.field.roleOnlyNote")}
         </p>
-        <Field label="Yeni rol" name="role" required>
+        <Field label={t("admin.field.newRole")} name="role" required>
           <select name="role" defaultValue={record?.role ?? "student"} autoFocus required>
-            <option value="student">Tələbə</option>
-            <option value="teacher">Müəllim</option>
-            {record?.role === "mentor" ? <option value="mentor">Mentor (köhnə)</option> : null}
+            <option value="student">{roleName("student")}</option>
+            <option value="teacher">{roleName("teacher")}</option>
+            {record?.role === "mentor" ? <option value="mentor">{t("admin.field.legacy", { role: roleName("mentor") })}</option> : null}
           </select>
         </Field>
       </>
@@ -379,40 +385,38 @@ function UserFields({
   }
   return (
     <>
-      <Field label="Ad və soyad" name="name" required>
+      <Field label={t("admin.field.name")} name="name" required>
         <input ref={firstFieldRef} name="name" defaultValue={record?.name} minLength={3} maxLength={80} required />
       </Field>
-      <Field label="E-poçt" name="email" required>
+      <Field label={t("admin.field.email")} name="email" required>
         <input name="email" type="email" defaultValue={record?.email} maxLength={120} autoComplete="email" required />
       </Field>
-      <Field label="Rol" name="role" required>
+      <Field label={t("admin.field.role")} name="role" required>
         <select name="role" defaultValue={record?.role ?? "student"} required>
-          <option value="student">Tələbə</option>
-          <option value="teacher">Müəllim</option>
+          <option value="student">{roleName("student")}</option>
+          <option value="teacher">{roleName("teacher")}</option>
           {canAssignElevatedRoles && (
             <>
-              <option value="assistant_admin">Admin köməkçisi</option>
-              <option value="admin">Administrator</option>
+              <option value="assistant_admin">{roleName("assistant_admin")}</option>
+              <option value="admin">{roleName("admin")}</option>
             </>
           )}
-          {record?.role === "mentor" ? <option value="mentor">Mentor (köhnə)</option> : null}
-          {record?.role === "owner_admin" ? <option value="owner_admin">Platforma sahibi (köhnə)</option> : null}
+          {record?.role === "mentor" ? <option value="mentor">{t("admin.field.legacy", { role: roleName("mentor") })}</option> : null}
+          {record?.role === "owner_admin" ? <option value="owner_admin">{t("admin.field.current", { role: roleName("owner_admin") })}</option> : null}
           {!canAssignElevatedRoles && (record?.role === "admin" || record?.role === "assistant_admin") ? (
-            <option value={record.role}>{record.role === "admin" ? "Administrator" : "Admin köməkçisi"} (cari)</option>
+            <option value={record.role}>{t("admin.field.current", { role: roleName(record.role) })}</option>
           ) : null}
         </select>
       </Field>
-      <Field label="Universitet" name="university" required>
+      <Field label={t("admin.field.university")} name="university" required>
         <input name="university" defaultValue={record?.university} minLength={3} maxLength={120} required />
       </Field>
-      <Field label="Fakültə" name="faculty" required>
+      <Field label={t("admin.field.faculty")} name="faculty" required>
         <input name="faculty" defaultValue={record?.faculty} minLength={2} maxLength={100} required />
       </Field>
-      <Field label="Vəziyyət" name="status" required>
+      <Field label={t("admin.field.status")} name="status" required>
         <select name="status" defaultValue={record?.status ?? "Gözləmədə"} required>
-          <option value="Aktiv">Aktiv</option>
-          <option value="Gözləmədə">Gözləmədə</option>
-          <option value="Məhdudlaşdırılıb">Məhdudlaşdırılıb</option>
+          {userStatuses.map((status) => <option key={status} value={status}>{t(`admin.status.${status}`)}</option>)}
         </select>
       </Field>
     </>
@@ -420,6 +424,12 @@ function UserFields({
 }
 
 function ClubFields({ firstFieldRef, record }: FieldProps<AdminClub>) {
+  const t = useT();
+  const categoryLabel = (value: string) => {
+    const key = `clubCategory.${value}`;
+    const label = t(key);
+    return label === key ? value : label;
+  };
   const [draft, setDraft] = useState({
     name: record?.name ?? "",
     category: record?.category ?? "",
@@ -448,51 +458,50 @@ function ClubFields({ firstFieldRef, record }: FieldProps<AdminClub>) {
   return (
     <>
       <div className={`admin-club-live-preview is-wide${coverPreview ? " has-cover" : ""}`} style={coverPreview ? { backgroundImage: `linear-gradient(135deg, rgba(8,37,31,.16), rgba(8,37,31,.76)), url("${coverPreview}")` } : undefined}>
-        <span>{draft.category || "KATEQORİYA"}</span>
-        <h3>{draft.name || "Klubun adı"}</h3>
-        <p>{draft.tagline || draft.description || "Klubun qısa şüarı və məqsədi burada görünəcək."}</p>
+        <span>{draft.category ? categoryLabel(draft.category) : t("admin.field.category")}</span>
+        <h3>{draft.name || t("admin.field.clubName")}</h3>
+        <p>{draft.tagline || draft.description || t("admin.field.previewText")}</p>
       </div>
       <div className="admin-record-field is-wide">
-        <span>Klubun örtük şəkli</span>
+        <span>{t("admin.field.cover")}</span>
         {record ? (
           <SecureImagePicker kind="club" ownerId={record.id} currentUrl={record.coverUrl} compact onChange={(asset) => setCoverPreview(asset?.secureUrl ?? "")} />
         ) : (
           <div className="admin-club-file-picker">
             <div className="admin-club-file-actions">
-              <label><span>{coverPreview ? "Şəkli dəyiş" : "Şəkil seç"}</span><input ref={coverInputRef} name="coverFile" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectCover(event.target.files?.[0])} /></label>
-              {coverPreview ? <button type="button" onClick={() => selectCover()}><Trash2 size={14} /> Şəkli sil</button> : null}
+              <label><span>{coverPreview ? t("admin.field.changeImage") : t("admin.field.chooseImage")}</span><input ref={coverInputRef} name="coverFile" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectCover(event.target.files?.[0])} /></label>
+              {coverPreview ? <button type="button" onClick={() => selectCover()}><Trash2 size={14} aria-hidden="true" /> {t("admin.field.removeImage")}</button> : null}
             </div>
-            <small>JPG, PNG və ya WebP · maksimum 5 MB</small>
+            <small>{t("admin.field.imageHint")}</small>
           </div>
         )}
       </div>
-      <Field label="Klubun adı" name="name" required>
+      <Field label={t("admin.field.clubName")} name="name" required>
         <input ref={firstFieldRef} name="name" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} minLength={3} maxLength={100} required />
       </Field>
-      <Field label="Kateqoriya" name="category" required>
+      <Field label={t("admin.field.category")} name="category" required>
         <select name="category" value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value })} required>
-          <option value="" disabled>Kateqoriya seç</option>
-          <option>Texnologiya</option><option>Akademik</option><option>Yaradıcılıq</option><option>Sosial təsir</option><option>Mədəniyyət</option><option>İdman</option>
+          <option value="" disabled>{t("admin.field.chooseCategory")}</option>
+          {clubCategories.map((category) => <option key={category} value={category}>{categoryLabel(category)}</option>)}
+          {draft.category && !(clubCategories as readonly string[]).includes(draft.category) ? <option value={draft.category}>{draft.category}</option> : null}
         </select>
       </Field>
-      <Field label="Şüar" name="tagline" required>
+      <Field label={t("admin.field.tagline")} name="tagline" required>
         <input name="tagline" value={draft.tagline} onChange={(event) => setDraft({ ...draft, tagline: event.target.value })} minLength={5} maxLength={220} required />
       </Field>
-      {record ? <Field label="Qısa təsvir" name="description" required>
+      {record ? <Field label={t("admin.field.description")} name="description" required>
         <textarea name="description" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} minLength={10} maxLength={800} rows={3} required />
       </Field> : null}
-      <Field label="Haqqında" name="about" hint="Hər abzası yeni sətirdən yaz" required>
+      <Field label={t("admin.field.about")} name="about" hint={t("admin.field.aboutHint")} required>
         <textarea name="about" value={draft.about} onChange={(event) => setDraft({ ...draft, about: event.target.value })} minLength={10} maxLength={3000} rows={4} required />
       </Field>
-      <Field label="Görüş günü" name="meetingDay" required><input name="meetingDay" value={draft.meetingDay} onChange={(event) => setDraft({ ...draft, meetingDay: event.target.value })} minLength={1} maxLength={80} required /></Field>
-      <Field label="Görüş saatı" name="meetingTime" required><input name="meetingTime" value={draft.meetingTime} onChange={(event) => setDraft({ ...draft, meetingTime: event.target.value })} minLength={1} maxLength={40} required /></Field>
-      <Field label="Görüş yeri" name="meetingPlace" required><input name="meetingPlace" value={draft.meetingPlace} onChange={(event) => setDraft({ ...draft, meetingPlace: event.target.value })} minLength={2} maxLength={180} required /></Field>
+      <Field label={t("admin.field.meetingDay")} name="meetingDay" required><input name="meetingDay" value={draft.meetingDay} onChange={(event) => setDraft({ ...draft, meetingDay: event.target.value })} minLength={1} maxLength={80} required /></Field>
+      <Field label={t("admin.field.meetingTime")} name="meetingTime" required><input name="meetingTime" value={draft.meetingTime} onChange={(event) => setDraft({ ...draft, meetingTime: event.target.value })} minLength={1} maxLength={40} required /></Field>
+      <Field label={t("admin.field.meetingPlace")} name="meetingPlace" required><input name="meetingPlace" value={draft.meetingPlace} onChange={(event) => setDraft({ ...draft, meetingPlace: event.target.value })} minLength={2} maxLength={180} required /></Field>
       {record ? <><input type="hidden" name="slug" value={record.slug} /><input type="hidden" name="coordinatorInitials" value={record.coordinatorInitials} /><input type="hidden" name="shortName" value={record.shortName} /><input type="hidden" name="tone" value={record.tone} /><input type="hidden" name="visualMark" value={record.visualMark ?? "club"} /><input type="hidden" name="meetingCadence" value={record.meeting?.cadence ?? "Həftəlik"} /><input type="hidden" name="focusTags" value={(record.focusTags ?? [record.category]).join(", ")} /></> : null}
-      <Field label="Vəziyyət" name="status" required>
+      <Field label={t("admin.field.status")} name="status" required>
         <select name="status" defaultValue={record?.status ?? "Gözləmədə"} required>
-          <option value="Aktiv">Aktiv</option>
-          <option value="Gözləmədə">Gözləmədə</option>
-          <option value="Məhdudlaşdırılıb">Məhdudlaşdırılıb</option>
+          {userStatuses.map((status) => <option key={status} value={status}>{t(`admin.status.${status}`)}</option>)}
         </select>
       </Field>
     </>
@@ -500,33 +509,41 @@ function ClubFields({ firstFieldRef, record }: FieldProps<AdminClub>) {
 }
 
 function EventFields({ firstFieldRef, record }: FieldProps<AdminEvent>) {
-  const [imageFile,setImageFile]=useState<File|null>(null);
+  const t = useT();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const currentCategory = record?.category ?? "Technology";
   return (
     <>
-      <div className="admin-record-field is-wide"><span>Tədbir şəkli</span>{record?<SecureImagePicker kind="event" ownerId={record.id} currentUrl={record.imageUrl} compact/>:<ImageDraftPicker file={imageFile} onChange={setImageFile} label="Tədbir şəkli (istəyə bağlı)" compact inputName="eventImageFile"/>}</div>
-      <Field label="Tədbirin adı" name="name" required>
+      <div className="admin-record-field is-wide">
+        <span>{t("admin.field.eventImage")}</span>
+        {record
+          ? <SecureImagePicker kind="event" ownerId={record.id} currentUrl={record.imageUrl} compact />
+          : <ImageDraftPicker file={imageFile} onChange={setImageFile} label={t("admin.field.eventImageOptional")} compact inputName="eventImageFile" />}
+      </div>
+      <Field label={t("admin.field.eventName")} name="name" required>
         <input ref={firstFieldRef} name="name" defaultValue={record?.name} minLength={3} maxLength={120} required />
       </Field>
-      <Field label="Kateqoriya" name="category" required>
-        <input name="category" defaultValue={record?.category} minLength={2} maxLength={60} required />
+      <Field label={t("admin.field.category")} name="category" required>
+        <select name="category" defaultValue={currentCategory} required>
+          {eventCategories.map((category) => <option key={category} value={category}>{t(`eventCategory.${category}`)}</option>)}
+          {!(eventCategories as readonly string[]).includes(currentCategory) ? <option value={currentCategory}>{currentCategory}</option> : null}
+        </select>
       </Field>
-      <Field label="Təşkilatçı" name="organizer" required>
+      <Field label={t("admin.field.organizer")} name="organizer" required>
         <input name="organizer" defaultValue={record?.organizer} minLength={2} maxLength={100} required />
       </Field>
-      <Field label="Başlama vaxtı" name="startAt" required>
+      <Field label={t("admin.field.startAt")} name="startAt" required>
         <input name="startAt" type="datetime-local" defaultValue={toLocalDateTime(record?.startAt)} required />
       </Field>
-      <Field label="Tutum" name="capacity" required>
+      <Field label={t("admin.field.capacity")} name="capacity" required>
         <input name="capacity" type="number" defaultValue={record?.capacity ?? 40} min={1} max={5000} inputMode="numeric" required />
       </Field>
-      <Field label="Məkan" name="place" required>
+      <Field label={t("admin.field.place")} name="place" required>
         <input name="place" defaultValue={record?.place} minLength={2} maxLength={100} required />
       </Field>
-      <Field label="Vəziyyət" name="status" required>
+      <Field label={t("admin.field.status")} name="status" required>
         <select name="status" defaultValue={record?.status ?? "Qaralama"} required>
-          <option value="Açıq">Açıq</option>
-          <option value="Qaralama">Qaralama</option>
-          <option value="Tamamlanıb">Tamamlanıb</option>
+          {(["Açıq", "Qaralama", "Tamamlanıb"] as const).map((status) => <option key={status} value={status}>{t(`admin.status.${status}`)}</option>)}
         </select>
       </Field>
     </>
@@ -563,17 +580,18 @@ type DeleteConfirmationProps = {
 };
 
 function DeleteConfirmation({ error, name, onCancel, onDelete, pending }: DeleteConfirmationProps) {
+  const t = useT();
   return (
     <div className="admin-delete-confirmation">
       <div aria-hidden="true"><AlertTriangle size={22} /></div>
       <strong>{name}</strong>
-      <p>Qeyd və onun idarəetmə məlumatları siyahıdan silinəcək.</p>
+      <p>{t("admin.sheet.delete.text")}</p>
       {error && <p className="admin-record-form__error" role="alert">{error}</p>}
       <footer>
-        <button type="button" data-delete-cancel onClick={onCancel} disabled={pending}>Geri qayıt</button>
+        <button type="button" data-delete-cancel onClick={onCancel} disabled={pending}>{t("admin.sheet.back")}</button>
         <button type="button" className="is-danger" onClick={() => void onDelete()} disabled={pending}>
           <Trash2 size={16} aria-hidden="true" />
-          {pending ? "Silinir…" : "Bəli, sil"}
+          {pending ? t("admin.sheet.deleting") : t("admin.sheet.confirmDelete")}
         </button>
       </footer>
     </div>
@@ -677,8 +695,4 @@ function toLocalDateTime(value?: string): string {
   if (Number.isNaN(date.getTime())) return "";
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
-}
-
-function capitalize(value: string): string {
-  return value.charAt(0).toLocaleUpperCase("az") + value.slice(1);
 }

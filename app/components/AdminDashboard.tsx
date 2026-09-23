@@ -3,12 +3,10 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
-  ArrowDownRight,
-  ArrowRight,
-  ArrowUpRight,
   CalendarDays,
   CheckCircle2,
   Circle,
+  LockKeyhole,
   Network,
   RefreshCw,
   ShieldCheck,
@@ -32,9 +30,10 @@ import {
   useAdminUsers,
 } from "../hooks/useAdminData";
 import { useAdminTableQuery } from "../hooks/useAdminTableQuery";
+import { useT } from "../i18n/LanguageProvider";
+import { AdminInputError, adminErrorKey } from "../lib/admin-errors";
 import {
   getAdminCapabilities,
-  getAdminRoleLabel,
   canEditUserRole,
   isAssignableUserRole,
   type AdminAccessRole,
@@ -56,6 +55,8 @@ import { ReviewModerationPanel } from "./ReviewModerationPanel";
 import { MentorApplicationPanel } from "./MentorApplicationPanel";
 import { AdminOperationsPanel } from "./AdminOperationsPanel";
 
+type Translate = ReturnType<typeof useT>;
+
 const metricIcons: Record<AdminMetric["id"], LucideIcon> = {
   users: UsersRound,
   clubs: Network,
@@ -63,34 +64,82 @@ const metricIcons: Record<AdminMetric["id"], LucideIcon> = {
   engagement: Activity,
 };
 
+const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+const maxImageBytes = 5 * 1024 * 1024;
+
 function statusTone(status: AdminRecordStatus): AdminTableRow["statusTone"] {
   if (status === "Aktiv" || status === "Açıq") return "positive";
   if (status === "Tamamlanıb") return "neutral";
   return "attention";
 }
 
-function formatUpdatedAt(value: string): string {
+/** Tərcümə yoxdursa (bazada naməlum dəyər) xam dəyəri göstər, açarın özünü yox. */
+function labelOr(t: Translate, key: string, raw: string): string {
+  const value = t(key);
+  return value === key ? raw : value;
+}
+
+/** Bakı vaxtı (UTC+4), ay adı lüğətdən: "23 sen 14:05". */
+function formatBakuDateTime(value: string, t: Translate): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const bakuDate = new Date(date.getTime() + 4 * 60 * 60 * 1000);
-  const monthNames = ["yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avq", "sen", "okt", "noy", "dek"];
   const day = String(bakuDate.getUTCDate()).padStart(2, "0");
   const hour = String(bakuDate.getUTCHours()).padStart(2, "0");
   const minute = String(bakuDate.getUTCMinutes()).padStart(2, "0");
-  return `${day} ${monthNames[bakuDate.getUTCMonth()]} ${hour}:${minute}`;
+  return `${day} ${t(`monthShort.${bakuDate.getUTCMonth() + 1}`)} ${hour}:${minute}`;
 }
 
-function toTableRows(records: readonly AdminCollectionRecord[]): AdminTableRow[] {
+/**
+ * Cədvəlin "detal" və "göstərici" sütunları xam sahələrdən qurulur. Əvvəl backend-in
+ * hazır azərbaycanca mətni göstərilirdi — istifadəçi sətrində hətta xam `student`
+ * rolu və fakültə yazılırdı, e-poçt isə heç görünmürdü.
+ */
+function describeRecord(
+  record: AdminCollectionRecord,
+  t: Translate,
+): Pick<AdminTableRow, "detail" | "metric"> {
+  if (record.kind === "users") {
+    return {
+      detail: `${record.email} · ${labelOr(t, `role.${record.role}`, record.role)}`,
+      metric:
+        record.emailVerified === undefined
+          ? record.metric
+          : t(record.emailVerified ? "admin.user.emailVerified" : "admin.user.emailUnverified"),
+    };
+  }
+  if (record.kind === "clubs") {
+    return {
+      detail: `${labelOr(t, `clubCategory.${record.category}`, record.category)} · ${t("admin.club.members", { count: record.memberCount })}`,
+      metric: t("admin.club.events", { count: record.eventCount }),
+    };
+  }
+  return {
+    detail: `${formatBakuDateTime(record.startAt, t)} · ${record.place}`,
+    metric: `${record.attendeeCount} / ${record.capacity}`,
+  };
+}
+
+function toTableRows(records: readonly AdminCollectionRecord[], t: Translate): AdminTableRow[] {
   return records.map((record) => ({
     id: record.id,
     name: record.name,
-    detail: record.detail,
-    metric: record.metric,
-    status: record.status,
+    ...describeRecord(record, t),
+    status: labelOr(t, `admin.status.${record.status}`, record.status),
     statusTone: statusTone(record.status),
-    updatedAt: formatUpdatedAt(record.updatedAt),
+    updatedAt: formatBakuDateTime(record.updatedAt, t),
     role: record.kind === "users" ? record.role : undefined,
   }));
+}
+
+function metricSummary(metric: AdminMetric, t: Translate): string {
+  const counts = metric.counts;
+  if (!counts) return metric.change;
+  const total = t("admin.metric.total", { count: counts.total ?? 0 });
+  if (metric.id === "users") return total;
+  if (metric.id === "clubs") return `${total} · ${t("admin.metric.pendingClubs", { count: counts.pending ?? 0 })}`;
+  if (metric.id === "events") return `${total} · ${t("admin.metric.drafts", { count: counts.pending ?? 0 })}`;
+  return `${t("admin.metric.memberships", { count: counts.memberships ?? 0 })} · ${t("admin.metric.reviews", { count: counts.reviews ?? 0 })}`;
 }
 
 type MetricCardProps = {
@@ -98,22 +147,21 @@ type MetricCardProps = {
   metric: AdminMetric;
 };
 
+/**
+ * Göstərici kartı yalnız real rəqəmləri göstərir. Əvvəl hər kartda yaşıl "artım"
+ * oxu və "əvvəlki dövrlə müqayisə" yazısı vardı; backend isə `trend`-i sabit
+ * "up" göndərirdi — heç bir müqayisə aparılmırdı.
+ */
 function MetricCard({ index, metric }: MetricCardProps) {
+  const t = useT();
   const reducedMotion = useReducedMotion();
   const Icon = metricIcons[metric.id];
-  const TrendIcon =
-    metric.trend === "up"
-      ? ArrowUpRight
-      : metric.trend === "down"
-        ? ArrowDownRight
-        : ArrowRight;
 
   return (
     <motion.article
       className={`admin-metric-card is-${metric.id}`}
       initial={reducedMotion ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={reducedMotion ? undefined : { y: -5, scale: 1.012 }}
       transition={{
         duration: reducedMotion ? 0 : 0.46,
         delay: reducedMotion ? 0 : 0.06 + index * 0.055,
@@ -121,16 +169,14 @@ function MetricCard({ index, metric }: MetricCardProps) {
       }}
     >
       <header>
-        <span>{metric.label}</span>
+        <span>{metric.counts ? t(`admin.metric.${metric.id}`) : metric.label}</span>
         <i aria-hidden="true">
           <Icon size={17} strokeWidth={1.8} />
         </i>
       </header>
-      <strong>{metric.value}</strong>
-      <footer className={`is-${metric.trend}`}>
-        <TrendIcon size={14} aria-hidden="true" />
-        <span>{metric.change}</span>
-        <small>əvvəlki dövrlə müqayisə</small>
+      <strong>{metric.counts ? metric.counts.value : metric.value}</strong>
+      <footer>
+        <span>{metricSummary(metric, t)}</span>
       </footer>
     </motion.article>
   );
@@ -142,7 +188,6 @@ type AdminDashboardProps = {
     email: string;
     role: AdminAccessRole;
   };
-  demoMode: boolean;
 };
 
 type EditorState = {
@@ -150,9 +195,14 @@ type EditorState = {
   record: AdminCollectionRecord | null;
 };
 
+/** Bildiriş mətn yox, açar daşıyır ki, dil dəyişəndə də düzgün göstərilsin. */
 type CrudFeedback = {
   id: number;
-  message: string;
+  key: string;
+  name?: string;
+  noteKey?: string;
+  /** İcazə rəddi uğur işarəsi ilə göstərilməsin. */
+  denied?: boolean;
 };
 
 function getInitials(name: string): string {
@@ -164,7 +214,14 @@ function getInitials(name: string): string {
     .join("") || "ER";
 }
 
-export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps) {
+function assertImage(file: File | undefined) {
+  if (!file) return;
+  if (!allowedImageTypes.includes(file.type)) throw new AdminInputError("admin.error.imageType");
+  if (file.size > maxImageBytes) throw new AdminInputError("admin.error.imageSize");
+}
+
+export function AdminDashboard({ administrator }: AdminDashboardProps) {
+  const t = useT();
   const reducedMotion = useReducedMotion();
   const [activeTable, setActiveTable] = useState<AdminTableKind>("users");
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -185,7 +242,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
   const activeCollection =
     activeTable === "users" ? users : activeTable === "clubs" ? clubs : events;
   const collectionItems = (activeCollection.data?.items ?? []) as readonly AdminCollectionRecord[];
-  const rows = toTableRows(collectionItems);
+  const rows = toTableRows(collectionItems, t);
   const hasConnectionError = Boolean(
     overview.error || users.error || clubs.error || events.error,
   );
@@ -211,10 +268,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
       ? collectionItems.find((item) => item.id === id) ?? null
       : null;
     if (activeTable === "users" && mode === "create" && !capabilities.canCreateUsers) {
-      setFeedback({
-        id: Date.now(),
-        message: "Yeni istifadəçi hesabını yalnız əsas administrator yarada bilər.",
-      });
+      setFeedback({ id: Date.now(), key: "admin.feedback.createOwnerOnly", denied: true });
       return;
     }
     if (
@@ -223,10 +277,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
       record?.kind === "users" &&
       !canEditUserRole(administrator.role, record.role)
     ) {
-      setFeedback({
-        id: Date.now(),
-        message: "Administrator hesablarını (öz hesabın daxil) yalnız platforma sahibi dəyişə bilər.",
-      });
+      setFeedback({ id: Date.now(), key: "admin.feedback.adminAccountsOwnerOnly", denied: true });
       return;
     }
     if (mode !== "create" && !record) return;
@@ -237,7 +288,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
   async function submitRecord(submission: AdminRecordSubmission) {
     if (!editor || editor.mode === "delete") return;
     setFormError(null);
-    let completionNote = "";
+    let imageFailed = false;
 
     try {
       if (submission.kind === "users") {
@@ -245,7 +296,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
           if (administrator.role === "assistant_admin") {
             const role = submission.input.role;
             if (!isAssignableUserRole(role) || !canEditUserRole(administrator.role, editor.record.role)) {
-              throw new Error("Bu rolu vermək üçün əsas administrator səlahiyyəti tələb olunur.");
+              throw new AdminInputError("admin.error.roleNotAllowed");
             }
             await userMutations.update(editor.record.id, { role });
           } else {
@@ -253,7 +304,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
           }
         } else {
           if (!capabilities.canCreateUsers) {
-            throw new Error("Yeni istifadəçi hesabını yalnız əsas administrator yarada bilər.");
+            throw new AdminInputError("admin.feedback.createOwnerOnly");
           }
           await userMutations.create(submission.input);
         }
@@ -261,36 +312,39 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
         if (editor.mode === "edit" && editor.record?.kind === "clubs") {
           await clubMutations.update(editor.record.id, submission.input);
         } else {
-          if (submission.coverFile && !["image/jpeg", "image/png", "image/webp"].includes(submission.coverFile.type)) {
-            throw new Error("Yalnız JPG, PNG və WebP şəkilləri qəbul olunur.");
-          }
-          if (submission.coverFile && submission.coverFile.size > 5 * 1024 * 1024) {
-            throw new Error("Klub şəkli 5 MB-dan böyük ola bilməz.");
-          }
+          assertImage(submission.coverFile);
           const club = await clubMutations.create(submission.input);
           if (submission.coverFile) {
             try {
               await uploadSecureImage(submission.coverFile, "club", club.id);
             } catch {
-              completionNote = " Klub yaradıldı, lakin şəkil yüklənmədi; onu redaktə ekranından yenidən seçə bilərsiniz.";
+              imageFailed = true;
             }
           }
         }
       } else if (editor.mode === "edit" && editor.record?.kind === "events") {
         await eventMutations.update(editor.record.id, submission.input);
       } else {
-        if(submission.imageFile&&!["image/jpeg","image/png","image/webp"].includes(submission.imageFile.type))throw new Error("Yalnız JPG, PNG və WebP şəkilləri qəbul olunur.");
-        if(submission.imageFile&&submission.imageFile.size>5*1024*1024)throw new Error("Tədbir şəkli 5 MB-dan böyük ola bilməz.");
-        const created=await eventMutations.create(submission.input);
-        if(submission.imageFile){try{await uploadSecureImage(submission.imageFile,"event",created.id);}catch{completionNote=" Tədbir yaradıldı, lakin şəkil yüklənmədi; redaktə ekranından yenidən seçə bilərsiniz.";}}
+        assertImage(submission.imageFile);
+        const created = await eventMutations.create(submission.input);
+        if (submission.imageFile) {
+          try {
+            await uploadSecureImage(submission.imageFile, "event", created.id);
+          } catch {
+            imageFailed = true;
+          }
+        }
       }
 
-      const action = editor.mode === "create" ? "yaradıldı" : "yeniləndi";
-      const name = submission.input.name || editor.record?.name || "Qeyd";
       setEditor(null);
-      setFeedback({ id: Date.now(), message: `${name} uğurla ${action}.${completionNote}` });
+      setFeedback({
+        id: Date.now(),
+        key: editor.mode === "create" ? "admin.feedback.created" : "admin.feedback.updated",
+        name: submission.input.name || editor.record?.name || "",
+        noteKey: imageFailed ? "admin.feedback.imageNotUploaded" : undefined,
+      });
     } catch (error) {
-      setFormError(getMutationErrorMessage(error));
+      setFormError(adminErrorKey(error));
     }
   }
 
@@ -302,18 +356,24 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
     try {
       if (record.kind === "users") {
         if (!capabilities.canDeleteUsers) {
-          throw new Error("İstifadəçi silmək yalnız əsas administratora açıqdır.");
+          throw new AdminInputError("admin.feedback.deleteOwnerOnly");
         }
         await userMutations.remove(record.id);
       }
       if (record.kind === "clubs") await clubMutations.remove(record.id);
       if (record.kind === "events") await eventMutations.remove(record.id);
       setEditor(null);
-      setFeedback({ id: Date.now(), message: `${record.name} siyahıdan silindi.` });
+      setFeedback({ id: Date.now(), key: "admin.feedback.deleted", name: record.name });
     } catch (error) {
-      setFormError(getMutationErrorMessage(error));
+      setFormError(adminErrorKey(error));
     }
   }
+
+  const connectionLabel = hasConnectionError
+    ? t("admin.connection.error")
+    : isRefreshing
+      ? t("admin.connection.refreshing")
+      : t("admin.connection.live");
 
   return (
     <div className="admin-dashboard">
@@ -327,9 +387,9 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
           <div className="admin-header__copy">
             <span>
               <ShieldCheck size={14} strokeWidth={1.8} aria-hidden="true" />
-              İdarəetmə mərkəzi
+              {t("admin.header.eyebrow")}
             </span>
-            <h1 className="module-page-title">İdarəetmə</h1>
+            <h1 className="module-page-title">{t("admin.header.title")}</h1>
           </div>
 
           <div className="admin-header__utilities">
@@ -338,23 +398,14 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
               aria-live="polite"
             >
               <Circle size={8} fill="currentColor" aria-hidden="true" />
-              {hasConnectionError
-                ? "Bağlantını yoxla"
-                : isRefreshing
-                  ? "Məlumat yenilənir"
-                  : demoMode
-                    ? "Nümayiş rejimi · nümunə məlumat"
-                    : "REST API-yə təhlükəsiz qoşulub"}
+              {connectionLabel}
             </p>
-            <div
-              className="admin-account-chip"
-              aria-label={demoMode ? "Nümayiş administrator hesabı" : "Aktiv administrator hesabı"}
-            >
+            <div className="admin-account-chip" aria-label={t("admin.account.label")}>
               <span aria-hidden="true">{getInitials(administrator.displayName)}</span>
               <div>
                 <strong>{administrator.displayName}</strong>
-                <em>{getAdminRoleLabel(administrator.role)}</em>
-                <small>{demoMode ? "Yalnız təqdimat rejimi" : administrator.email}</small>
+                <em>{t(`role.${administrator.role}`)}</em>
+                <small>{administrator.email}</small>
               </div>
             </div>
           </div>
@@ -368,23 +419,23 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
         >
           <header className="admin-overview__heading">
             <div>
-              <span>Canlı icmal</span>
-              <h2 id="admin-overview-title">Bu gün platformada nə baş verir?</h2>
+              <span>{t("admin.overview.eyebrow")}</span>
+              <h2 id="admin-overview-title">{t("admin.overview.title")}</h2>
             </div>
             <div>
               {overview.data && (
                 <time dateTime={overview.data.updatedAt}>
-                  {formatUpdatedAt(overview.data.updatedAt)} yenilənib
+                  {t("admin.overview.updatedAt", { time: formatBakuDateTime(overview.data.updatedAt, t) })}
                 </time>
               )}
               <button
                 type="button"
                 onClick={() => void overview.refetch()}
                 disabled={overview.isValidating}
-                aria-label="Analitik məlumatları yenilə"
+                aria-label={t("admin.overview.refreshLabel")}
               >
                 <RefreshCw size={15} aria-hidden="true" />
-                <span>Yenilə</span>
+                <span>{t("admin.refresh")}</span>
               </button>
             </div>
           </header>
@@ -393,12 +444,12 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
             <AdminSkeleton scope="overview" />
           ) : overview.error || !overview.data ? (
             <div className="admin-error-state" role="alert">
-              <span>Analitika əlçatan deyil</span>
-              <h3>İcmalı hazırda göstərə bilmirik.</h3>
-              <p>Digər idarəetmə bölmələri açıqdır. Bir az sonra yenidən yoxla.</p>
+              <span>{t("admin.overview.errorEyebrow")}</span>
+              <h3>{t("admin.overview.errorTitle")}</h3>
+              <p>{t("admin.overview.errorText")}</p>
               <button type="button" onClick={() => void overview.refetch()}>
                 <RefreshCw size={15} aria-hidden="true" />
-                Yenidən yoxla
+                {t("common.retry")}
               </button>
             </div>
           ) : (
@@ -409,9 +460,12 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
                 ))}
               </div>
               <AdminCharts
-                activity={overview.data.activity}
+                activity={overview.data.activity.map((point) => ({
+                  ...point,
+                  label: point.month ? t(`monthShort.${Number(point.month.slice(5))}`) : point.label,
+                }))}
                 distribution={overview.data.distribution.map((item) => ({
-                  label: item.name,
+                  label: labelOr(t, `clubCategory.${item.name}`, item.name),
                   value: item.value,
                 }))}
               />
@@ -434,7 +488,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
           canDelete={activeTable !== "users" || capabilities.canDeleteUsers}
           restrictionMessage={
             activeTable === "users" && administrator.role === "assistant_admin"
-              ? "Admin köməkçisi yalnız tələbə, mentor və müəllim rollarını dəyişə bilər; administrator hesabları qorunur."
+              ? t("admin.restriction.assistant")
               : null
           }
           onCreate={() => openEditor("create")}
@@ -463,7 +517,7 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
         mode={editor?.mode ?? "create"}
         record={editor?.record ?? null}
         pending={mutationPending}
-        error={formError}
+        error={formError ? t(formError) : null}
         canAssignElevatedRoles={capabilities.canAssignElevatedRoles}
         userRoleOnly={
           administrator.role === "assistant_admin" &&
@@ -485,14 +539,17 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
             key={feedback.id}
             className="admin-crud-toast"
             role="status"
-            initial={reducedMotion ? false : { opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reducedMotion ? undefined : { opacity: 0, y: 10, scale: 0.98 }}
+            initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reducedMotion ? undefined : { opacity: 0, y: 10 }}
             transition={{ duration: reducedMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
-            <CheckCircle2 size={18} aria-hidden="true" />
-            <span>{feedback.message}</span>
-            <button type="button" onClick={() => setFeedback(null)} aria-label="Bildirişi bağla">
+            {feedback.denied ? <LockKeyhole size={18} aria-hidden="true" /> : <CheckCircle2 size={18} aria-hidden="true" />}
+            <span>
+              {t(feedback.key, { name: feedback.name ?? "" })}
+              {feedback.noteKey ? ` ${t(feedback.noteKey)}` : ""}
+            </span>
+            <button type="button" onClick={() => setFeedback(null)} aria-label={t("admin.feedback.close")}>
               <X size={15} aria-hidden="true" />
             </button>
           </motion.div>
@@ -500,9 +557,4 @@ export function AdminDashboard({ administrator, demoMode }: AdminDashboardProps)
       </AnimatePresence>
     </div>
   );
-}
-
-function getMutationErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) return error.message;
-  return "Əməliyyat tamamlanmadı. Məlumatları yoxlayıb yenidən cəhd et.";
 }

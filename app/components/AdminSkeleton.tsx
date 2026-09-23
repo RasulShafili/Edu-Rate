@@ -1,5 +1,9 @@
+"use client";
+
+import { useT } from "../i18n/LanguageProvider";
+
 type AdminSkeletonProps = {
-  scope?: "page" | "overview" | "table" | "gate";
+  scope?: "page" | "overview" | "table";
 };
 
 const metricSkeletons = ["metric-one", "metric-two", "metric-three", "metric-four"];
@@ -55,42 +59,12 @@ function TableSkeleton() {
 export function AdminSkeleton({
   scope = "page",
 }: AdminSkeletonProps) {
-  if (scope === "gate") {
-    return (
-      <section
-        className="profile-section profile-empty-section admin-access-skeleton"
-        aria-labelledby="admin-access-loading-title"
-        aria-busy="true"
-      >
-        <div
-          className="profile-empty-card admin-access-skeleton__card"
-          role="status"
-          aria-live="polite"
-        >
-          <span id="admin-access-loading-title" className="sr-only">
-            Administrator icazəsi yoxlanılır.
-          </span>
-          <span
-            className="admin-skeleton admin-skeleton--account"
-            aria-hidden="true"
-          />
-          <span
-            className="admin-skeleton admin-skeleton--eyebrow"
-            aria-hidden="true"
-          />
-          <span
-            className="admin-skeleton admin-skeleton--title"
-            aria-hidden="true"
-          />
-        </div>
-      </section>
-    );
-  }
+  const t = useT();
 
   if (scope === "overview") {
     return (
       <div className="admin-skeleton-region" role="status" aria-live="polite">
-        <span className="sr-only">Analitik məlumatlar hazırlanır.</span>
+        <span className="sr-only">{t("admin.skeleton.overview")}</span>
         <OverviewSkeleton />
       </div>
     );
@@ -99,7 +73,7 @@ export function AdminSkeleton({
   if (scope === "table") {
     return (
       <div className="admin-skeleton-region" role="status" aria-live="polite">
-        <span className="sr-only">Cədvəl məlumatları hazırlanır.</span>
+        <span className="sr-only">{t("admin.skeleton.table")}</span>
         <TableSkeleton />
       </div>
     );
@@ -113,7 +87,7 @@ export function AdminSkeleton({
       aria-busy="true"
     >
       <span className="sr-only" role="status">
-        Administrator paneli hazırlanır.
+        {t("admin.skeleton.page")}
       </span>
       <div
         className="admin-main admin-skeleton__main"

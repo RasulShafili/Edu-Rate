@@ -20,10 +20,7 @@ export default async function AdminPage() {
   return (
     <main id="main-content" className="route-page" tabIndex={-1}>
       {access.status === "granted" ? (
-        <AdminDashboard
-          administrator={access.principal}
-          demoMode={false}
-        />
+        <AdminDashboard administrator={access.principal} />
       ) : (
         <AdminAccessState access={access} />
       )}

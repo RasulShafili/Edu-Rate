@@ -93,17 +93,27 @@ const announcementPatchSchema=z.object(announcementFields).partial();
 
 adminRouter.get("/overview", async (_request, response) => {
   const [users, events, platform, audit, clubs] = await Promise.all([listUsers(10_000), listEvents(false), getPlatformCounts(), listAudit(6), listClubs()]);
+  const now = Date.now();
   const activeUsers = users.filter((user) => user.status === "Aktiv").length;
-  const openEvents = events.filter((event) => new Date(event.endAt).getTime() > Date.now()).length;
+  // "Açıq tədbir" əvvəl bitməmiş HƏR tədbiri sayırdı — müəllimin yoxlanış gözləyən
+  // qaralamaları da daxil. İndi yalnız dərc olunmuş və bitməmiş tədbirlər; qaralama
+  // ayrıca sayılır ki, admin növbəni görsün. Klub göstəricisi də gözləyən və
+  // məhdudlaşdırılmış klubları "tələbə klubu" kimi sayırdı.
+  const openEvents = events.filter((event) => eventStatus(event) === "Açıq" && new Date(event.endAt).getTime() > now).length;
+  const draftEvents = events.filter((event) => event.adminStatus === "Qaralama").length;
+  const activeClubs = clubs.filter((club) => club.status === "Aktiv").length;
+  const pendingClubs = clubs.filter((club) => club.status === "Gözləmədə").length;
   const participation = platform.memberships + platform.reviews;
   response.json({
     data: {
       updatedAt: new Date().toISOString(),
+      // `counts` xam rəqəmlərdir: etiketi interfeys seçilmiş dildə qurur. Əvvəlki
+      // `trend` sahəsi sabit "up" idi və heç bir müqayisəyə əsaslanmırdı — çıxarıldı.
       metrics: [
-        { id: "users", label: "Aktiv istifadəçi", value: String(activeUsers), change: `${users.length} ümumi`, trend: "up" },
-        { id: "clubs", label: "Tələbə klubu", value: String(platform.clubs), change: `${platform.memberships} üzvlük`, trend: "up" },
-        { id: "events", label: "Açıq tədbir", value: String(openEvents), change: `${events.length} ümumi`, trend: "steady" },
-        { id: "engagement", label: "İştirak fəaliyyəti", value: String(participation), change: `${platform.memberships} üzvlük · ${platform.reviews} rəy`, trend: "up" },
+        { id: "users", label: "Aktiv istifadəçi", value: String(activeUsers), change: `${users.length} ümumi`, counts: { value: activeUsers, total: users.length } },
+        { id: "clubs", label: "Aktiv klub", value: String(activeClubs), change: `${clubs.length} ümumi · ${pendingClubs} gözləyir`, counts: { value: activeClubs, total: clubs.length, pending: pendingClubs } },
+        { id: "events", label: "Açıq tədbir", value: String(openEvents), change: `${events.length} ümumi · ${draftEvents} qaralama`, counts: { value: openEvents, total: events.length, pending: draftEvents } },
+        { id: "engagement", label: "Üzvlük və rəylər", value: String(participation), change: `${platform.memberships} üzvlük · ${platform.reviews} rəy`, counts: { value: participation, memberships: platform.memberships, reviews: platform.reviews } },
       ],
       activity: buildActivity(users, clubs, events),
       distribution: buildDistribution(clubs),
@@ -478,10 +488,12 @@ function toEventInput(input: { name: string; category: string; organizer: string
   };
 }
 
-function filterRows<T extends { name: string; status: string; category?: string; role?: string }>(rows: T[], query: Record<string, unknown>) {
+function filterRows<T extends { name: string; status: string; category?: string; role?: string; email?: string }>(rows: T[], query: Record<string, unknown>) {
   const search = String(query.search ?? "").trim().toLocaleLowerCase("az");
   return rows.filter((row) => {
-    if (search && !row.name.toLocaleLowerCase("az").includes(search)) return false;
+    // İstifadəçini e-poçtla da tapmaq olur — axtarış sahəsi bunu vəd edirdi, amma
+    // yalnız adı yoxlayırdı.
+    if (search && !row.name.toLocaleLowerCase("az").includes(search) && !(row.email ?? "").toLocaleLowerCase("az").includes(search)) return false;
     if (query.status && row.status !== query.status) return false;
     if (query.category && row.category !== query.category) return false;
     if (query.role && row.role !== query.role) return false;
@@ -504,6 +516,8 @@ function buildActivity(users: UserRecord[], clubs: ClubRecord[], events: EventRe
     const createdBeforeMonthEnd = (createdAt: string) => new Date(createdAt).getTime() < monthEnd.getTime();
     return {
       label: monthFormatter.format(monthStart),
+      // Ay adı interfeysdə lüğətdən qurulur; `label` köhnə klientlər üçün qalır.
+      month: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}`,
       users: users.filter((item) => createdBeforeMonthEnd(item.createdAt)).length,
       clubs: clubs.filter((item) => createdBeforeMonthEnd(item.createdAt)).length,
       events: events.filter((item) => createdBeforeMonthEnd(item.createdAt)).length,
