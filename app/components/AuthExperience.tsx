@@ -268,6 +268,9 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                   </button>
                 </section>
               ) : <form
+                // JavaScript hələ yüklənməyibsə brauzer formanı özü göndərir; `method`
+                // olmasa bu GET olur və e-poçt ilə parol URL-ə (tarixçə, jurnallar) düşür.
+                method="post"
                 className={`auth-form auth-form-${mode}`}
                 noValidate
                 aria-busy={submitting}

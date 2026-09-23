@@ -92,7 +92,7 @@ export function DeleteAccountPanel() {
       </header>
 
       {open ? (
-        <form onSubmit={(event) => void submit(event)}>
+        <form method="post" onSubmit={(event) => void submit(event)}>
           <label htmlFor="delete-account-password">
             {t("deleteAccount.password")}
             <input

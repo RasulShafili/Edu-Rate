@@ -109,7 +109,7 @@ export default function RecoveryPage() {
               <span className="recovery-step">01 / E-POÇT</span><div className="recovery-icon"><Mail size={22} /></div>
               <h1 id="recovery-title">Şifrənizi bərpa edin</h1>
               <p>E-poçt ünvanınızı yazın. Sizə 6 rəqəmli təhlükəsizlik kodu göndərəcəyik.</p>
-              <form className="account-recovery-form" onSubmit={requestCode}>
+              <form method="post" className="account-recovery-form" onSubmit={requestCode}>
                 <label><span>E-poçt ünvanı</span><input value={email} onChange={(event) => setEmail(event.target.value)} name="email" type="email" autoComplete="email" placeholder="ad.soyad@example.com" required autoFocus /></label>
                 <button type="submit" disabled={busy}>{busy ? "Göndərilir…" : "Bərpa kodunu göndər"}</button>
               </form>
@@ -119,7 +119,7 @@ export default function RecoveryPage() {
               <span className="recovery-step">02 / KOD TƏSDİQİ</span><div className="recovery-icon"><KeyRound size={22} /></div>
               <h1 id="recovery-title">Kodu daxil edin</h1>
               <p><strong>{email}</strong> ünvanına göndərilən 6 rəqəmli kodu yazın. Kod doğru olduqda yeni şifrə bölməsi açılacaq.</p>
-              <form className="account-recovery-form" onSubmit={verifyCode}>
+              <form method="post" className="account-recovery-form" onSubmit={verifyCode}>
                 <label className="recovery-code-field"><span>6 rəqəmli kod</span><input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} placeholder="000000" required autoFocus /></label>
                 <button type="submit" disabled={busy}>{busy ? "Yoxlanılır…" : "Kodu təsdiqlə"}</button>
               </form>
@@ -130,7 +130,7 @@ export default function RecoveryPage() {
               <span className="recovery-step">03 / YENİ ŞİFRƏ</span><div className="recovery-icon"><LockKeyhole size={22} /></div>
               <h1 id="recovery-title">Yeni şifrə yaradın</h1>
               <p>Kod təsdiqləndi. Təhlükəsiz yeni şifrənizi iki dəfə daxil edin.</p>
-              <form className="account-recovery-form" onSubmit={resetPassword}>
+              <form method="post" className="account-recovery-form" onSubmit={resetPassword}>
                 <label><span>Yeni şifrə</span><span className="recovery-input-with-icon"><LockKeyhole size={17} /><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" required /></span></label>
                 <label><span>Yeni şifrəni təkrar et</span><span className="recovery-input-with-icon"><LockKeyhole size={17} /><input name="passwordConfirm" type="password" minLength={8} maxLength={72} autoComplete="new-password" required /></span></label>
                 <button type="submit" disabled={busy}>{busy ? "Yenilənir…" : "Şifrəni yenilə"}</button>
