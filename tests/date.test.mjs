@@ -16,8 +16,14 @@ test("son qeydiyyat anı daxil olmaqla açıq sayılır", () => {
 });
 
 test("həftə və arxiv sərhədləri sabitdir", () => {
-  assert.equal(isThisWeek("2026-07-27T00:00:00+04:00", now), true);
-  assert.equal(isThisWeek("2026-08-03T00:00:00+04:00", now), false);
+  // isThisWeek həftəni baxanın lokal vaxtında hesablayır. Ofsetsiz sətir də lokal
+  // vaxt kimi oxunur, ona görə test hər saat qurşağında eyni nəticə verir
+  // (CI UTC-dədir; +04:00 ilə yazılanda bazar ertəsi 00:00 orada hələ bazar idi).
+  const localNow = new Date(2026, 6, 29, 12, 0, 0);
+  assert.equal(isThisWeek("2026-07-26T23:59:59", localNow), false);
+  assert.equal(isThisWeek("2026-07-27T00:00:00", localNow), true);
+  assert.equal(isThisWeek("2026-08-02T23:59:59", localNow), true);
+  assert.equal(isThisWeek("2026-08-03T00:00:00", localNow), false);
   assert.equal(isExpired("2026-07-29T12:00:00+04:00", now), false);
   assert.equal(isExpired("2026-07-29T11:59:59+04:00", now), true);
 });
