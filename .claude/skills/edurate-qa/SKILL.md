@@ -491,8 +491,18 @@ onları mənim commit-imə qatardı. **Qayda:** belə halda yalnız öz fayllar�
 skill faylı) o bitənə qədər toxunma, və o dəyişən faylı redaktədən əvvəl yenidən oxu.
 
 ### Skript faylı yaz, heredoc yox
-Uzun Python `<<'PY'` heredoc-ları apostrof və dırnaq üzündən **iki dəfə** bash
-parse xətası verdi. Uzun skripti `Write` ilə fayla yaz, sonra işə sal.
+Uzun Python `<<'PY'` heredoc-ları apostrof və dırnaq üzündən **üç dəfə** bash
+parse xətası verdi (üçüncüsü qayda artıq burada yazılı olanda — `EventDrawer`
+yamağında). İçində JSX/`'`/`"` olan hər skripti `Write` ilə fayla yaz, sonra işə sal.
+
+### UTC ISO sətrindən gün götürmə
+`startAt.slice(0, 10)` və `getStableDateParts` ISO sətrini olduğu kimi oxuyur;
+backend `toISOString()` (UTC) qaytarır. Bakıda 00:00–04:00 arası başlayan tədbir
+UTC-də əvvəlki gündür: drawer onu bir gün əvvəl yazırdı, tarix süzgəci isə öz
+günündə tapmırdı. Gün/ay/il lazımdırsa `bakuDateParts()` (`app/lib/date.ts`,
+`Intl` + `timeZone: "Asia/Baku"`, rəqəm hissələri) işlət, ay adını lüğətdən al.
+Test üçün saxta məlumatda `…T21:30:00Z` kimi gecə saatı seç — gündüz saatı
+səhvi göstərmir.
 
 ### Dəqiq lövbər seç
 - `"useT" not in s` yoxlaması **`useTransform`-a görə** yanlış işlədi və import
@@ -588,6 +598,13 @@ Bu, tamamilə tərcümə olunmamış səhifədən pisdir.
 - **Ortaq komponentləri unutma.** Admin forması tərcümə olunsa da içindəki
   `SecureImagePicker`/`ImageDraftPicker` azərbaycanca qalırdı — çıxarıcını
   görünüşün **import etdiyi** komponentlərə də işlət.
+- **"Bitdi" sayılan bölmə sonradan gələn tələbi ödəmir.** Tədbirlər ilk bölmə
+  idi — tərcümə tələbindən əvvəl bağlanmışdı. Admin sessiyasında yalnız
+  `EventSubmissionDialog`-u tərcüməsiz gördüm və plana "dialoq tərcüməsizdir"
+  yazdım; əslində siyahı, kart, drawer — hamısı azərbaycanca idi. Daimi tələb
+  (tərcümə, sonsuz animasiya qadağası) əlavə olunanda əvvəl bitmiş bölmələrə
+  **çıxarıcını bütün komponentlərə** işlət: `grep -c useT app/components/<Bölmə>*.tsx`
+  sıfır verən fayl tam tərcüməsizdir.
 - Açar əlavə edib komponenti bağlamamaq mümkündür — `rating.*` açarları üç dildə
   hazır idi, komponent isə onları heç işlətmirdi. Açar sayı ilə kifayətlənmə,
   nəticəni brauzerdə dildən-dilə keçərək yoxla.
