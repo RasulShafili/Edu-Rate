@@ -125,7 +125,7 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
         }
       >
         <div>
-          <span className="mb-5 inline-flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.15em] text-[color:var(--ku-green,#44766c)]">
+          <span className="mb-5 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-[color:var(--ku-green,#44766c)]">
             <Sparkles size={13} aria-hidden="true" />
             {t("feed.eyebrow")}
           </span>
@@ -152,7 +152,7 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
         >
           <header className="feed-stream-heading mb-7 flex items-end justify-between gap-5 border-b border-[color:var(--kuds-border,#e2e8f0)] pb-5">
             <div>
-              <span className="mb-2 block text-[9px] font-bold uppercase tracking-[0.14em] text-[color:var(--kuds-muted,#64748b)]">
+              <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--kuds-muted,#64748b)]">
                 {t(`category.${activeFilter}`)}
               </span>
               <h2
@@ -163,7 +163,7 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
               </h2>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-[9px] font-bold uppercase tracking-[0.11em] text-[color:var(--kuds-muted,#64748b)]">
+              <span className="text-[11px] font-bold uppercase tracking-[0.11em] text-[color:var(--kuds-muted,#64748b)]">
                 {t("feed.posts", { count: filteredItems.length })}
               </span>
               {user ? (
@@ -218,7 +218,7 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
             {hasMore ? (
               <button
                 type="button"
-                className="feed-load-more inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--kuds-border,#e2e8f0)] bg-white px-5 text-[10px] font-semibold text-[color:var(--kuds-text,#1e293b)] transition-[background-color,border-color,transform] duration-200 hover:border-[color:var(--ku-green,#44766c)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--ku-green,#44766c)] disabled:cursor-wait disabled:opacity-[0.55]"
+                className="feed-load-more inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--kuds-border,#e2e8f0)] bg-white px-5 text-[12px] font-semibold text-[color:var(--kuds-text,#1e293b)] transition-[background-color,border-color,transform] duration-200 hover:border-[color:var(--ku-green,#44766c)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--ku-green,#44766c)] disabled:cursor-wait disabled:opacity-[0.55]"
                 onClick={loadMore}
                 disabled={isAppending}
                 aria-controls="student-feed-list"
@@ -235,7 +235,7 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
                 {isAppending ? t("feed.loadingMore") : t("feed.loadMore")}
               </button>
             ) : (
-              <p className="feed-end-state m-0 text-center text-[10px] leading-[1.6] tracking-[0.04em] text-[color:var(--kuds-muted,#64748b)]">
+              <p className="feed-end-state m-0 text-center text-[12px] leading-[1.6] tracking-[0.04em] text-[color:var(--kuds-muted,#64748b)]">
                 {t("feed.allSeen")}
               </p>
             )}

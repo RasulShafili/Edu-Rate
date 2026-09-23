@@ -121,7 +121,7 @@ const FeedCardBase = forwardRef<HTMLElement, FeedCardProps>(function FeedCard(
               {item.source}
             </p>
             <time
-              className="mt-1 block text-[10px] tracking-[0.04em] text-[color:rgba(244,243,237,0.45)]"
+              className="mt-1 block text-[11px] tracking-[0.04em] text-[color:rgba(244,243,237,0.45)]"
               dateTime={item.publishedAt}
             >
               {formatDateTimeWithMonths(item.publishedAt, months)}
@@ -130,7 +130,7 @@ const FeedCardBase = forwardRef<HTMLElement, FeedCardProps>(function FeedCard(
         </div>
 
         <span
-          className={`feed-card-kind ${tone.icon} inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[9px] font-bold uppercase tracking-[0.1em]`}
+          className={`feed-card-kind ${tone.icon} inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.1em]`}
         >
           <KindIcon size={13} strokeWidth={1.8} aria-hidden="true" />
           <span className="hidden sm:inline">{t(presentation.label)}</span>
@@ -153,7 +153,7 @@ const FeedCardBase = forwardRef<HTMLElement, FeedCardProps>(function FeedCard(
         {item.tags.map((tag) => (
           <span
             key={tag}
-            className="rounded-full border border-white/10 px-3 py-1.5 text-[9px] font-semibold tracking-[0.05em] text-[color:rgba(244,243,237,0.52)]"
+            className="rounded-full border border-white/10 px-3 py-1.5 text-[11px] font-semibold tracking-[0.05em] text-[color:rgba(244,243,237,0.52)]"
           >
             {tag}
           </span>
