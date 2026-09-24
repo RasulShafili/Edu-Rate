@@ -27,6 +27,7 @@ import { TeacherCard } from "./TeacherCard";
 import { TeacherProfileDrawer } from "./TeacherProfileDrawer";
 import { useAuth } from "./AuthProvider";
 import { useT } from "../i18n/LanguageProvider";
+import { bakuDateParts } from "../lib/date";
 import { formatDecimalScore, formatInteger } from "../lib/number-format";
 import { getCurrentAcademicSemester } from "../lib/academic-semester";
 
@@ -144,16 +145,17 @@ export function TeacherEvaluation() {
     return {
       id: review.id,
       teacherId: review.teacherId,
-      teacherName: teacher?.name ?? "Müəllim",
+      teacherName: teacher?.name ?? t("role.teacher"),
       author: review.author,
       initials: review.initials,
       rating: review.rating,
-      date: new Intl.DateTimeFormat("az-AZ", { day: "numeric", month: "long", year: "numeric" }).format(new Date(review.createdAt)),
+      // `Intl("az-AZ", { month: "long" })` dili nəzərə almırdı və bəzi Chromium-larda "M09" verirdi.
+      date: (() => { const parts = bakuDateParts(review.createdAt); return `${Number(parts.day)} ${t(`month.${parts.month}`)} ${parts.year}`; })(),
       course: review.course,
       accent: teacher?.accent ?? "#44766c",
       criteria: review.criteria,
     };
-  }), [publishedReviews.data, teachers]);
+  }), [publishedReviews.data, teachers, t]);
   const allReviews = liveReviews;
   const displayedTeachers = useMemo(() => {
     const query = teacherQuery.trim().toLocaleLowerCase("az");

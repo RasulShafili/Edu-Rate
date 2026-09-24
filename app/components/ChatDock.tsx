@@ -311,7 +311,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
   const unreadCount = conversations.reduce((sum, item) => sum + item.unreadCount, 0) + groups.reduce((sum, item) => sum + item.unreadCount, 0);
   const accent = active?.peer.accent ?? "#8fc15f";
   const glow = active?.peer.glow ?? "rgba(143,193,95,.28)";
-  const rendered = useMemo(() => buildTimeline(messages), [messages]);
+  const rendered = useMemo(() => buildTimeline(messages, (date) => dayLabel(date, t)), [messages, t]);
 
   return (
     <div className="chat-dock" style={{ "--peer-accent": accent, "--peer-glow": glow } as CSSProperties}>
@@ -394,14 +394,14 @@ type TimelineEntry =
   | { type: "day"; key: string; label: string }
   | { type: "message"; key: string; message: ApiMessage; groupStart: boolean; groupEnd: boolean };
 
-function buildTimeline(messages: ApiMessage[]): TimelineEntry[] {
+function buildTimeline(messages: ApiMessage[], labelFor: (date: Date) => string): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   let lastDay = "";
   messages.forEach((message, index) => {
     const date = new Date(message.createdAt);
     const dayKey = date.toDateString();
     if (dayKey !== lastDay) {
-      entries.push({ type: "day", key: `day-${dayKey}`, label: dayLabel(date) });
+      entries.push({ type: "day", key: `day-${dayKey}`, label: labelFor(date) });
       lastDay = dayKey;
     }
     const previous = messages[index - 1];
@@ -413,13 +413,19 @@ function buildTimeline(messages: ApiMessage[]): TimelineEntry[] {
   return entries;
 }
 
-function dayLabel(date: Date): string {
+/**
+ * Söhbətdə gün ayırıcısı. Əvvəl "Bu gün"/"Dünən" sərt yazılmışdı və tarix
+ * `Intl("az-AZ", { month: "long" })` ilə qurulurdu — dil nəzərə alınmırdı, bəzi
+ * Chromium-larda isə ay adı əvəzinə "M09" çıxırdı. Ay adı lüğətdən gəlir.
+ */
+function dayLabel(date: Date, t: (key: string) => string): string {
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === today.toDateString()) return "Bu gün";
-  if (date.toDateString() === yesterday.toDateString()) return "Dünən";
-  return new Intl.DateTimeFormat("az-AZ", { day: "numeric", month: "long", year: date.getFullYear() === today.getFullYear() ? undefined : "numeric" }).format(date);
+  if (date.toDateString() === today.toDateString()) return t("chat.today");
+  if (date.toDateString() === yesterday.toDateString()) return t("chat.yesterday");
+  const month = t(`month.${date.getMonth() + 1}`);
+  return date.getFullYear() === today.getFullYear() ? `${date.getDate()} ${month}` : `${date.getDate()} ${month} ${date.getFullYear()}`;
 }
 
 function applyOwnReaction(reactions: ApiReaction[] | undefined, emoji: ReactionEmoji): ApiReaction[] {

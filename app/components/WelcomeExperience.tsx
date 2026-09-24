@@ -4,20 +4,27 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, CalendarDays, Check, Compass, GraduationCap, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "../i18n/LanguageProvider";
+import { bakuDateParts } from "../lib/date";
 import { useAuth } from "./AuthProvider";
 
 type Club = { slug: string; name: string; category: string; description?: string; tagline?: string };
 type CampusEvent = { id: string; title: string; startAt: string; location?: string; category?: string };
 type Teacher = { id: string; slug: string; name: string; specialty: string; headline: string };
+/** Siyahının vəziyyəti: yüklənir / gəldi / alınmadı. */
+type ListState = "loading" | "ready" | "failed";
 
 export function WelcomeExperience() {
+  const t = useT();
   const { user } = useAuth();
   const reduceMotion = Boolean(useReducedMotion());
   const [clubs, setClubs] = useState<Club[]>([]);
+  const [clubsState, setClubsState] = useState<ListState>("loading");
   const [events, setEvents] = useState<CampusEvent[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [joined, setJoined] = useState<string[]>([]);
   const [pending, setPending] = useState("");
+  const [joinError, setJoinError] = useState("");
   // Render zamanı Date.now() çağırmamaq üçün açılış anını bir dəfə sabitləyirik.
   const [openedAt] = useState(() => Date.now());
 
@@ -25,16 +32,22 @@ export function WelcomeExperience() {
     let cancelled = false;
 
     /** Hər siyahı müstəqil gəlir: biri geciksə də qalanları dərhal görünür. */
-    function loadInto<T>(path: string, apply: (items: T[]) => void) {
+    function loadInto<T>(path: string, apply: (items: T[]) => void, onState?: (state: ListState) => void) {
       void fetch(path, { cache: "no-store" })
-        .then((response) => (response.ok ? response.json() : { data: [] }))
-        .then((payload: { data?: T[] }) => {
-          if (!cancelled) apply(payload.data ?? []);
+        .then(async (response) => {
+          if (!response.ok) throw new Error(String(response.status));
+          return (await response.json()) as { data?: T[] };
         })
-        .catch(() => undefined);
+        .then((payload) => {
+          if (cancelled) return;
+          apply(payload.data ?? []);
+          onState?.("ready");
+        })
+        // Əvvəl xəta boş siyahıya çevrilirdi və "Klublar yüklənir…" həmişəlik qalırdı.
+        .catch(() => { if (!cancelled) onState?.("failed"); });
     }
 
-    loadInto<Club>("/api/clubs", setClubs);
+    loadInto<Club>("/api/clubs", setClubs, setClubsState);
     loadInto<CampusEvent>("/api/catalog/events", setEvents);
     loadInto<Teacher>("/api/catalog/teachers", setTeachers);
 
@@ -66,16 +79,31 @@ export function WelcomeExperience() {
 
   const suggestedClubs = useMemo(() => clubs.slice(0, 3), [clubs]);
 
+  const categoryLabel = (value: string) => {
+    const key = `clubCategory.${value}`;
+    const label = t(key);
+    return label === key ? value : label;
+  };
+
   async function joinClub(slug: string) {
     setPending(slug);
+    setJoinError("");
     try {
       const response = await fetch(`/api/clubs/${encodeURIComponent(slug)}/memberships`, { method: "POST" });
-      if (response.ok) setJoined((current) => [...current, slug]);
+      // 409: artıq üzvdür — bu da "qoşuldun" deməkdir.
+      if (response.ok || response.status === 409) setJoined((current) => [...current, slug]);
+      else setJoinError(response.status === 401 ? "admin.error.session" : "welcome.joinFailed");
     } catch {
-      // Uğursuz cəhd səssiz keçilir; tələbə klub səhifəsindən yenidən cəhd edə bilər.
+      // Əvvəl uğursuz cəhd səssiz keçilirdi — düymə sadəcə geri qayıdırdı.
+      setJoinError("welcome.joinFailed");
     } finally {
       setPending("");
     }
+  }
+
+  function eventDate(value: string) {
+    const parts = bakuDateParts(value);
+    return `${Number(parts.day)} ${t(`month.${parts.month}`)}, ${parts.time}`;
   }
 
   return (
@@ -86,14 +114,14 @@ export function WelcomeExperience() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
-        <span className="welcome-kicker"><Sparkles size={14} /> Xoş gəldin</span>
+        <span className="welcome-kicker"><Sparkles size={14} aria-hidden="true" /> {t("welcome.kicker")}</span>
         <h1 className="module-page-title">
-          {firstName ? `Salam, ${firstName}!` : "EduRate-ə xoş gəldin!"}
+          {firstName ? t("welcome.hello", { name: firstName }) : t("welcome.title")}
         </h1>
         <p>
           {program && !program.startsWith("İxtisas məlumatı")
-            ? `${program} üzrə universitet həyatına başlayırsan. Aşağıdakı üç addım bir neçə dəqiqə çəkir və saytı sənin üçün doldurur.`
-            : "Aşağıdakı üç addım bir neçə dəqiqə çəkir və saytı sənin üçün doldurur."}
+            ? t("welcome.leadProgram", { program })
+            : t("welcome.lead")}
         </p>
       </motion.header>
 
@@ -102,41 +130,44 @@ export function WelcomeExperience() {
           <div className="welcome-step__head">
             <span className="welcome-step__num">01</span>
             <div>
-              <h2><CalendarDays size={16} /> Dərs cədvəlini qur</h2>
-              <p>Cədvəlin saytda olsa, hər gün açanda növbəti dərsini və kampusdakı tədbirləri bir yerdə görəcəksən.</p>
+              <h2><CalendarDays size={16} aria-hidden="true" /> {t("welcome.step1.title")}</h2>
+              <p>{t("welcome.step1.text")}</p>
             </div>
           </div>
-          <Link href="/schedule" className="kuds-primary-button">Cədvələ keç <ArrowRight size={15} /></Link>
+          <Link href="/schedule" className="kuds-primary-button">{t("welcome.step1.action")} <ArrowRight size={15} aria-hidden="true" /></Link>
         </li>
 
         <li className="welcome-step">
           <div className="welcome-step__head">
             <span className="welcome-step__num">02</span>
             <div>
-              <h2><Compass size={16} /> Bir kluba qoşul</h2>
-              <p>Klublar kampusda ən sürətli tanışlıq yoludur. Qoşulduğun anda klubun qrup söhbəti də açılır.</p>
+              <h2><Compass size={16} aria-hidden="true" /> {t("welcome.step2.title")}</h2>
+              <p>{t("welcome.step2.text")}</p>
             </div>
           </div>
           <div className="welcome-picks">
-            {suggestedClubs.length ? suggestedClubs.map((club) => {
-              const isJoined = joined.includes(club.slug);
-              return (
-                <div key={club.slug} className="welcome-pick">
-                  <div>
-                    <strong>{club.name}</strong>
-                    <small>{club.category}</small>
+            {clubsState === "loading" ? <p className="welcome-none">{t("welcome.clubsLoading")}</p>
+              : clubsState === "failed" ? <p className="welcome-none" role="alert">{t("welcome.clubsFailed")}</p>
+              : suggestedClubs.length ? suggestedClubs.map((club) => {
+                const isJoined = joined.includes(club.slug);
+                return (
+                  <div key={club.slug} className="welcome-pick">
+                    <div>
+                      <strong>{club.name}</strong>
+                      <small>{categoryLabel(club.category)}</small>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void joinClub(club.slug)}
+                      disabled={isJoined || pending === club.slug}
+                      className={isJoined ? "is-done" : ""}
+                    >
+                      {isJoined ? <><Check size={14} aria-hidden="true" /> {t("welcome.joined")}</> : pending === club.slug ? t("welcome.joining") : t("welcome.join")}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void joinClub(club.slug)}
-                    disabled={isJoined || pending === club.slug}
-                    className={isJoined ? "is-done" : ""}
-                  >
-                    {isJoined ? <><Check size={14} /> Qoşuldun</> : pending === club.slug ? "Gözlə…" : "Qoşul"}
-                  </button>
-                </div>
-              );
-            }) : <p className="welcome-none">Klublar yüklənir…</p>}
+                );
+              }) : <p className="welcome-none">{t("welcome.clubsEmpty")}</p>}
+            {joinError ? <p className="welcome-none" role="alert">{t(joinError)}</p> : null}
           </div>
         </li>
 
@@ -144,8 +175,8 @@ export function WelcomeExperience() {
           <div className="welcome-step__head">
             <span className="welcome-step__num">03</span>
             <div>
-              <h2><UsersRound size={16} /> Kampusda nə baş verir</h2>
-              <p>Yaxın tədbirlərə bax və maraqlı olana yer ayır.</p>
+              <h2><UsersRound size={16} aria-hidden="true" /> {t("welcome.step3.title")}</h2>
+              <p>{t("welcome.step3.text")}</p>
             </div>
           </div>
           <div className="welcome-picks">
@@ -154,21 +185,21 @@ export function WelcomeExperience() {
                 <div>
                   <strong>{item.title}</strong>
                   <small>
-                    {new Intl.DateTimeFormat("az-AZ", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(item.startAt))}
+                    {eventDate(item.startAt)}
                     {item.location ? ` · ${item.location}` : ""}
                   </small>
                 </div>
-                <ArrowRight size={15} />
+                <ArrowRight size={15} aria-hidden="true" />
               </Link>
-            )) : <p className="welcome-none">Hazırda planlaşdırılan tədbir yoxdur.</p>}
+            )) : <p className="welcome-none">{t("welcome.noEvents")}</p>}
           </div>
         </li>
       </ol>
 
       {suggestedTeachers.length ? (
         <div className="welcome-teachers">
-          <h2><GraduationCap size={16} /> İxtisasına yaxın müəllimlər</h2>
-          <p>Semestr seçimindən əvvəl müəllimləri dörd meyar üzrə müqayisə edə bilərsən.</p>
+          <h2><GraduationCap size={16} aria-hidden="true" /> {t("welcome.teachers.title")}</h2>
+          <p>{t("welcome.teachers.text")}</p>
           <div className="welcome-picks">
             {suggestedTeachers.map((teacher) => (
               <div key={teacher.id} className="welcome-pick">
@@ -179,13 +210,13 @@ export function WelcomeExperience() {
               </div>
             ))}
           </div>
-          <Link href="/teachers/compare" className="welcome-secondary">Müəllimləri müqayisə et <ArrowRight size={14} /></Link>
+          <Link href="/teachers/compare" className="welcome-secondary">{t("welcome.teachers.compare")} <ArrowRight size={14} aria-hidden="true" /></Link>
         </div>
       ) : null}
 
       <div className="welcome-footer">
-        <Link href="/profile" className="welcome-secondary">Profilimə keç</Link>
-        <Link href="/" className="welcome-skip">Sonra edərəm</Link>
+        <Link href="/profile" className="welcome-secondary">{t("welcome.toProfile")}</Link>
+        <Link href="/" className="welcome-skip">{t("welcome.later")}</Link>
       </div>
     </section>
   );

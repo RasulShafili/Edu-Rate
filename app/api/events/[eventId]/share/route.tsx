@@ -36,12 +36,13 @@ export async function GET(_request: Request, context: Context) {
   }
 
   const start = new Date(event.startAt);
+  // Server UTC-də işləyir: saat qurşağı verilməsə şəkildəki vaxt Bakıdan 4 saat geri çıxırdı.
   const dateLabel = Number.isNaN(start.getTime())
     ? ""
-    : new Intl.DateTimeFormat("az-AZ", { day: "numeric", month: "long" }).format(start);
+    : new Intl.DateTimeFormat("az-AZ", { day: "numeric", month: "long", timeZone: "Asia/Baku" }).format(start);
   const timeLabel = Number.isNaN(start.getTime())
     ? ""
-    : new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit" }).format(start);
+    : new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Baku" }).format(start);
   const place = [event.location, event.city].filter(Boolean).join(" · ");
 
   return new ImageResponse(
