@@ -20,9 +20,9 @@ before(async () => {
   const module = await import("../src/app.js");
   app = module.createApp();
   const [{createUser},{createAccessToken,hashPassword}]=await Promise.all([import("../src/db/database.js"),import("../src/lib/auth.js")]);
-  const admin=await createUser({name:"Başlanğıc Platforma Sahibi",email:"bootstrap.admin@example.az",passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"Pedaqoji fakültə",program:"Riyaziyyat müəllimliyi",role:"owner_admin",status:"Aktiv"});
+  const admin=await createUser({name:"Başlanğıc Platforma Sahibi",email:"bootstrap.admin@example.az",passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"Pedaqoji fakültə",program:"Riyaziyyat müəllimliyi",role:"owner_admin",status:"Aktiv"});
   reusableAdminToken=createAccessToken(admin);
-  const mediaStudent=await createUser({name:"Şəkil Təhlükəsizlik Testi",email:"media.security@example.az",passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi",role:"student",status:"Aktiv"});
+  const mediaStudent=await createUser({name:"Şəkil Təhlükəsizlik Testi",email:"media.security@example.az",passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi",role:"student",status:"Aktiv"});
   reusableMediaStudentToken=createAccessToken(mediaStudent);
 });
 
@@ -113,7 +113,7 @@ describe("EduRate API", () => {
       .send({
         name: "Nümunə Tələbə",
         email,
-        password: "EduRate2026",
+        password: "Kampus-Yolu-2026",
         university: "Qarabağ Universiteti",
         faculty: "Mühəndislik fakültəsi",
         program: "Kompüter mühəndisliyi",
@@ -134,7 +134,7 @@ describe("EduRate API", () => {
       .send({
         name: "Nümunə Tələbə",
         email,
-        password: "EduRate2026",
+        password: "Kampus-Yolu-2026",
         faculty: "Mühəndislik fakültəsi",
         program: "Kompüter mühəndisliyi",
       })
@@ -142,7 +142,7 @@ describe("EduRate API", () => {
 
     const login = await request(app)
       .post("/api/auth/login")
-      .send({ email, password: "EduRate2026" })
+      .send({ email, password: "Kampus-Yolu-2026" })
       .expect(200);
 
     const session = await request(app)
@@ -235,7 +235,7 @@ describe("EduRate API", () => {
 
     const validBase = {
       name: "Akademik Seçim Testi",
-      password: "EduRate2026",
+      password: "Kampus-Yolu-2026",
       university: "Qarabağ Universiteti",
       faculty: "Mühəndislik fakültəsi",
       program: "Kompüter mühəndisliyi",
@@ -298,7 +298,7 @@ describe("EduRate API", () => {
       .send({
         name: "Test İstifadəçisi",
         email: `crud.${Date.now()}@example.az`,
-        password: "EduRate2026",
+        password: "Kampus-Yolu-2026",
         university: "Qarabağ Universiteti",
         faculty: "İqtisadiyyat fakültəsi",
         program: "İqtisadiyyat",
@@ -398,7 +398,7 @@ describe("EduRate API", () => {
       .send({
         name: "Aysel Məmmədli",
         email: `platform.${Date.now()}@example.az`,
-        password: "EduRate2026",
+        password: "Kampus-Yolu-2026",
         university: "Qarabağ Universiteti",
         faculty: "Humanitar və sosial elmlər fakültəsi",
         program: "Psixologiya",
@@ -455,7 +455,7 @@ describe("EduRate API", () => {
       .send({
         name: "Test Administratoru",
         email: "admin.test@example.az",
-        password: "EduRate2026",
+        password: "Kampus-Yolu-2026",
         university: "Qarabağ Universiteti",
         faculty: "Pedaqoji fakültə",
         program: "Riyaziyyat müəllimliyi",
@@ -740,7 +740,7 @@ describe("EduRate API", () => {
     const adminAuthorization = `Bearer ${reusableAdminToken}`;
 
     const teacherSignup = await request(app).post("/api/auth/signup").set("X-Forwarded-For", "203.0.113.61").send({
-      name: "Səma Həsənli", email: `teacher.${suffix}@example.az`, password: "EduRate2026",
+      name: "Səma Həsənli", email: `teacher.${suffix}@example.az`, password: "Kampus-Yolu-2026",
       university: "Qarabağ Universiteti", accountType: "teacher", program: "Riyaziyyat",
     }).expect(201);
     assert.equal(teacherSignup.body.data.requiresApproval, true);
@@ -749,17 +749,17 @@ describe("EduRate API", () => {
     assert.equal(teacherSignup.body.data.user.status, "Gözləmədə");
 
     const repeatedTeacherSignup = await request(app).post("/api/auth/signup").set("X-Forwarded-For", "203.0.113.66").send({
-      name: "Səma Həsənli", email: `teacher.${suffix}@example.az`, password: "EduRate2026",
+      name: "Səma Həsənli", email: `teacher.${suffix}@example.az`, password: "Kampus-Yolu-2026",
       university: "Qarabağ Universiteti", accountType: "teacher", program: "Riyaziyyat",
     }).expect(409);
     assert.equal(repeatedTeacherSignup.body.error.code, "TEACHER_APPROVAL_PENDING");
 
     await request(app).post("/api/auth/login").set("X-Forwarded-For", "203.0.113.62")
-      .send({ email: `teacher.${suffix}@example.az`, password: "EduRate2026" }).expect(403);
+      .send({ email: `teacher.${suffix}@example.az`, password: "Kampus-Yolu-2026" }).expect(403);
     await request(app).patch(`/api/admin/users/${teacherSignup.body.data.user.id}`)
       .set("Authorization", adminAuthorization).send({ status: "Aktiv" }).expect(200);
     const teacherLogin = await request(app).post("/api/auth/login").set("X-Forwarded-For", "203.0.113.63")
-      .send({ email: `teacher.${suffix}@example.az`, password: "EduRate2026" }).expect(200);
+      .send({ email: `teacher.${suffix}@example.az`, password: "Kampus-Yolu-2026" }).expect(200);
     const teacherAuthorization = `Bearer ${teacherLogin.body.data.token}`;
     const teacherWorkspace = await request(app).get("/api/workspace")
       .set("Authorization", teacherAuthorization).expect(200);
@@ -791,7 +791,7 @@ describe("EduRate API", () => {
     assert.equal(updatedTeacherProfile.specialty, "Riyaziyyat müəllimliyi");
 
     await request(app).post("/api/auth/signup").set("X-Forwarded-For", "203.0.113.64").send({
-      name: "Ayrıca Mentor", email: `mentor.${suffix}@example.az`, password: "EduRate2026",
+      name: "Ayrıca Mentor", email: `mentor.${suffix}@example.az`, password: "Kampus-Yolu-2026",
       university: "Qarabağ Universiteti", accountType: "mentor", program: "Məhsul strategiyası",
     }).expect(422);
 
@@ -828,7 +828,7 @@ describe("EduRate API", () => {
     assert.equal(dualWorkspace.body.data.mentorEnabled, true);
 
     const studentSignup = await request(app).post("/api/auth/signup").set("X-Forwarded-For", "203.0.113.65").send({
-      name: "Mentorluq Test Tələbəsi", email: `mentor.student.${suffix}@example.az`, password: "EduRate2026",
+      name: "Mentorluq Test Tələbəsi", email: `mentor.student.${suffix}@example.az`, password: "Kampus-Yolu-2026",
       university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi",
       program: "Kompüter mühəndisliyi", accountType: "student",
     }).expect(201);
@@ -954,7 +954,7 @@ describe("EduRate API", () => {
     assert.equal(publicEvents.body.data.some((item:{id:string})=>item.id===id),false);
 
     const [{createUser},{createAccessToken,hashPassword}]=await Promise.all([import("../src/db/database.js"),import("../src/lib/auth.js")]);
-    const attendee=await createUser({name:"Qaralama Testi",email:`draft.${Date.now()}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi"});
+    const attendee=await createUser({name:"Qaralama Testi",email:`draft.${Date.now()}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi"});
     await request(app).post(`/api/events/${id}/registrations`).set("Authorization",`Bearer ${createAccessToken(attendee)}`).expect(409);
   });
 
@@ -963,7 +963,7 @@ describe("EduRate API", () => {
     const event=await request(app).post("/api/admin/events").set("Authorization",authorization).send({name:"Tutum sınağı",category:"Technology",organizer:"EduRate",startAt:"2027-02-12T10:00:00+04:00",capacity:2,place:"Kampus",status:"Açıq"}).expect(201);
     const [{createUser},{createAccessToken,hashPassword}]=await Promise.all([import("../src/db/database.js"),import("../src/lib/auth.js")]);
     for(const index of [1,2]){
-      const attendee=await createUser({name:`İştirakçı ${index}`,email:`capacity.${index}.${Date.now()}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi"});
+      const attendee=await createUser({name:`İştirakçı ${index}`,email:`capacity.${index}.${Date.now()}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi"});
       await request(app).post(`/api/events/${event.body.data.id}/registrations`).set("Authorization",`Bearer ${createAccessToken(attendee)}`).expect(201);
     }
     const response=await request(app).patch(`/api/admin/events/${event.body.data.id}`).set("Authorization",authorization).send({capacity:1}).expect(409);
@@ -973,10 +973,10 @@ describe("EduRate API", () => {
   it("iki real hesab arasında əlaqə, qalıcı mesaj və oxunma axınını tamamlayır",async()=>{
     const [{createUser},{createAccessToken,hashPassword}]=await Promise.all([import("../src/db/database.js"),import("../src/lib/auth.js")]);
     const suffix=Date.now();
-    const sender=await createUser({name:"Göndərən Test",email:`sender.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"İqtisadiyyat"});
-    const peer=await createUser({name:"Mesaj Testi",email:`message.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Maliyyə"});
-    const withdrawnPeer=await createUser({name:"Geri çəkmə Testi",email:`withdraw.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Menecment"});
-    const rejectedPeer=await createUser({name:"Rədd Testi",email:`reject.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Mühasibat"});
+    const sender=await createUser({name:"Göndərən Test",email:`sender.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"İqtisadiyyat"});
+    const peer=await createUser({name:"Mesaj Testi",email:`message.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Maliyyə"});
+    const withdrawnPeer=await createUser({name:"Geri çəkmə Testi",email:`withdraw.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Menecment"});
+    const rejectedPeer=await createUser({name:"Rədd Testi",email:`reject.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Mühasibat"});
     const studentAuthorization=`Bearer ${createAccessToken(sender)}`;const peerAuthorization=`Bearer ${createAccessToken(peer)}`;
     const withdrawnConnection=await request(app).post("/api/community/connections").set("Authorization",studentAuthorization).send({userId:withdrawnPeer.id}).expect(201);
     await request(app).delete(`/api/community/connections/${withdrawnConnection.body.data.id}`).set("Authorization",studentAuthorization).expect(204);
@@ -1030,8 +1030,8 @@ describe("EduRate API", () => {
       name: "Qrup Sınaq Klubu", slug: `qrup-sinaq-${suffix}`, category: "Texnologiya", coordinatorInitials: "QS", status: "Aktiv",
     }).expect(201);
     const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([import("../src/db/database.js"), import("../src/lib/auth.js")]);
-    const member = await createUser({ name: "Qrup Üzvü", email: `group.member.${suffix}@example.az`, passwordHash: await hashPassword("EduRate2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi" });
-    const outsider = await createUser({ name: "Kənar İstifadəçi", email: `group.outsider.${suffix}@example.az`, passwordHash: await hashPassword("EduRate2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Data analitikası" });
+    const member = await createUser({ name: "Qrup Üzvü", email: `group.member.${suffix}@example.az`, passwordHash: await hashPassword("Kampus-Yolu-2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi" });
+    const outsider = await createUser({ name: "Kənar İstifadəçi", email: `group.outsider.${suffix}@example.az`, passwordHash: await hashPassword("Kampus-Yolu-2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Data analitikası" });
     const memberAuthorization = `Bearer ${createAccessToken(member)}`;
     const outsiderAuthorization = `Bearer ${createAccessToken(outsider)}`;
 
@@ -1055,8 +1055,8 @@ describe("EduRate API", () => {
   it("klub yaradıcısını daimi lider edir, əlavə liderləri idarə edir və klubu silməyə icazə verir",async()=>{
     const suffix=Date.now();
     const [{createUser},{createAccessToken,hashPassword}]=await Promise.all([import("../src/db/database.js"),import("../src/lib/auth.js")]);
-    const creator=await createUser({name:"Klub Yaradıcısı",email:`club.creator.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi",role:"teacher"});
-    const member=await createUser({name:"Lider Namizədi",email:`club.leader.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Menecment"});
+    const creator=await createUser({name:"Klub Yaradıcısı",email:`club.creator.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi",role:"teacher"});
+    const member=await createUser({name:"Lider Namizədi",email:`club.leader.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Menecment"});
     const creatorAuthorization=`Bearer ${createAccessToken(creator)}`;const memberAuthorization=`Bearer ${createAccessToken(member)}`;
     const created=await request(app).post("/api/clubs").set("Authorization",creatorAuthorization).send({name:"Liderlik Sınaq Klubu",category:"Akademik",tagline:"Birlikdə düzgün klub idarəetməsi qururuq.",about:["Klub liderlik və üzvlük ssenarilərini etibarlı şəkildə yoxlamaq üçün yaradılıb."],meeting:{cadence:"Həftəlik",day:"Cümə",time:"18:00",place:"Kampus"}}).expect(201);
     const clubId=created.body.data.id as string;
@@ -1069,7 +1069,7 @@ describe("EduRate API", () => {
     management=await request(app).get(`/api/clubs/${clubId}/members`).set("Authorization",memberAuthorization).expect(200);
     assert.equal(management.body.data.canManage,true);assert.equal(management.body.data.canDelete,false);
     // Klub lideri (yaradıcı olmasa da) başqa üzvü lider təyin edə və geri götürə bilər.
-    const member2=await createUser({name:"İkinci Namizəd",email:`club.leader2.${suffix}@example.az`,passwordHash:await hashPassword("EduRate2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Menecment"});
+    const member2=await createUser({name:"İkinci Namizəd",email:`club.leader2.${suffix}@example.az`,passwordHash:await hashPassword("Kampus-Yolu-2026"),university:"Qarabağ Universiteti",faculty:"İqtisadiyyat fakültəsi",program:"Menecment"});
     const member2Authorization=`Bearer ${createAccessToken(member2)}`;
     await request(app).post(`/api/clubs/${clubId}/memberships`).set("Authorization",member2Authorization).expect(201);
     await request(app).patch(`/api/clubs/${clubId}/leaders/${member2.id}`).set("Authorization",memberAuthorization).expect(200);
@@ -1083,7 +1083,7 @@ describe("EduRate API", () => {
   it("elan, lent moderasiyası və dəstək statusunu admin axınında tamamlayır",async()=>{
     const adminAuthorization=`Bearer ${reusableAdminToken}`;
     const signup=await request(app).post("/api/auth/signup").set("X-Forwarded-For","203.0.113.90").send({
-      name:"Məzmun Testi",email:`content.${Date.now()}@example.az`,password:"EduRate2026",university:"Qarabağ Universiteti",
+      name:"Məzmun Testi",email:`content.${Date.now()}@example.az`,password:"Kampus-Yolu-2026",university:"Qarabağ Universiteti",
       faculty:"Mühəndislik fakültəsi",program:"Kompüter mühəndisliyi",accountType:"student",
     }).expect(201);
     const studentAuthorization=`Bearer ${signup.body.data.token}`;
@@ -1146,7 +1146,7 @@ describe("Dərs cədvəli", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const owner = await createUser({ name: "Cədvəl Sahibi", email: "timetable.owner@example.az", passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
     const other = await createUser({ name: "Cədvəl Yadı", email: "timetable.other@example.az", passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
     const ownerAuth = `Bearer ${createAccessToken(owner)}`;
@@ -1201,7 +1201,7 @@ describe("Klub görünürlüyü və silmə səlahiyyəti", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const teacher = await createUser({ ...base, name: "Klub Müəllimi", email: "club.teacher@example.az", role: "teacher" });
     const student = await createUser({ ...base, name: "Klub Tələbəsi", email: "club.student@example.az", role: "student" });
@@ -1259,7 +1259,7 @@ describe("Kampus sualları", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const asker = await createUser({ ...base, name: "Sual Verən", email: "questions.asker@example.az", role: "student" });
     const replier = await createUser({ ...base, name: "Cavab Yazan", email: "questions.replier@example.az", role: "student" });
@@ -1310,7 +1310,7 @@ describe("Mentorluq müraciəti", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const student = await createUser({ ...base, name: "Mentorluq Tələbəsi", email: "mentorship.student@example.az", role: "student" });
     const mentor = await createUser({ ...base, name: "Mentorluq Mentoru", email: "mentorship.mentor@example.az", role: "mentor" });
@@ -1360,7 +1360,7 @@ describe("Dəstək müraciəti", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const student = await createUser({ name: "Dəstək Tələbəsi", email: "support.linked@example.az", passwordHash: await hashPassword("EduRate2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
+    const student = await createUser({ name: "Dəstək Tələbəsi", email: "support.linked@example.az", passwordHash: await hashPassword("Kampus-Yolu-2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "student", status: "Aktiv" });
     const auth = `Bearer ${createAccessToken(student)}`;
     const body = { name: "Formadakı Ad", email: "formada@example.az", topic: "Hesab dəstəyi", message: "Hesabımla bağlı sualım var, kömək edin zəhmət olmasa." };
 
@@ -1385,7 +1385,7 @@ describe("Hesabın silinməsi", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const mentor = await createUser({ ...base, name: "Silinəcək Mentor", email: "deleted.mentor@example.az", role: "mentor" });
     const student = await createUser({ ...base, name: "Kataloq Tələbəsi", email: "catalog.student@example.az", role: "student" });
@@ -1398,7 +1398,7 @@ describe("Hesabın silinməsi", () => {
     assert.ok(profile);
 
     await request(app).delete("/api/auth/account").set("Authorization", mentorAuth).send({ password: "yanlis-parol-1" }).expect(401);
-    await request(app).delete("/api/auth/account").set("Authorization", mentorAuth).send({ password: "EduRate2026" }).expect(204);
+    await request(app).delete("/api/auth/account").set("Authorization", mentorAuth).send({ password: "Kampus-Yolu-2026" }).expect(204);
 
     // Reqressiya: profil real adla kataloqda qalırdı və müraciət 201 alırdı.
     const after = await request(app).get("/api/mentors").expect(200);
@@ -1406,7 +1406,7 @@ describe("Hesabın silinməsi", () => {
     await request(app).post("/api/mentorship/requests").set("Authorization", studentAuth).send({ mentorId: profile.id }).expect(404);
 
     // Administrator hesabı bu yolla silinmir.
-    const denied = await request(app).delete("/api/auth/account").set("Authorization", `Bearer ${reusableAdminToken}`).send({ password: "EduRate2026" }).expect(409);
+    const denied = await request(app).delete("/api/auth/account").set("Authorization", `Bearer ${reusableAdminToken}`).send({ password: "Kampus-Yolu-2026" }).expect(409);
     assert.equal(denied.body.error.code, "ADMIN_SELF_DELETE_FORBIDDEN");
   });
 });
@@ -1417,7 +1417,7 @@ describe("İş paneli", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const mentor = await createUser({ ...base, name: "Panel Mentoru", email: "workspace.mentor@example.az", role: "mentor" });
     const mentorAuth = `Bearer ${createAccessToken(mentor)}`;
@@ -1481,7 +1481,7 @@ describe("Şikayətlər", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const reporter = await createUser({ ...base, name: "Şikayətçi Tələbə", email: "report.reporter@example.az", role: "student" });
     const reported = await createUser({ ...base, name: "Şikayət Edilən", email: "report.target@example.az", role: "student" });
@@ -1520,7 +1520,7 @@ describe("Göndərilənlərin taleyi", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const teacher = await createUser({ ...base, name: "Tale Müəllim", email: "tale.teacher@example.az", role: "teacher" });
     const other = await createUser({ ...base, name: "Digər Müəllim", email: "tale.other@example.az", role: "teacher" });
@@ -1589,7 +1589,7 @@ describe("Admin paneli", () => {
       import("../src/db/database.js"),
       import("../src/lib/auth.js"),
     ]);
-    const passwordHash = await hashPassword("EduRate2026");
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
     const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
     const admin = await createUser({ ...base, name: "Adi Admin", email: "d3.admin@example.az", role: "admin" });
     const otherAdmin = await createUser({ ...base, name: "Digər Admin", email: "d3.other@example.az", role: "admin" });
@@ -1632,5 +1632,141 @@ describe("Admin paneli", () => {
     const retitled = await request(app).patch(`/api/admin/announcements/${id}`).set("Authorization", ownerAuth).send({ title: "Prioritetli elan (yenilənib)" }).expect(200);
     assert.equal(retitled.body.data.status, "published");
     assert.equal(retitled.body.data.priority, true);
+  });
+});
+
+describe("Giriş təhlükəsizliyi: şifrə siyasəti, hesab limiti, 2FA", () => {
+  const strongPassword = "Kampus-Yolu-2026";
+  let ipCounter = 10;
+  const nextIp = () => `198.51.100.${(ipCounter += 1)}`;
+
+  async function makeUser(email: string, role: "student" | "owner_admin" = "student") {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([import("../src/db/database.js"), import("../src/lib/auth.js")]);
+    const user = await createUser({ name: "Təhlükəsizlik Testi", email, passwordHash: await hashPassword(strongPassword), university: "Qarabağ Universiteti", faculty: "Pedaqoji fakültə", program: "Riyaziyyat müəllimliyi", role, status: "Aktiv" });
+    return { user, auth: `Bearer ${createAccessToken(user)}` };
+  }
+
+  it("TOTP RFC 6238 test vektorlarını verir", async () => {
+    const { base32Encode, totpCode } = await import("../src/lib/totp.js");
+    const secret = base32Encode(Buffer.from("12345678901234567890"));
+    assert.equal(secret, "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ");
+    for (const [time, code] of [[59, "287082"], [1111111109, "081804"], [1234567890, "005924"], [2000000000, "279037"]] as const) {
+      assert.equal(totpCode(secret, Math.floor(time / 30)), code);
+    }
+  });
+
+  it("zəif şifrəni qəbul etmir, güclüsünü qəbul edir", async () => {
+    const { findPasswordProblem } = await import("../src/lib/password-policy.js");
+    assert.equal(findPasswordProblem("Parol123"), "tooShort");
+    assert.equal(findPasswordProblem("password1234"), "common");
+    assert.equal(findPasswordProblem("Qwerty123456"), "common");
+    assert.equal(findPasswordProblem("EduRate2026"), "common");
+    assert.equal(findPasswordProblem("1q2w3e4r5t"), "common");
+    assert.equal(findPasswordProblem("Resulov2026x", { name: "Resul Resulov" }), "personal");
+    assert.equal(findPasswordProblem("nigar.q2026a", { email: "nigar.q@example.az" }), "personal");
+    assert.equal(findPasswordProblem("abab1212ab"), "repetitive");
+    assert.equal(findPasswordProblem("abcdefgh12"), "common");
+    assert.equal(findPasswordProblem(`${"ş".repeat(36)}1`), "tooLong");
+    assert.equal(findPasswordProblem(strongPassword), null);
+
+    const weak = await request(app).post("/api/auth/signup").set("X-Forwarded-For", nextIp()).send({
+      name: "Zəif Şifrə", email: "weak.password@example.az", password: "password1234",
+      university: "Qarabağ Universiteti", faculty: "Pedaqoji fakültə", program: "Riyaziyyat müəllimliyi",
+    }).expect(422);
+    assert.equal(weak.body.error.code, "WEAK_PASSWORD");
+    assert.equal(weak.body.error.details.reason, "common");
+  });
+
+  it("IP dəyişsə də hesab üzrə 10 uğursuz girişdən sonra kilidləyir", async () => {
+    await makeUser("throttle.login@example.az");
+    for (let attempt = 1; attempt <= 9; attempt += 1) {
+      await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: "throttle.login@example.az", password: "yanlis-parol-1" }).expect(401);
+    }
+    const locked = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: "throttle.login@example.az", password: "yanlis-parol-1" }).expect(429);
+    assert.equal(locked.body.error.code, "ACCOUNT_THROTTLED");
+    // Düzgün şifrə də kilid bitənə qədər qəbul edilmir.
+    await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: "throttle.login@example.az", password: strongPassword }).expect(429);
+    // Mövcud olmayan hesab da eyni cavabı alır (hesabın varlığı açılmır).
+    for (let attempt = 1; attempt <= 9; attempt += 1) {
+      await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: "yoxdur.hesab@example.az", password: "yanlis-parol-1" }).expect(401);
+    }
+    await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: "yoxdur.hesab@example.az", password: "yanlis-parol-1" }).expect(429);
+  });
+
+  it("6 rəqəmli bərpa kodunu hesab üzrə 5 səhvdən sonra kilidləyir", async () => {
+    await makeUser("throttle.reset@example.az");
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      await request(app).post("/api/auth/password/verify-code").set("X-Forwarded-For", nextIp()).send({ email: "throttle.reset@example.az", code: "000000" }).expect(422);
+    }
+    const locked = await request(app).post("/api/auth/password/verify-code").set("X-Forwarded-For", nextIp()).send({ email: "throttle.reset@example.az", code: "000000" }).expect(429);
+    assert.equal(locked.body.error.code, "ACCOUNT_THROTTLED");
+  });
+
+  it("2FA: quraşdırma, kodla giriş, təkrar koda qadağa, bərpa kodu, admin tələbi", async () => {
+    const { totpCode, currentTotpStep } = await import("../src/lib/totp.js");
+    const { env } = await import("../src/config/env.js");
+    const { user, auth } = await makeUser("twofactor.owner@example.az", "owner_admin");
+
+    // Şifrəsiz quraşdırma olmur.
+    await request(app).post("/api/auth/2fa/setup").set("Authorization", auth).send({ password: "yanlis-parol-1" }).expect(401);
+    const setup = await request(app).post("/api/auth/2fa/setup").set("Authorization", auth).send({ password: strongPassword }).expect(200);
+    const secret = setup.body.data.secret as string;
+    assert.match(setup.body.data.otpauthUrl, /^otpauth:\/\/totp\/EduRate%3Atwofactor\.owner%40example\.az\?secret=/);
+
+    // Təsdiqlənməmiş 2FA girişə təsir etmir.
+    const beforeEnable = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: user.email, password: strongPassword }).expect(200);
+    assert.ok(beforeEnable.body.data.token);
+    assert.equal(beforeEnable.body.data.user.twoFactorEnabled, false);
+
+    const wrongCode = totpCode(secret, currentTotpStep()) === "000000" ? "111111" : "000000";
+    await request(app).post("/api/auth/2fa/enable").set("Authorization", auth).send({ code: wrongCode }).expect(422);
+    const enableCode = totpCode(secret, currentTotpStep());
+    const enabled = await request(app).post("/api/auth/2fa/enable").set("Authorization", auth).send({ code: enableCode }).expect(200);
+    const recoveryCodes = enabled.body.data.recoveryCodes as string[];
+    assert.equal(recoveryCodes.length, 10);
+    // Sirr yenidən alına bilməz.
+    await request(app).post("/api/auth/2fa/setup").set("Authorization", auth).send({ password: strongPassword }).expect(409);
+
+    // Şifrə düzgün → sessiya YOX, yalnız bilet.
+    const step1 = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: user.email, password: strongPassword }).expect(200);
+    assert.equal(step1.body.data.twoFactorRequired, true);
+    assert.equal(step1.body.data.token, undefined);
+    const challenge = step1.body.data.challenge as string;
+
+    // Aktivləşdirmədə işlənən kod ikinci dəfə keçmir (təkrar hücum).
+    const replay = await request(app).post("/api/auth/login/2fa").set("X-Forwarded-For", nextIp()).send({ challenge, code: enableCode }).expect(401);
+    assert.equal(replay.body.error.code, "TWO_FACTOR_INVALID");
+
+    // Bərpa kodu ilə giriş; eyni bərpa kodu ikinci dəfə keçmir.
+    const viaRecovery = await request(app).post("/api/auth/login/2fa").set("X-Forwarded-For", nextIp()).send({ challenge, code: recoveryCodes[0].toUpperCase() }).expect(200);
+    assert.ok(viaRecovery.body.data.token);
+    assert.equal(viaRecovery.body.data.recoveryCodeUsed, true);
+    assert.equal(viaRecovery.body.data.recoveryCodesRemaining, 9);
+    assert.equal(viaRecovery.body.data.user.twoFactorEnabled, true);
+    // Bilet birdəfəlikdir.
+    await request(app).post("/api/auth/login/2fa").set("X-Forwarded-For", nextIp()).send({ challenge, code: recoveryCodes[1] }).expect(401);
+    const second = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: user.email, password: strongPassword }).expect(200);
+    await request(app).post("/api/auth/login/2fa").set("X-Forwarded-For", nextIp()).send({ challenge: second.body.data.challenge, code: recoveryCodes[0] }).expect(401);
+
+    const session = await request(app).get("/api/auth/session").set("Authorization", `Bearer ${viaRecovery.body.data.token}`).expect(200);
+    assert.equal(session.body.data.user.twoFactorEnabled, true);
+
+    // Admin API: 2FA-sız sahib 403, 2FA-lı sahib 200.
+    const previous = env.ADMIN_2FA_REQUIRED;
+    env.ADMIN_2FA_REQUIRED = true;
+    try {
+      const { auth: noTwoFactorAuth } = await makeUser("twofactor.none@example.az", "owner_admin");
+      const denied = await request(app).get("/api/admin/overview").set("Authorization", noTwoFactorAuth).expect(403);
+      assert.equal(denied.body.error.code, "TWO_FACTOR_REQUIRED");
+      await request(app).get("/api/admin/overview").set("Authorization", auth).expect(200);
+    } finally {
+      env.ADMIN_2FA_REQUIRED = previous;
+    }
+
+    // Söndürmək üçün şifrə + kod lazımdır.
+    await request(app).post("/api/auth/2fa/disable").set("Authorization", auth).send({ password: strongPassword, code: "zzzzz-zzzzz" }).expect(401);
+    await request(app).post("/api/auth/2fa/disable").set("Authorization", auth).send({ password: strongPassword, code: recoveryCodes[2] }).expect(200);
+    const afterDisable = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: user.email, password: strongPassword }).expect(200);
+    assert.ok(afterDisable.body.data.token);
   });
 });

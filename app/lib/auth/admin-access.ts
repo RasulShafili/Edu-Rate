@@ -14,6 +14,7 @@ export type AdminAccess =
   | { status: "granted"; principal: AdminPrincipal }
   | { status: "signed-out"; signInHref: string }
   | { status: "forbidden" }
+  | { status: "two-factor-required" }
   | { status: "unavailable" };
 
 /**
@@ -30,6 +31,12 @@ export async function resolveAdminAccess(
     const role = identity.role;
     const hasAccess = role === "owner_admin" || role === "admin"
       || (options.allowAssistant === true && role === "assistant_admin");
+
+    // Backend admin API-si 2FA-sız rəhbərlik hesabını rədd edir (TWO_FACTOR_REQUIRED);
+    // panel boş yüklənmək əvəzinə bunu əvvəlcədən izah edir.
+    if (hasAccess && identity.profile && !identity.profile.twoFactorEnabled && process.env.ADMIN_2FA_REQUIRED !== "false") {
+      return { status: "two-factor-required" };
+    }
 
     return hasAccess && isAdminAccessRole(role)
       ? {

@@ -4,10 +4,25 @@ import { ArrowLeft, CheckCircle2, KeyRound, LockKeyhole, Mail, ShieldCheck } fro
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { PasswordStrength, passwordProblemKey } from "../../components/PasswordStrength";
+import { useT } from "../../i18n/LanguageProvider";
 
 type RecoveryStage = "request" | "code" | "password" | "success";
+type ErrorPayload = { error?: { code?: string; details?: Record<string, string> } };
+
+/** Server xətasını tərcümə açarına çevirir (server mətni azərbaycancadır). */
+function errorKey(payload: ErrorPayload | null, fallback: string) {
+  const code = payload?.error?.code;
+  if (code === "ACCOUNT_THROTTLED" || code === "RATE_LIMITED") return "recovery.error.throttled";
+  if (code === "CODE_INVALID") return "recovery.error.code";
+  if (code === "RESET_EXPIRED") return "recovery.error.expired";
+  if (code === "EMAIL_DELIVERY_UNAVAILABLE") return "recovery.error.delivery";
+  if (code === "WEAK_PASSWORD") return `password.problem.${payload?.error?.details?.reason ?? "common"}`;
+  return fallback;
+}
 
 export default function RecoveryPage() {
+  const t = useT();
   const invitationToken = useSearchParams().get("token") ?? "";
   const [stage, setStage] = useState<RecoveryStage>(invitationToken ? "password" : "request");
   const [email, setEmail] = useState("");
@@ -15,6 +30,12 @@ export default function RecoveryPage() {
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+
+  function fail(key: string) {
+    setIsError(true);
+    setMessage(key);
+  }
 
   async function requestCode(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -27,13 +48,12 @@ export default function RecoveryPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message || "Kod göndərilmədi.");
+      const payload = await response.json().catch(() => null) as ErrorPayload | null;
+      if (!response.ok) return fail(errorKey(payload, "recovery.error.send"));
       setStage("code");
-      setMessage("Hesab mövcuddursa, 6 rəqəmli kod e-poçt ünvanına göndərildi.");
-    } catch (error) {
-      setIsError(true);
-      setMessage(error instanceof Error ? error.message : "Kod göndərilmədi.");
+      setMessage("recovery.codeSent");
+    } catch {
+      fail("recovery.error.send");
     } finally {
       setBusy(false);
     }
@@ -51,13 +71,12 @@ export default function RecoveryPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, code: String(form.get("code") ?? "").replace(/\D/g, "") }),
       });
-      const payload = await response.json() as { data?: { resetToken?: string }; error?: { message?: string } };
-      if (!response.ok || !payload.data?.resetToken) throw new Error(payload.error?.message || "Kod təsdiqlənmədi.");
+      const payload = await response.json().catch(() => null) as (ErrorPayload & { data?: { resetToken?: string } }) | null;
+      if (!response.ok || !payload?.data?.resetToken) return fail(errorKey(payload, "recovery.error.code"));
       setResetToken(payload.data.resetToken);
       setStage("password");
-    } catch (error) {
-      setIsError(true);
-      setMessage(error instanceof Error ? error.message : "Kod təsdiqlənmədi.");
+    } catch {
+      fail("recovery.error.code");
     } finally {
       setBusy(false);
     }
@@ -68,11 +87,9 @@ export default function RecoveryPage() {
     const form = new FormData(event.currentTarget);
     const password = String(form.get("password") ?? "");
     const passwordConfirm = String(form.get("passwordConfirm") ?? "");
-    if (password !== passwordConfirm) {
-      setIsError(true);
-      setMessage("Yeni şifrələr eyni deyil.");
-      return;
-    }
+    const problem = passwordProblemKey(password, { email });
+    if (problem) return fail(problem);
+    if (password !== passwordConfirm) return fail("recovery.error.mismatch");
     setBusy(true);
     setMessage("");
     setIsError(false);
@@ -82,13 +99,12 @@ export default function RecoveryPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ resetToken, password, passwordConfirm }),
       });
-      const payload = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(payload.error?.message || "Şifrə yenilənmədi.");
+      const payload = await response.json().catch(() => null) as ErrorPayload | null;
+      if (!response.ok) return fail(errorKey(payload, "recovery.error.reset"));
       setStage("success");
       setMessage("");
-    } catch (error) {
-      setIsError(true);
-      setMessage(error instanceof Error ? error.message : "Şifrə yenilənmədi.");
+    } catch {
+      fail("recovery.error.reset");
     } finally {
       setBusy(false);
     }
@@ -99,49 +115,50 @@ export default function RecoveryPage() {
       <section className="recovery-card" aria-labelledby="recovery-title">
         <aside className="recovery-card__visual" aria-hidden="true">
           <span className="recovery-brand"><i /> EDURATE</span>
-          <div><ShieldCheck size={42} strokeWidth={1.4} /><h2>Hesabınıza təhlükəsiz qayıdın.</h2><p>Birdəfəlik kod yalnız 10 dəqiqə qüvvədə qalır.</p></div>
-          <small>Müstəqil tələbə pilot platforması</small>
+          <div><ShieldCheck size={42} strokeWidth={1.4} /><h2>{t("recovery.visual.title")}</h2><p>{t("recovery.visual.text")}</p></div>
+          <small>{t("recovery.visual.note")}</small>
         </aside>
 
         <article className="recovery-card__content">
           {stage === "request" ? (
             <>
-              <span className="recovery-step">01 / E-POÇT</span><div className="recovery-icon"><Mail size={22} /></div>
-              <h1 id="recovery-title">Şifrənizi bərpa edin</h1>
-              <p>E-poçt ünvanınızı yazın. Sizə 6 rəqəmli təhlükəsizlik kodu göndərəcəyik.</p>
+              <span className="recovery-step">{t("recovery.step1")}</span><div className="recovery-icon"><Mail size={22} /></div>
+              <h1 id="recovery-title">{t("recovery.request.title")}</h1>
+              <p>{t("recovery.request.text")}</p>
               <form method="post" className="account-recovery-form" onSubmit={requestCode}>
-                <label><span>E-poçt ünvanı</span><input value={email} onChange={(event) => setEmail(event.target.value)} name="email" type="email" autoComplete="email" placeholder="ad.soyad@example.com" required autoFocus /></label>
-                <button type="submit" disabled={busy}>{busy ? "Göndərilir…" : "Bərpa kodunu göndər"}</button>
+                <label><span>{t("auth.email")}</span><input value={email} onChange={(event) => setEmail(event.target.value)} name="email" type="email" autoComplete="email" placeholder="ad.soyad@example.com" required autoFocus /></label>
+                <button type="submit" disabled={busy}>{busy ? t("recovery.request.sending") : t("recovery.request.submit")}</button>
               </form>
             </>
           ) : stage === "code" ? (
             <>
-              <span className="recovery-step">02 / KOD TƏSDİQİ</span><div className="recovery-icon"><KeyRound size={22} /></div>
-              <h1 id="recovery-title">Kodu daxil edin</h1>
-              <p><strong>{email}</strong> ünvanına göndərilən 6 rəqəmli kodu yazın. Kod doğru olduqda yeni şifrə bölməsi açılacaq.</p>
+              <span className="recovery-step">{t("recovery.step2")}</span><div className="recovery-icon"><KeyRound size={22} /></div>
+              <h1 id="recovery-title">{t("recovery.code.title")}</h1>
+              <p>{t("recovery.code.text", { email })}</p>
               <form method="post" className="account-recovery-form" onSubmit={verifyCode}>
-                <label className="recovery-code-field"><span>6 rəqəmli kod</span><input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} placeholder="000000" required autoFocus /></label>
-                <button type="submit" disabled={busy}>{busy ? "Yoxlanılır…" : "Kodu təsdiqlə"}</button>
+                <label className="recovery-code-field"><span>{t("recovery.code.label")}</span><input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" minLength={6} maxLength={6} placeholder="000000" required autoFocus /></label>
+                <button type="submit" disabled={busy}>{busy ? t("auth.checking") : t("recovery.code.submit")}</button>
               </form>
-              <div className="recovery-secondary-actions"><button type="button" onClick={() => void requestCode()} disabled={busy}>Kodu yenidən göndər</button><button type="button" onClick={() => { setStage("request"); setMessage(""); }}>E-poçtu dəyiş</button></div>
+              <div className="recovery-secondary-actions"><button type="button" onClick={() => void requestCode()} disabled={busy}>{t("recovery.code.resend")}</button><button type="button" onClick={() => { setStage("request"); setMessage(""); }}>{t("recovery.code.changeEmail")}</button></div>
             </>
           ) : stage === "password" ? (
             <>
-              <span className="recovery-step">03 / YENİ ŞİFRƏ</span><div className="recovery-icon"><LockKeyhole size={22} /></div>
-              <h1 id="recovery-title">Yeni şifrə yaradın</h1>
-              <p>Kod təsdiqləndi. Təhlükəsiz yeni şifrənizi iki dəfə daxil edin.</p>
+              <span className="recovery-step">{t("recovery.step3")}</span><div className="recovery-icon"><LockKeyhole size={22} /></div>
+              <h1 id="recovery-title">{t("recovery.password.title")}</h1>
+              <p>{t("recovery.password.text")}</p>
               <form method="post" className="account-recovery-form" onSubmit={resetPassword}>
-                <label><span>Yeni şifrə</span><span className="recovery-input-with-icon"><LockKeyhole size={17} /><input name="password" type="password" minLength={8} maxLength={72} autoComplete="new-password" required /></span></label>
-                <label><span>Yeni şifrəni təkrar et</span><span className="recovery-input-with-icon"><LockKeyhole size={17} /><input name="passwordConfirm" type="password" minLength={8} maxLength={72} autoComplete="new-password" required /></span></label>
-                <button type="submit" disabled={busy}>{busy ? "Yenilənir…" : "Şifrəni yenilə"}</button>
+                <label><span>{t("recovery.password.new")}</span><span className="recovery-input-with-icon"><LockKeyhole size={17} /><input name="password" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" aria-describedby="recovery-password-strength" required /></span></label>
+                <PasswordStrength id="recovery-password-strength" password={newPassword} email={email} />
+                <label><span>{t("recovery.password.confirm")}</span><span className="recovery-input-with-icon"><LockKeyhole size={17} /><input name="passwordConfirm" type="password" autoComplete="new-password" required /></span></label>
+                <button type="submit" disabled={busy}>{busy ? t("recovery.password.saving") : t("recovery.password.submit")}</button>
               </form>
             </>
           ) : (
-            <div className="recovery-success"><CheckCircle2 size={52} /><span className="recovery-step">TAMAMLANDI</span><h1 id="recovery-title">Şifrəniz yeniləndi</h1><p>Yeni şifrənizlə EduRate hesabınıza daxil ola bilərsiniz.</p><Link href="/auth">Daxil ol</Link></div>
+            <div className="recovery-success"><CheckCircle2 size={52} /><span className="recovery-step">{t("recovery.success.step")}</span><h1 id="recovery-title">{t("recovery.success.title")}</h1><p>{t("recovery.success.text")}</p><Link href="/auth">{t("auth.submitSignIn")}</Link></div>
           )}
 
-          {message ? <p className={`recovery-message${isError ? " is-error" : ""}`} role={isError ? "alert" : "status"}>{message}</p> : null}
-          {stage !== "success" ? <Link className="recovery-back" href="/auth"><ArrowLeft size={15} /> Giriş səhifəsinə qayıt</Link> : null}
+          {message ? <p className={`recovery-message${isError ? " is-error" : ""}`} role={isError ? "alert" : "status"}>{t(message)}</p> : null}
+          {stage !== "success" ? <Link className="recovery-back" href="/auth"><ArrowLeft size={15} /> {t("recovery.back")}</Link> : null}
         </article>
       </section>
     </main>

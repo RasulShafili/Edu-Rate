@@ -4239,3 +4239,51 @@ body {
 @media (max-width: 768px) {
   .kuds-shell .lang-switch button { min-height: 44px; min-width: 44px; }
 }
+
+/* İki mərhələli giriş (Parametrlər) */
+.kuds-shell .two-factor { display: grid; gap: 12px; margin-top: 14px; }
+.kuds-shell .two-factor .settings-intro { margin-bottom: 0; }
+.kuds-shell .two-factor__status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 10px; color: #7a4a12; background: #fff6e6; font-size: 13px; font-weight: 650; }
+.kuds-shell .two-factor__status.is-on { color: #1f5b4d; background: #eaf5f1; }
+.kuds-shell .two-factor__status small { color: #475569; font-size: 12px; font-weight: 500; }
+.kuds-shell .two-factor__warning { margin: 0; color: #7a4a12; font-size: 12px; }
+.kuds-shell .two-factor__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.kuds-shell .settings-button { display: inline-flex; min-height: 44px; padding: 0 14px; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--kuds-border, #e2e8f0); border-radius: 9px; background: #ffffff; color: var(--kuds-text, #1e293b); font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.kuds-shell .settings-button.is-primary { border-color: transparent; background: #1f5b4d; color: #ffffff; }
+.kuds-shell .settings-button.is-primary:hover:not(:disabled) { background: #184a3f; }
+.kuds-shell .settings-button.is-danger { border-color: #f0c2bd; color: #8e3933; }
+.kuds-shell .settings-button.is-danger[type="submit"] { border-color: transparent; background: #c2453d; color: #ffffff; }
+.kuds-shell .settings-button:disabled { opacity: .55; cursor: not-allowed; }
+.kuds-shell .two-factor__form { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--kuds-border, #e2e8f0); }
+.kuds-shell .two-factor__form > p { margin: 0; color: #475569; font-size: 13px; line-height: 1.55; }
+.kuds-shell .two-factor__form label { display: grid; gap: 6px; color: var(--kuds-text, #1e293b); font-size: 12px; font-weight: 600; }
+.kuds-shell .two-factor__form input { min-height: 44px; max-width: 320px; padding: 0 12px; border: 1px solid var(--kuds-border, #e2e8f0); border-radius: 9px; background: #ffffff; color: var(--kuds-text, #1e293b); font-size: 16px; }
+.kuds-shell .two-factor__form input:focus { outline: 0; border-color: #1f5b4d; box-shadow: 0 0 0 4px rgb(31 91 77 / 14%); }
+.kuds-shell .two-factor__steps { display: grid; gap: 4px; margin: 0; padding-left: 18px; color: #334155; font-size: 13px; line-height: 1.55; }
+.kuds-shell .two-factor__pairing { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.kuds-shell .two-factor__qr { width: 176px; height: 176px; border: 1px solid var(--kuds-border, #e2e8f0); border-radius: 10px; }
+.kuds-shell .two-factor__pairing > div { display: grid; gap: 6px; min-width: 0; color: #475569; font-size: 12px; }
+.kuds-shell .two-factor__secret { padding: 8px 10px; border-radius: 8px; background: #f1f5f9; color: #0f172a; font-size: 13px; letter-spacing: .06em; overflow-wrap: anywhere; user-select: all; }
+.kuds-shell .two-factor__codes { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--kuds-border, #e2e8f0); }
+.kuds-shell .two-factor__codes h3 { margin: 0; color: var(--kuds-text, #1e293b); font-size: 14px; }
+.kuds-shell .two-factor__codes > p { margin: 0; color: #475569; font-size: 13px; line-height: 1.55; }
+.kuds-shell .two-factor__codes ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.kuds-shell .two-factor__codes code { display: block; padding: 7px 9px; border-radius: 7px; background: #f1f5f9; color: #0f172a; font-size: 13px; text-align: center; }
+.kuds-shell .two-factor__note { color: #475569 !important; font-size: 12px !important; }
+.kuds-shell .two-factor__message { margin: 0; padding: 9px 11px; border-radius: 9px; background: #eaf5f1; color: #1f5b4d; font-size: 12.5px; }
+.kuds-shell .two-factor__message.is-error { background: #fff0ee; color: #8e3933; }
+
+/* Şifrə gücü göstəricisi (qeydiyyat, bərpa) */
+.password-strength { display: grid; gap: 5px; margin-top: 2px; }
+.password-strength__bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.password-strength__bars span { height: 4px; border-radius: 2px; background: #e2e8f0; }
+.password-strength.is-score-1 .is-on { background: #c2453d; }
+.password-strength.is-score-2 .is-on { background: #b7791f; }
+.password-strength.is-score-3 .is-on,
+.password-strength.is-score-4 .is-on { background: #1f7a5c; }
+.password-strength p { margin: 0; color: #475569; font-size: 12px; line-height: 1.45; }
+.password-strength.is-score-1 p { color: #8e3933; }
+
+/* Giriş: 2FA mərhələsindəki mətn düymələri */
+.kuds-shell .auth-link-button { padding: 0; border: 0; background: none; cursor: pointer; text-align: left; min-height: 44px; }
+.kuds-shell .auth-two-factor .auth-form-footer { display: grid; gap: 4px; }

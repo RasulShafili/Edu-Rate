@@ -26,7 +26,40 @@ import {
 } from "../lib/auth.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { deactivateProfessionalProfilesForUser, synchronizeProfessionalProfilesForUser } from "../db/professionals.js";
-import { consumeActionCode, consumeActionToken, createActionCode, createActionToken, listSessions, registerSessionToken, revokeAllSessions, revokeSession } from "../db/auth-security.js";
+import {
+  clearAttempts,
+  consumeActionCode,
+  consumeActionToken,
+  consumeLoginChallenge,
+  consumeRecoveryCode,
+  countRecoveryCodes,
+  createActionCode,
+  createActionToken,
+  createLoginChallenge,
+  deleteTwoFactor,
+  findLoginChallenge,
+  getLockRemainingSeconds,
+  getTwoFactor,
+  isTwoFactorEnabled,
+  listSessions,
+  markTwoFactorStepUsed,
+  registerFailedAttempt,
+  registerSessionToken,
+  replaceRecoveryCodes,
+  revokeAllSessions,
+  revokeSession,
+  savePendingTwoFactor,
+} from "../db/auth-security.js";
+import { findPasswordProblem, type PasswordProblem } from "../lib/password-policy.js";
+import {
+  decryptSecret,
+  encryptSecret,
+  generateRecoveryCodes,
+  generateTotpSecret,
+  normalizeRecoveryCode,
+  totpUri,
+  verifyTotp,
+} from "../lib/totp.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 import { env } from "../config/env.js";
 
@@ -48,15 +81,99 @@ const loginLimiter = rateLimit({
   message: { error: { code: "RATE_LIMITED", message: "Çox sayda giriş cəhdi edildi." } },
 });
 
+/*
+ * IP limitləri (`loginLimiter`) Vercel BFF-in arxasında bütün istifadəçilər
+ * üçün ortaq ünvanı sayır, BFF-in öz sayğacı isə serverless nüsxənin
+ * yaddaşındadır. Ona görə uğursuz cəhdlər həm də HESAB üzrə, bazada sayılır.
+ */
+const LOGIN_ATTEMPTS = { limit: 10, windowMs: 15 * 60_000, lockMs: 15 * 60_000 };
+const TWO_FACTOR_ATTEMPTS = { limit: 5, windowMs: 15 * 60_000, lockMs: 15 * 60_000 };
+const RESET_CODE_ATTEMPTS = { limit: 5, windowMs: 15 * 60_000, lockMs: 30 * 60_000 };
+
+function accountThrottled(seconds: number) {
+  return new ApiError(
+    429,
+    "ACCOUNT_THROTTLED",
+    `Bu hesab üçün çox sayda uğursuz cəhd edildi. ${Math.ceil(seconds / 60)} dəqiqə sonra yenidən yoxla.`,
+    { retryAfter: String(seconds) },
+  );
+}
+
+const PASSWORD_PROBLEM_MESSAGES: Record<PasswordProblem, string> = {
+  tooShort: "Şifrə ən az 10 simvol olmalıdır.",
+  tooLong: "Şifrə çox uzundur.",
+  needsLetter: "Şifrədə hərf olmalıdır.",
+  needsDigit: "Şifrədə rəqəm olmalıdır.",
+  common: "Bu şifrə çox yayılmışdır və asan tapılır.",
+  personal: "Şifrədə adın və ya e-poçtun olmamalıdır.",
+  repetitive: "Şifrə təkrarlanan və ya ardıcıl simvollardan ibarətdir.",
+};
+
+function assertStrongPassword(password: string, context: { email?: string; name?: string } = {}) {
+  const problem = findPasswordProblem(password, context);
+  if (problem) {
+    throw new ApiError(422, "WEAK_PASSWORD", PASSWORD_PROBLEM_MESSAGES[problem], {
+      password: PASSWORD_PROBLEM_MESSAGES[problem],
+      reason: problem,
+    });
+  }
+}
+
+/** Mövcud olmayan e-poçt üçün də bcrypt işləsin: cavab vaxtı hesabın varlığını açmasın. */
+let dummyPasswordHash: Promise<string> | null = null;
+function verifyAgainstDummy(password: string) {
+  dummyPasswordHash ??= hashPassword(randomUUID());
+  return dummyPasswordHash.then((hash) => verifyPassword(password, hash));
+}
+
+async function publicUserWithSecurity(user: UserRecord) {
+  return { ...toPublicUser(user), twoFactorEnabled: await isTwoFactorEnabled(user.id) };
+}
+
+/** Şifrəni yenidən yoxlayır (2FA idarəsi); uğursuz cəhdlər girişlə eyni sayğacdadır. */
+async function assertCurrentPassword(user: UserRecord, password: string) {
+  const key = `login:${user.email}`;
+  const locked = await getLockRemainingSeconds(key);
+  if (locked) throw accountThrottled(locked);
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    const lockedNow = await registerFailedAttempt(key, LOGIN_ATTEMPTS);
+    if (lockedNow) throw accountThrottled(lockedNow);
+    throw new ApiError(401, "INVALID_CREDENTIALS", "Şifrə düzgün deyil.");
+  }
+}
+
+/** TOTP kodu və ya birdəfəlik bərpa kodu. Qaytarır: işlənən üsul, yoxsa `null`. */
+async function verifySecondFactor(userId: string, rawCode: string): Promise<"totp" | "recovery" | null> {
+  const code = rawCode.replace(/\s/g, "");
+  if (/^\d{6}$/.test(code)) {
+    const record = await getTwoFactor(userId);
+    if (!record?.enabledAt) return null;
+    const step = verifyTotp(decryptSecret(record.secretEncrypted), code, record.lastUsedStep);
+    if (step === null) return null;
+    return (await markTwoFactorStepUsed(userId, step)) ? "totp" : null;
+  }
+  return (await consumeRecoveryCode(userId, normalizeRecoveryCode(code))) ? "recovery" : null;
+}
+
+async function assertSecondFactor(userId: string, code: string) {
+  const key = `2fa:${userId}`;
+  const locked = await getLockRemainingSeconds(key);
+  if (locked) throw accountThrottled(locked);
+  const method = await verifySecondFactor(userId, code);
+  if (!method) {
+    const lockedNow = await registerFailedAttempt(key, TWO_FACTOR_ATTEMPTS);
+    if (lockedNow) throw accountThrottled(lockedNow);
+    throw new ApiError(401, "TWO_FACTOR_INVALID", "Kod yanlışdır və ya vaxtı keçib.");
+  }
+  await clearAttempts(key);
+  return method;
+}
+
 const signupSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.email().transform((value) => value.toLowerCase()),
-  password: z
-    .string()
-    .min(8, "Şifrə ən az 8 simvol olmalıdır.")
-    .max(72)
-    .regex(/[a-zA-ZƏəÖöÜüĞğŞşÇçİı]/, "Şifrədə hərf olmalıdır.")
-    .regex(/\d/, "Şifrədə rəqəm olmalıdır."),
+  // Qaydalar `assertStrongPassword`-dadır (frontend ilə eyni fayl).
+  password: z.string().max(200),
   university: z.string().trim().min(2).max(180).default(ACADEMIC_UNIVERSITY),
   accountType: z.enum(["student", "teacher"]).default("student"),
   faculty: z.string().trim().max(180).optional().default(""),
@@ -76,8 +193,8 @@ const resetCodeSchema=z.object({
 }).strict();
 const resetSchema=z.object({
   resetToken:z.string().min(32).max(256),
-  password:z.string().min(8,"Şifrə ən az 8 simvol olmalıdır.").max(72).regex(/[a-zA-ZƏəÖöÜüĞğŞşÇçİı]/,"Şifrədə hərf olmalıdır.").regex(/\d/,"Şifrədə rəqəm olmalıdır."),
-  passwordConfirm:z.string().min(8).max(72),
+  password:z.string().max(200),
+  passwordConfirm:z.string().max(200),
 }).strict().refine((input)=>input.password===input.passwordConfirm,{path:["passwordConfirm"],message:"Şifrələr eyni deyil."});
 
 async function issueSession(user:UserRecord,request:{get(name:string):string|undefined;ip?:string}){
@@ -134,6 +251,7 @@ function academicSelectionErrorDetails(
 
 authRouter.post("/signup", signupLimiter, async (request, response) => {
   const input = signupSchema.parse(request.body);
+  assertStrongPassword(input.password, { email: input.email, name: input.name });
   if (env.NODE_ENV !== "test" && input.legalAccepted !== true) {
     throw new ApiError(422, "LEGAL_CONSENT_REQUIRED", "İstifadə şərtləri və məxfilik siyasəti qəbul edilməlidir.");
   }
@@ -192,16 +310,68 @@ authRouter.post("/signup", signupLimiter, async (request, response) => {
 
 authRouter.post("/login", loginLimiter, async (request, response) => {
   const input = loginSchema.parse(request.body);
-  const user = await findUserByEmail(input.email);
+  // Açar mövcud olmayan e-poçt üçün də sayılır — hesabın varlığını açmır.
+  const attemptKey = `login:${input.email}`;
+  const locked = await getLockRemainingSeconds(attemptKey);
+  if (locked) throw accountThrottled(locked);
 
-  if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+  const user = await findUserByEmail(input.email);
+  const passwordMatches = user ? await verifyPassword(input.password, user.passwordHash) : await verifyAgainstDummy(input.password);
+
+  if (!user || !passwordMatches) {
+    const lockedNow = await registerFailedAttempt(attemptKey, LOGIN_ATTEMPTS);
+    if (lockedNow) throw accountThrottled(lockedNow);
     throw new ApiError(401, "INVALID_CREDENTIALS", "E-poçt və ya şifrə düzgün deyil.");
   }
+  await clearAttempts(attemptKey);
   if (user.status !== "Aktiv") {
     throw new ApiError(403, "ACCOUNT_RESTRICTED", "Hesab aktiv deyil.");
   }
 
-  response.json({ data: { token: await issueSession(user,request), user: toPublicUser(user) } });
+  // Şifrə düzgündür, amma 2FA aktivdirsə sessiya hələ verilmir: yalnız 5
+  // dəqiqəlik birdəfəlik bilet. Sessiya `/login/2fa`-da kod yoxlanandan sonra.
+  if (await isTwoFactorEnabled(user.id)) {
+    response.json({ data: { twoFactorRequired: true, challenge: await createLoginChallenge(user.id) } });
+    return;
+  }
+
+  response.json({ data: { token: await issueSession(user,request), user: await publicUserWithSecurity(user) } });
+});
+
+const twoFactorLoginSchema = z.object({
+  challenge: z.string().min(32).max(256),
+  code: z.string().trim().min(6).max(20),
+}).strict();
+
+authRouter.post("/login/2fa", loginLimiter, async (request, response) => {
+  const input = twoFactorLoginSchema.parse(request.body);
+  const challenge = await findLoginChallenge(input.challenge);
+  if (!challenge) throw new ApiError(401, "CHALLENGE_EXPIRED", "Giriş vaxtı bitdi. Şifrəni yenidən daxil et.");
+
+  const user = await findUserById(challenge.userId);
+  if (!user) throw new ApiError(401, "CHALLENGE_EXPIRED", "Giriş vaxtı bitdi. Şifrəni yenidən daxil et.");
+  if (user.status !== "Aktiv") throw new ApiError(403, "ACCOUNT_RESTRICTED", "Hesab aktiv deyil.");
+
+  let method: "totp" | "recovery";
+  try {
+    method = await assertSecondFactor(user.id, input.code);
+  } catch (error) {
+    // Kilid düşəndə bilet də ləğv olunur: davam etmək üçün şifrə yenidən lazımdır.
+    if (error instanceof ApiError && error.code === "ACCOUNT_THROTTLED") await consumeLoginChallenge(challenge.id);
+    throw error;
+  }
+  if (!(await consumeLoginChallenge(challenge.id))) {
+    throw new ApiError(401, "CHALLENGE_EXPIRED", "Giriş vaxtı bitdi. Şifrəni yenidən daxil et.");
+  }
+
+  response.json({
+    data: {
+      token: await issueSession(user, request),
+      user: await publicUserWithSecurity(user),
+      recoveryCodeUsed: method === "recovery",
+      recoveryCodesRemaining: method === "recovery" ? await countRecoveryCodes(user.id) : undefined,
+    },
+  });
 });
 
 authRouter.get("/session", authenticate, async (request, response) => {
@@ -211,7 +381,85 @@ authRouter.get("/session", authenticate, async (request, response) => {
     throw new ApiError(401, "SESSION_USER_NOT_FOUND", "Sessiya istifadəçisi tapılmadı.");
   }
 
-  response.json({ data: { user: toPublicUser(user) } });
+  response.json({ data: { user: await publicUserWithSecurity(user) } });
+});
+
+/* ---------- İki mərhələli girişin idarəsi ---------- */
+
+async function requireSessionUser(userId: string) {
+  const user = await findUserById(userId);
+  if (!user) throw new ApiError(401, "SESSION_USER_NOT_FOUND", "Sessiya istifadəçisi tapılmadı.");
+  return user;
+}
+
+authRouter.get("/2fa", authenticate, async (request, response) => {
+  const userId = request.auth!.userId;
+  const enabled = await isTwoFactorEnabled(userId);
+  response.json({ data: { enabled, recoveryCodesRemaining: enabled ? await countRecoveryCodes(userId) : 0 } });
+});
+
+/** 1-ci addım: şifrə təsdiqi → yeni sirr (hələ aktiv deyil). */
+authRouter.post("/2fa/setup", authenticate, async (request, response) => {
+  const { password } = z.object({ password: z.string().min(1).max(200) }).strict().parse(request.body);
+  const user = await requireSessionUser(request.auth!.userId);
+  await assertCurrentPassword(user, password);
+  const secret = generateTotpSecret();
+  if (!(await savePendingTwoFactor(user.id, encryptSecret(secret)))) {
+    throw new ApiError(409, "TWO_FACTOR_ALREADY_ENABLED", "İki mərhələli giriş artıq aktivdir.");
+  }
+  response.json({ data: { secret, otpauthUrl: totpUri(secret, user.email) } });
+});
+
+/** 2-ci addım: tətbiqdəki kod → aktivləşdirmə + birdəfəlik bərpa kodları. */
+authRouter.post("/2fa/enable", authenticate, async (request, response) => {
+  const { code } = z.object({ code: z.string().trim().regex(/^\d{6}$/) }).strict().parse(request.body);
+  const userId = request.auth!.userId;
+  const record = await getTwoFactor(userId);
+  if (!record) throw new ApiError(409, "TWO_FACTOR_NOT_STARTED", "Əvvəlcə quraşdırmanı başlat.");
+  if (record.enabledAt) throw new ApiError(409, "TWO_FACTOR_ALREADY_ENABLED", "İki mərhələli giriş artıq aktivdir.");
+
+  const key = `2fa:${userId}`;
+  const locked = await getLockRemainingSeconds(key);
+  if (locked) throw accountThrottled(locked);
+  const step = verifyTotp(decryptSecret(record.secretEncrypted), code, record.lastUsedStep);
+  if (step === null || !(await markTwoFactorStepUsed(userId, step, true))) {
+    const lockedNow = await registerFailedAttempt(key, TWO_FACTOR_ATTEMPTS);
+    if (lockedNow) throw accountThrottled(lockedNow);
+    throw new ApiError(422, "TWO_FACTOR_INVALID", "Kod yanlışdır və ya vaxtı keçib.");
+  }
+  await clearAttempts(key);
+
+  const recoveryCodes = generateRecoveryCodes();
+  await replaceRecoveryCodes(userId, recoveryCodes);
+  // Başqa cihazlardakı sessiyalar 2FA-sız açılıb — onlar bağlanır.
+  await revokeAllSessions(userId, request.auth!.sessionId);
+  response.json({ data: { enabled: true, recoveryCodes } });
+});
+
+const confirmWithCodeSchema = z.object({
+  password: z.string().min(1).max(200),
+  code: z.string().trim().min(6).max(20),
+}).strict();
+
+authRouter.post("/2fa/disable", authenticate, async (request, response) => {
+  const input = confirmWithCodeSchema.parse(request.body);
+  const user = await requireSessionUser(request.auth!.userId);
+  if (!(await isTwoFactorEnabled(user.id))) throw new ApiError(409, "TWO_FACTOR_NOT_ENABLED", "İki mərhələli giriş aktiv deyil.");
+  await assertCurrentPassword(user, input.password);
+  await assertSecondFactor(user.id, input.code);
+  await deleteTwoFactor(user.id);
+  response.json({ data: { enabled: false } });
+});
+
+authRouter.post("/2fa/recovery-codes", authenticate, async (request, response) => {
+  const input = confirmWithCodeSchema.parse(request.body);
+  const user = await requireSessionUser(request.auth!.userId);
+  if (!(await isTwoFactorEnabled(user.id))) throw new ApiError(409, "TWO_FACTOR_NOT_ENABLED", "İki mərhələli giriş aktiv deyil.");
+  await assertCurrentPassword(user, input.password);
+  await assertSecondFactor(user.id, input.code);
+  const recoveryCodes = generateRecoveryCodes();
+  await replaceRecoveryCodes(user.id, recoveryCodes);
+  response.json({ data: { recoveryCodes } });
 });
 
 authRouter.patch("/profile", authenticate, async (request, response) => {
@@ -276,13 +524,26 @@ authRouter.post("/password/forgot",loginLimiter,async(request,response)=>{
 });
 authRouter.post("/password/verify-code",loginLimiter,async(request,response)=>{
   const input=resetCodeSchema.parse(request.body);
+  // 6 rəqəmli kod: hesab üzrə 5 səhv cəhddən sonra 30 dəqiqəlik kilid (əvvəl
+  // yalnız ortaq IP limiti var idi).
+  const attemptKey=`reset:${input.email}`;
+  const locked=await getLockRemainingSeconds(attemptKey);
+  if(locked)throw accountThrottled(locked);
   const user=await findUserByEmail(input.email);
-  if(!user||!await consumeActionCode(user.id,input.code,"reset_password"))throw new ApiError(422,"CODE_INVALID","Bərpa kodu yanlışdır və ya vaxtı bitib.");
+  if(!user||!await consumeActionCode(user.id,input.code,"reset_password")){
+    const lockedNow=await registerFailedAttempt(attemptKey,RESET_CODE_ATTEMPTS);
+    if(lockedNow)throw accountThrottled(lockedNow);
+    throw new ApiError(422,"CODE_INVALID","Bərpa kodu yanlışdır və ya vaxtı bitib.");
+  }
+  await clearAttempts(attemptKey);
   const resetToken=await createActionToken(user.id,"reset_password",10*60*1000);
   response.json({data:{verified:true,resetToken}});
 });
 authRouter.post("/password/reset",loginLimiter,async(request,response)=>{
   const input=resetSchema.parse(request.body);
+  // Bilet istifadə olunmazdan ƏVVƏL: zəif şifrə bileti yandırmasın. (Ad/e-poçt
+  // yoxlaması istifadəçi məlum olmadığı üçün burada yox, frontend-dədir.)
+  assertStrongPassword(input.password);
   const userId=await consumeActionToken(input.resetToken,"reset_password");
   if(!userId)throw new ApiError(422,"RESET_EXPIRED","Şifrə yeniləmə icazəsinin vaxtı bitib. Yeni kod istəyin.");
   await updatePassword(userId,await hashPassword(input.password));

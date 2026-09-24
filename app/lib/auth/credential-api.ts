@@ -8,6 +8,8 @@ import type {
   RegisterInput,
   RegisterResult,
   SignInInput,
+  SignInResult,
+  TwoFactorSignInResult,
   UserProfile,
 } from "../../data/user";
 
@@ -16,9 +18,14 @@ const api = createApiClient({ baseUrl: "/api" });
 type SessionPayload = { user: UserProfile };
 
 export const credentialAuthGateway: AuthGateway = {
-  async signIn(input: SignInInput) {
-    const result = await api.post<SessionPayload, SignInInput>("/auth/login", input);
-    return result.user;
+  async signIn(input: SignInInput): Promise<SignInResult> {
+    const result = await api.post<{ user?: UserProfile; twoFactorRequired?: boolean; challenge?: string }, SignInInput>("/auth/login", input);
+    if (result.twoFactorRequired && result.challenge) return { twoFactorChallenge: result.challenge };
+    if (!result.user) throw new ApiError("Invalid sign-in response.", { status: 502, code: "INVALID_RESPONSE" });
+    return { user: result.user };
+  },
+  async completeTwoFactor(challenge: string, code: string) {
+    return api.post<TwoFactorSignInResult, { challenge: string; code: string }>("/auth/login/2fa", { challenge, code });
   },
   async register(input: RegisterInput) {
     const result = await api.post<{ user: UserProfile | null; requiresApproval: boolean; requiresEmailVerification?:boolean; emailDeliveryPending?:boolean }, RegisterInput>("/auth/signup", input);

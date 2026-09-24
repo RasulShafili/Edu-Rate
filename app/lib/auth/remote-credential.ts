@@ -22,6 +22,7 @@ export type RemoteApiUser = {
   about?: string;
   role: "student" | "mentor" | "teacher" | "admin" | "assistant_admin" | "owner_admin";
   createdAt: string;
+  twoFactorEnabled?: boolean;
 };
 
 type RemoteEnvelope<T> = { data: T };
@@ -139,6 +140,7 @@ export function mapRemoteUserToProfile(user: RemoteApiUser): UserProfile {
     name: user.name,
     initials: getInitials(user.name),
     accessRole: user.role,
+    twoFactorEnabled: user.twoFactorEnabled === true,
     university: user.university,
     faculty: user.faculty,
     program: user.program || "İxtisas məlumatı əlavə edilməyib",

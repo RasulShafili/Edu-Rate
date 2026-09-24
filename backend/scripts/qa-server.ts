@@ -21,6 +21,8 @@ import { env } from "../src/config/env.js";
 import { createUser, databaseMode } from "../src/db/database.js";
 import { createEvent } from "../src/db/business.js";
 import { hashPassword } from "../src/lib/auth.js";
+import { markTwoFactorStepUsed, savePendingTwoFactor } from "../src/db/auth-security.js";
+import { encryptSecret } from "../src/lib/totp.js";
 import { attachRealtime } from "../src/realtime.js";
 
 if (env.NODE_ENV === "production") {
@@ -30,6 +32,11 @@ if (env.NODE_ENV === "production") {
 
 /** Test fixture parolu — istifadəçinin real parolu ilə əlaqəsi yoxdur. */
 const PASSWORD = "EduRateQA2026!";
+/**
+ * Rəhbərlik fixture-ləri üçün sabit TOTP açarı — admin API-si 2FA tələb edir.
+ * Kod: `node -e` ilə `totpCode` və ya istənilən autentifikator tətbiqi.
+ */
+const QA_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
 const accounts = [
   { key: "student", email: "qa.student@example.az", name: "QA Tələbə",
@@ -71,6 +78,10 @@ async function main() {
       status: "Aktiv",
     });
     created[account.key] = { id: user.id, email: user.email, role: user.role };
+    if (account.role === "assistant_admin" || account.role === "owner_admin") {
+      await savePendingTwoFactor(user.id, encryptSecret(QA_TOTP_SECRET));
+      await markTwoFactorStepUsed(user.id, 0, true);
+    }
   }
 
   // --- Test tədbirləri: hər QA ssenarisi üçün bir hal ---
@@ -128,6 +139,7 @@ async function main() {
     console.log("\n=== EduRate QA harness ===");
     console.log(`Server : http://localhost:${env.PORT}  (rejim: ${databaseMode()})`);
     console.log(`Parol  : ${PASSWORD}   (bütün test hesabları üçün eyni)\n`);
+    console.log(`2FA    : ${QA_TOTP_SECRET}   (qa.admin və qa.assistant üçün TOTP açarı)\n`);
     console.table(created);
     console.log("\nTest tədbirləri:");
     console.table(events);

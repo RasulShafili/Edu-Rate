@@ -587,6 +587,46 @@ const migrations: Migration[] = [
        WHERE biography = 'EduRate icmasında universitet həyatını daha əlaqəli yaşamaq üçün buradayam.';
     `,
   },
+  {
+    version: 27,
+    name: "per-account sign-in throttling and two-factor authentication",
+    sql: `
+      -- IP limitləri Vercel arxasında bütün istifadəçilər üçün ortaq idi; hesab
+      -- üzrə uğursuz cəhdlər burada sayılır.
+      CREATE TABLE IF NOT EXISTS auth_attempts (
+        key VARCHAR(200) PRIMARY KEY,
+        failures INTEGER NOT NULL DEFAULT 0,
+        window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        locked_until TIMESTAMPTZ
+      );
+
+      CREATE TABLE IF NOT EXISTS user_two_factor (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        secret_encrypted TEXT NOT NULL,
+        enabled_at TIMESTAMPTZ,
+        last_used_step BIGINT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS auth_recovery_codes (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        code_hash VARCHAR(64) NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS auth_recovery_codes_user_idx ON auth_recovery_codes(user_id, used_at);
+
+      CREATE TABLE IF NOT EXISTS auth_login_challenges (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(64) NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `,
+  },
 ];
 
 export const latestMigrationVersion = Math.max(...migrations.map((migration) => migration.version));

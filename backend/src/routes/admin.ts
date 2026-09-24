@@ -35,7 +35,7 @@ import {
 } from "../db/platform.js";
 import { ApiError } from "../lib/api-error.js";
 import { hashPassword } from "../lib/auth.js";
-import { authenticate, requireAdmin, requireOwnerAdmin } from "../middleware/authenticate.js";
+import { authenticate, requireAdmin, requireAdminTwoFactor, requireOwnerAdmin } from "../middleware/authenticate.js";
 import {
   deactivateProfessionalProfilesForUser,
   synchronizeProfessionalProfilesForUser,
@@ -49,7 +49,7 @@ import { sendPush } from "../db/push.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 
 export const adminRouter = Router();
-adminRouter.use(authenticate, requireAdmin);
+adminRouter.use(authenticate, requireAdmin, requireAdminTwoFactor);
 
 const userStatus = z.enum(["Aktiv", "Gözləmədə", "Məhdudlaşdırılıb"]);
 const userRole = z.enum(["student", "mentor", "teacher", "assistant_admin", "admin", "owner_admin"]);

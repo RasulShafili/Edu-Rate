@@ -24,10 +24,13 @@ export async function POST(request: Request) {
     }
 
     const input = await readJsonBody<SignInInput>(request);
-    const result = await requestRemoteApi<{ token: string; user: RemoteApiUser }>(
-      "/api/auth/login",
-      { method: "POST", body: input },
-    );
+    const result = await requestRemoteApi<
+      { token: string; user: RemoteApiUser } | { twoFactorRequired: true; challenge: string }
+    >("/api/auth/login", { method: "POST", body: input });
+    // 2FA: şifrə düzgündür, amma kuki hələ QOYULMUR — yalnız kod mərhələsinin bileti.
+    if ("twoFactorRequired" in result) {
+      return apiSuccess({ twoFactorRequired: true, challenge: result.challenge });
+    }
     const response = apiSuccess({ user: mapRemoteUserToProfile(result.user) });
     response.cookies.set(
       remoteCredentialCookie.name,

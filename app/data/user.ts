@@ -20,6 +20,8 @@ export type UserProfile = {
   email: string;
   role: "Tələbə" | "Müəllim" | "Mentor" | "Rəhbərlik";
   accessRole?: "student" | "mentor" | "teacher" | "admin" | "assistant_admin" | "owner_admin";
+  /** İki mərhələli giriş aktivdirmi (server `/session` cavabından). */
+  twoFactorEnabled?: boolean;
   university: string;
   faculty: string;
   program: string;
@@ -43,6 +45,17 @@ export type UserProfile = {
 export type SignInInput = {
   email: string;
   password: string;
+};
+
+/** Şifrə düzgündür; 2FA aktivdirsə sessiya əvəzinə kod mərhələsinin bileti gəlir. */
+export type SignInResult =
+  | { user: UserProfile; twoFactorChallenge?: undefined }
+  | { user?: undefined; twoFactorChallenge: string };
+
+export type TwoFactorSignInResult = {
+  user: UserProfile;
+  recoveryCodeUsed?: boolean;
+  recoveryCodesRemaining?: number;
 };
 
 export type RegisterInput = {
@@ -70,7 +83,8 @@ export type ProfileUpdateInput = Pick<
 >;
 
 export type AuthGateway = {
-  signIn: (input: SignInInput) => Promise<UserProfile>;
+  signIn: (input: SignInInput) => Promise<SignInResult>;
+  completeTwoFactor: (challenge: string, code: string) => Promise<TwoFactorSignInResult>;
   register: (input: RegisterInput) => Promise<RegisterResult>;
   signOut: () => Promise<void>;
   updateProfile: (

@@ -15,6 +15,8 @@ import {
   type RegisterInput,
   type RegisterResult,
   type SignInInput,
+  type SignInResult,
+  type TwoFactorSignInResult,
   type UserProfile,
 } from "../data/user";
 import {
@@ -32,7 +34,8 @@ type AuthContextValue = {
   signOutHref: string | null;
   isAdmin: boolean;
   adminRole: AdminAccessRole | null;
-  signIn: (input: SignInInput) => Promise<UserProfile>;
+  signIn: (input: SignInInput) => Promise<SignInResult>;
+  completeTwoFactor: (challenge: string, code: string) => Promise<TwoFactorSignInResult>;
   register: (input: RegisterInput) => Promise<RegisterResult>;
   signOut: () => Promise<void>;
   updateProfile: (input: ProfileUpdateInput) => Promise<UserProfile>;
@@ -88,9 +91,20 @@ export function AuthProvider({
   const signIn = useCallback(async (input: SignInInput) => {
     setStatus("submitting");
     try {
-      const nextUser = await activeGateway.signIn(input);
-      setUser(nextUser);
-      return nextUser;
+      const result = await activeGateway.signIn(input);
+      if (result.user) setUser(result.user);
+      return result;
+    } finally {
+      setStatus("idle");
+    }
+  }, [activeGateway]);
+
+  const completeTwoFactor = useCallback(async (challenge: string, code: string) => {
+    setStatus("submitting");
+    try {
+      const result = await activeGateway.completeTwoFactor(challenge, code);
+      setUser(result.user);
+      return result;
     } finally {
       setStatus("idle");
     }
@@ -138,10 +152,11 @@ export function AuthProvider({
     user,
     status,
     signIn,
+    completeTwoFactor,
     register,
     signOut,
     updateProfile,
-  }), [adminRole, credentialAuthAvailable, register, signIn, signOut, signOutHref, status, updateProfile, user]);
+  }), [adminRole, completeTwoFactor, credentialAuthAvailable, register, signIn, signOut, signOutHref, status, updateProfile, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

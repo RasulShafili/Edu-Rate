@@ -9,8 +9,10 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
+  KeyRound,
   LockKeyhole,
   Mail,
+  Smartphone,
   Sparkles,
   UserRound,
 } from "lucide-react";
@@ -30,16 +32,20 @@ import {
   isValidFacultyProgram,
   type FacultyName,
 } from "../data/academic-programs";
+import { useT } from "../i18n/LanguageProvider";
 import { ApiError } from "../lib/api/client";
 import {
   isAuthProviderUnavailable,
   useAuth,
 } from "./AuthProvider";
+import { PasswordStrength, passwordProblemKey } from "./PasswordStrength";
 
 type AuthMode = "login" | "register";
 type AccountType = "student" | "teacher";
 type AuthField = "name" | "email" | "password" | "university" | "faculty" | "program" | "accountType" | "legalAccepted";
-type FieldErrors = Partial<Record<AuthField, string>>;
+/** Xətalar tərcümə açarı kimi saxlanır — dil dəyişəndə də düzgün göstərilir. */
+type Message = { key: string; values?: Record<string, string | number> };
+type FieldErrors = Partial<Record<AuthField, Message>>;
 
 type AuthFormValues = Record<AuthField, string>;
 
@@ -53,39 +59,50 @@ type AuthExperienceProps = {
 };
 
 export function AuthExperience({ initialMode = "login", returnTo = "/profile" }: AuthExperienceProps) {
+  const t = useT();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [formMessage, setFormMessage] = useState("");
+  const [formMessage, setFormMessage] = useState<Message | null>(null);
+  const [messageIsError, setMessageIsError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyName | "">("");
   const [selectedProgram, setSelectedProgram] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("student");
   const [pendingTeacherEmail, setPendingTeacherEmail] = useState("");
   const [pendingTeacherDelivery, setPendingTeacherDelivery] = useState(false);
+  const [drafts, setDrafts] = useState({ name: "", email: "", password: "" });
+  /** Şifrə düzgündür, 2FA kodu gözlənilir. */
+  const [challenge, setChallenge] = useState("");
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const formId = useId();
   const router = useRouter();
   const {
     credentialAuthAvailable,
+    completeTwoFactor,
     register,
     signIn,
     status,
   } = useAuth();
   const submitting = status === "submitting";
-  const unavailableMessage = "Təhlükəsiz giriş xidməti hazırda əlçatan deyil. Bir qədər sonra yenidən yoxla.";
-  const visibleMessage = formMessage || (
-    credentialAuthAvailable ? "" : unavailableMessage
-  );
+  const visibleMessage: Message | null = formMessage ?? (credentialAuthAvailable ? null : { key: "auth.unavailable" });
+
+  function showMessage(message: Message | null, isError = false) {
+    setFormMessage(message);
+    setMessageIsError(isError);
+  }
 
   function selectMode(nextMode: AuthMode) {
     if (nextMode === mode || submitting) return;
     setMode(nextMode);
     setErrors({});
-    setFormMessage("");
+    showMessage(null);
     setShowPassword(false);
     setSelectedFaculty("");
     setSelectedProgram("");
     setAccountType("student");
     setPendingTeacherEmail("");
+    setDrafts({ name: "", email: "", password: "" });
+    setChallenge("");
   }
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -106,11 +123,47 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
     const field = target.name as AuthField;
     if (!isAuthField(field)) return;
+    if (field === "name" || field === "email" || field === "password") {
+      setDrafts((current) => ({ ...current, [field]: target.value }));
+    }
 
     if (errors[field]) {
       setErrors((current) => ({ ...current, [field]: undefined }));
     }
-    if (formMessage) setFormMessage("");
+    if (formMessage) showMessage(null);
+  }
+
+  function describeError(error: unknown, fallback: string): { message: Message; fields: FieldErrors } {
+    if (isAuthProviderUnavailable(error)) return { message: { key: "auth.unavailable" }, fields: {} };
+    if (!(error instanceof ApiError)) return { message: { key: fallback }, fields: {} };
+    const details = (error.details && typeof error.details === "object" ? error.details : {}) as Record<string, unknown>;
+    switch (error.code) {
+      case "INVALID_CREDENTIALS":
+        return { message: { key: "auth.error.invalidCredentials" }, fields: {} };
+      case "ACCOUNT_RESTRICTED":
+        return { message: { key: "auth.error.restricted" }, fields: {} };
+      case "ACCOUNT_THROTTLED": {
+        const seconds = Number(details.retryAfter) || 900;
+        return { message: { key: "auth.error.throttled", values: { count: Math.ceil(seconds / 60) } }, fields: {} };
+      }
+      case "RATE_LIMITED":
+        return { message: { key: "auth.error.rateLimited" }, fields: {} };
+      case "EMAIL_EXISTS":
+        return { message: { key: "auth.error.emailExists" }, fields: { email: { key: "auth.error.emailExists" } } };
+      case "WEAK_PASSWORD": {
+        const key = `password.problem.${String(details.reason ?? "common")}`;
+        return { message: { key }, fields: { password: { key } } };
+      }
+      case "INVALID_ACADEMIC_SELECTION":
+      case "INVALID_UNIVERSITY":
+        return { message: { key: "auth.error.program" }, fields: { program: { key: "auth.error.program" } } };
+      case "TWO_FACTOR_INVALID":
+        return { message: { key: "auth.twoFactor.invalid" }, fields: {} };
+      case "CHALLENGE_EXPIRED":
+        return { message: { key: "auth.twoFactor.expired" }, fields: {} };
+      default:
+        return { message: { key: fallback }, fields: {} };
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -122,7 +175,7 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
     const nextErrors = validateAuthForm(mode, values);
 
     setErrors(nextErrors);
-    setFormMessage("");
+    showMessage(null);
 
     const firstInvalidField = Object.keys(nextErrors)[0] as AuthField | undefined;
     if (firstInvalidField) {
@@ -132,10 +185,15 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
     try {
       if (mode === "login") {
-        const nextUser = await signIn({ email: values.email, password: values.password });
-        setFormMessage("Daxil oldun. Profilin açılır.");
+        const result = await signIn({ email: values.email, password: values.password });
+        if (!result.user) {
+          setChallenge(result.twoFactorChallenge);
+          setUseRecoveryCode(false);
+          return;
+        }
+        showMessage({ key: "auth.signedIn" });
         form.reset();
-        router.push(getRoleHome(nextUser.accessRole, returnTo));
+        router.push(getRoleHome(result.user.accessRole, returnTo));
       } else {
         const result = await register({
           name: values.name,
@@ -155,8 +213,12 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
           setSelectedProgram("");
           return;
         }
-        if(result.requiresEmailVerification){setFormMessage(result.emailDeliveryPending?"Hesab yaradıldı, lakin məktub xidməti hazırda cavab vermir. Giriş bölməsindən təsdiq məktubunu yenidən istəyə bilərsən.":"Təsdiq keçidi e-poçt ünvanına göndərildi. Məktubdakı keçidi aç.");form.reset();return;}
-        setFormMessage("Hazırsan — hesabın yaradıldı.");
+        if (result.requiresEmailVerification) {
+          showMessage({ key: result.emailDeliveryPending ? "auth.verifyDeliveryPending" : "auth.verifySent" });
+          form.reset();
+          return;
+        }
+        showMessage({ key: "auth.created" });
         form.reset();
         // Yeni tələbə boş profil əvəzinə ilk addımlar səhifəsinə düşür.
         const role = result.user?.accessRole;
@@ -167,50 +229,58 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
       setSelectedFaculty("");
       setSelectedProgram("");
     } catch (error) {
-      if (isAuthProviderUnavailable(error)) {
-        setFormMessage(unavailableMessage);
-      } else if (error instanceof ApiError) {
-        const fieldErrors = readApiFieldErrors(error);
-        if (Object.keys(fieldErrors).length > 0) {
-          setErrors((current) => ({ ...current, ...fieldErrors }));
-          const firstErrorField = Object.keys(fieldErrors)[0] as AuthField;
-          (form.elements.namedItem(firstErrorField) as HTMLElement | null)?.focus();
-        }
-        setFormMessage(error.message);
-      } else if (error instanceof Error && error.message) {
-        setFormMessage(error.message);
-      } else {
-        setFormMessage(
-          mode === "login"
-            ? "Giriş məlumatlarını yoxla və yenidən cəhd et."
-            : "Hesabı yaratmaq mümkün olmadı. Məlumatlarını yoxlayıb yenidən cəhd et.",
-        );
+      const { message, fields } = describeError(error, mode === "login" ? "auth.error.loginFailed" : "auth.error.signupFailed");
+      if (Object.keys(fields).length > 0) {
+        setErrors((current) => ({ ...current, ...fields }));
+        const firstErrorField = Object.keys(fields)[0] as AuthField;
+        (form.elements.namedItem(firstErrorField) as HTMLElement | null)?.focus();
       }
+      showMessage(message, true);
     }
   }
 
-  const panelHeading = mode === "login"
-    ? <>Hesabına daxil ol</>
-    : <>Yeni hesab yarat</>;
-  const panelDescription = mode === "login"
-    ? "E-poçt ünvanını və şifrəni daxil et."
-    : "Hesab növünü seç, sonra əsas məlumatlarını tamamla.";
+  async function handleTwoFactorSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting) return;
+    const code = String(new FormData(event.currentTarget).get("code") ?? "").trim();
+    if (!code) {
+      showMessage({ key: useRecoveryCode ? "auth.twoFactor.recoveryRequired" : "auth.twoFactor.codeRequired" }, true);
+      return;
+    }
+    showMessage(null);
+    try {
+      const result = await completeTwoFactor(challenge, code);
+      if (result.recoveryCodeUsed) {
+        // Qalan bərpa kodlarının sayı Parametrlərdə görünür.
+        router.push("/settings#two-factor");
+        return;
+      }
+      router.push(getRoleHome(result.user.accessRole, returnTo));
+    } catch (error) {
+      const { message } = describeError(error, "auth.error.loginFailed");
+      if (error instanceof ApiError && (error.code === "CHALLENGE_EXPIRED" || error.code === "ACCOUNT_THROTTLED")) setChallenge("");
+      showMessage(message, true);
+    }
+  }
+
+  const heading = challenge ? t("auth.twoFactor.title") : mode === "login" ? t("auth.signInTitle") : t("auth.signUpTitle");
+  const description = challenge
+    ? t(useRecoveryCode ? "auth.twoFactor.recoveryText" : "auth.twoFactor.text")
+    : mode === "login" ? t("auth.signInHint") : t("auth.signUpHint");
+  const errorText = (field: AuthField) => errors[field] ? t(errors[field].key, errors[field].values) : undefined;
 
   return (
     <section className="auth-section" aria-labelledby="auth-title">
       <div className={`auth-layout auth-layout-${mode}`}>
-        <aside className="auth-story" aria-label="EduRate universitet şəbəkəsi">
+        <aside className="auth-story" aria-label={t("auth.story.aria")}>
           <div>
-            <span className="auth-kicker"><Sparkles size={13} aria-hidden="true" /> Universitet şəbəkən</span>
-            <h2>Bir giriş.<br /><em>Bütün tələbə həyatın.</em></h2>
-            <p>
-              Etibarlı elanları izləmək, doğru insanlarla tanış olmaq və inkişaf yolunu
-              bir yerdə saxlamaq üçün düşünülmüş sakit məkan.
-            </p>
+            <span className="auth-kicker"><Sparkles size={13} aria-hidden="true" /> {t("auth.story.kicker")}</span>
+            <h2>{t("auth.story.title1")}<br /><em>{t("auth.story.title2")}</em></h2>
+            <p>{t("auth.story.text")}</p>
           </div>
           <div className="auth-story-note">
-            <span><i /> Aktiv şəbəkə</span>
-            <p>Diqqətini yayındırmayan, universitet həyatına uyğun şəxsi təcrübə.</p>
+            <span><i /> {t("auth.story.noteTitle")}</span>
+            <p>{t("auth.story.noteText")}</p>
           </div>
           <div className="auth-orbit auth-orbit-one" aria-hidden="true" />
           <div className="auth-orbit auth-orbit-two" aria-hidden="true" />
@@ -218,15 +288,55 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
         <div className="auth-panel">
           <header className="auth-panel-heading">
-            <span>EduRate hesabı</span>
-            <h1 id="auth-title">{panelHeading}</h1>
-            <p>{panelDescription}</p>
+            <span>{t("auth.accountLabel")}</span>
+            <h1 id="auth-title">{heading}</h1>
+            <p>{description}</p>
           </header>
 
-          <div className="auth-mode-tabs" role="tablist" aria-label="Hesab əməliyyatı">
+          {challenge ? (
+            <form method="post" className="auth-form auth-form-login auth-two-factor" noValidate aria-busy={submitting} onSubmit={handleTwoFactorSubmit}>
+              <AuthFieldShell
+                id={`${formId}-code`}
+                label={t(useRecoveryCode ? "auth.twoFactor.recoveryLabel" : "auth.twoFactor.codeLabel")}
+                icon={useRecoveryCode ? <KeyRound size={16} aria-hidden="true" /> : <Smartphone size={16} aria-hidden="true" />}
+              >
+                <input
+                  key={useRecoveryCode ? "recovery" : "totp"}
+                  id={`${formId}-code`}
+                  name="code"
+                  type="text"
+                  inputMode={useRecoveryCode ? "text" : "numeric"}
+                  autoComplete="one-time-code"
+                  pattern={useRecoveryCode ? undefined : "[0-9]{6}"}
+                  maxLength={useRecoveryCode ? 11 : 6}
+                  placeholder={useRecoveryCode ? "xxxxx-xxxxx" : "000000"}
+                  disabled={submitting}
+                  autoFocus
+                  required
+                />
+              </AuthFieldShell>
+              <div className="auth-form-footer">
+                <button type="button" className="auth-forgot-link auth-link-button" onClick={() => { setUseRecoveryCode((value) => !value); showMessage(null); }} disabled={submitting}>
+                  {t(useRecoveryCode ? "auth.twoFactor.useApp" : "auth.twoFactor.useRecovery")}
+                </button>
+                <button type="submit" className="auth-submit" disabled={submitting}>
+                  <span>{submitting ? t("auth.checking") : t("auth.twoFactor.submit")}</span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+                <button type="button" className="auth-forgot-link auth-link-button" onClick={() => { setChallenge(""); showMessage(null); }} disabled={submitting}>
+                  {t("auth.twoFactor.back")}
+                </button>
+              </div>
+              <p className={`auth-form-message${visibleMessage ? " is-visible" : ""}`} role={messageIsError ? "alert" : "status"} aria-live="polite">
+                {visibleMessage ? t(visibleMessage.key, visibleMessage.values) : ""}
+              </p>
+            </form>
+          ) : (
+          <>
+          <div className="auth-mode-tabs" role="tablist" aria-label={t("auth.tabsAria")}>
             {(["login", "register"] as const).map((tabMode) => {
               const active = mode === tabMode;
-              const label = tabMode === "login" ? "Daxil ol" : "Qeydiyyatdan keç";
+              const label = tabMode === "login" ? t("auth.tabSignIn") : t("auth.tabSignUp");
 
               return (
                 <button
@@ -259,12 +369,12 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                 <section className="auth-registration-receipt" aria-live="polite">
                   <span className="auth-registration-check"><Check size={26} aria-hidden="true" /></span>
                   <div>
-                    <span>Müəllim qeydiyyatı tamamlandı</span>
-                    <h2>Müraciətin təsdiq gözləyir.</h2>
-                    <p><strong>{pendingTeacherEmail}</strong> ünvanı ilə hesab yaradıldı. {pendingTeacherDelivery ? "Təsdiq məktubu xidməti hazırda cavab vermir; bir qədər sonra məktubu yenidən istə. " : ""}Rəhbərlik müəllim statusunu təsdiqlədikdən və e-poçt təsdiqindən sonra daxil ola biləcəksən.</p>
+                    <span>{t("auth.teacherReceipt.kicker")}</span>
+                    <h2>{t("auth.teacherReceipt.title")}</h2>
+                    <p>{t("auth.teacherReceipt.text", { email: pendingTeacherEmail })} {pendingTeacherDelivery ? `${t("auth.teacherReceipt.deliveryPending")} ` : ""}{t("auth.teacherReceipt.approval")}</p>
                   </div>
                   <button type="button" className="auth-submit" onClick={() => selectMode("login")}>
-                    <span>Daxil ol bölməsinə keç</span><ArrowRight size={16} aria-hidden="true" />
+                    <span>{t("auth.teacherReceipt.toSignIn")}</span><ArrowRight size={16} aria-hidden="true" />
                   </button>
                 </section>
               ) : <form
@@ -279,12 +389,12 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
               >
                 {mode === "register" && (
                   <fieldset className="auth-account-type">
-                    <legend>Kim kimi qeydiyyatdan keçirsən?</legend>
+                    <legend>{t("auth.roleQuestion")}</legend>
                     <input type="hidden" name="accountType" value={accountType} />
-                    <div role="radiogroup" aria-label="Hesab növünü seç">
+                    <div role="radiogroup" aria-label={t("auth.roleGroupAria")}>
                       {([
-                        { value: "student", label: "Tələbə", description: "Fakültə və ixtisasını seç", icon: GraduationCap },
-                        { value: "teacher", label: "Müəllim", description: "Tədris sahəni qeyd et", icon: BriefcaseBusiness },
+                        { value: "student", label: t("auth.roleStudent"), description: t("auth.roleStudentHint"), icon: GraduationCap },
+                        { value: "teacher", label: t("auth.roleTeacher"), description: t("auth.roleTeacherHint"), icon: BriefcaseBusiness },
                       ] as const).map((option) => {
                         const Icon = option.icon;
                         return <button key={option.value} type="button" role="radio" aria-checked={accountType === option.value} onClick={() => { setAccountType(option.value); setSelectedFaculty(""); setSelectedProgram(""); }} disabled={submitting}><Icon size={17} /><span><strong>{option.label}</strong><small>{option.description}</small></span></button>;
@@ -296,8 +406,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                 {mode === "register" && (
                   <AuthFieldShell
                     id={`${formId}-name`}
-                    label="Ad və soyad"
-                    error={errors.name}
+                    label={t("auth.name")}
+                    error={errorText("name")}
                     icon={<UserRound size={16} aria-hidden="true" />}
                   >
                     <input
@@ -305,7 +415,7 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                       name="name"
                       type="text"
                       autoComplete="name"
-                      placeholder="Adını və soyadını yaz"
+                      placeholder={t("auth.namePlaceholder")}
                       aria-invalid={Boolean(errors.name)}
                       aria-describedby={errors.name ? `${formId}-name-error` : undefined}
                       disabled={!credentialAuthAvailable || submitting}
@@ -316,8 +426,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
                 <AuthFieldShell
                   id={`${formId}-email`}
-                  label="E-poçt ünvanı"
-                  error={errors.email}
+                  label={t("auth.email")}
+                  error={errorText("email")}
                   icon={<Mail size={16} aria-hidden="true" />}
                 >
                   <input
@@ -325,7 +435,7 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                     name="email"
                     type="email"
                     inputMode="email"
-                    autoComplete="email"
+                    autoComplete={mode === "login" ? "username" : "email"}
                     placeholder="ad.soyad@universitet.az"
                     aria-invalid={Boolean(errors.email)}
                     aria-describedby={errors.email ? `${formId}-email-error` : undefined}
@@ -336,15 +446,18 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
                 <AuthFieldShell
                   id={`${formId}-password`}
-                  label="Şifrə"
-                  error={errors.password}
+                  label={t("auth.password")}
+                  error={errorText("password")}
                   icon={<LockKeyhole size={16} aria-hidden="true" />}
+                  after={mode === "register" ? (
+                    <PasswordStrength id={`${formId}-password-strength`} password={drafts.password} email={drafts.email} name={drafts.name} />
+                  ) : null}
                   action={(
                     <button
                       type="button"
                       className="auth-password-toggle"
                       onClick={() => setShowPassword((visible) => !visible)}
-                      aria-label={showPassword ? "Şifrəni gizlət" : "Şifrəni göstər"}
+                      aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                       aria-pressed={showPassword}
                       disabled={!credentialAuthAvailable || submitting}
                     >
@@ -357,10 +470,9 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                     name="password"
                     type={showPassword ? "text" : "password"}
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
-                    placeholder="Ən azı 8 simvol"
-                    minLength={8}
+                    placeholder={mode === "login" ? t("auth.passwordPlaceholder") : t("auth.newPasswordPlaceholder")}
                     aria-invalid={Boolean(errors.password)}
-                    aria-describedby={errors.password ? `${formId}-password-error` : undefined}
+                    aria-describedby={[errors.password ? `${formId}-password-error` : "", mode === "register" ? `${formId}-password-strength` : ""].filter(Boolean).join(" ") || undefined}
                     disabled={!credentialAuthAvailable || submitting}
                     required
                   />
@@ -370,8 +482,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                   <>
                     <AuthFieldShell
                       id={`${formId}-university`}
-                      label="Universitet"
-                      error={errors.university}
+                      label={t("auth.university")}
+                      error={errorText("university")}
                       icon={<Building2 size={16} aria-hidden="true" />}
                     >
                       <input
@@ -391,20 +503,20 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
                     {accountType === "student" && <AuthFieldShell
                         id={`${formId}-faculty`}
-                        label="Fakültə"
-                        error={errors.faculty}
+                        label={t("auth.faculty")}
+                        error={errorText("faculty")}
                         icon={<GraduationCap size={16} aria-hidden="true" />}
                       >
                         <select id={`${formId}-faculty`} name="faculty" autoComplete="organization-title" value={selectedFaculty} onChange={(event) => { const faculty = event.target.value; setSelectedFaculty(isFacultyName(faculty) ? faculty : ""); setSelectedProgram(""); }} aria-invalid={Boolean(errors.faculty)} aria-describedby={errors.faculty ? `${formId}-faculty-error` : undefined} disabled={!credentialAuthAvailable || submitting} required>
-                          <option value="" disabled>Fakültəni seç</option>
+                          <option value="" disabled>{t("auth.pickFaculty")}</option>
                           {faculties.map((faculty) => <option key={faculty} value={faculty}>{faculty}</option>)}
                         </select>
                       </AuthFieldShell>}
 
                     <AuthFieldShell
                       id={`${formId}-program`}
-                      label={accountType === "student" ? "İxtisas" : "Tədris sahəsi"}
-                      error={errors.program}
+                      label={accountType === "student" ? t("auth.program") : t("auth.teachingArea")}
+                      error={errorText("program")}
                       icon={<BookOpen size={16} aria-hidden="true" />}
                     >
                       {accountType === "student" ? <select
@@ -418,19 +530,19 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                         required
                       >
                         <option value="" disabled>
-                          {selectedFaculty ? "İxtisası seç" : "Əvvəl fakültəni seç"}
+                          {selectedFaculty ? t("auth.pickProgram") : t("auth.pickFacultyFirst")}
                         </option>
                         {getProgramsForFaculty(selectedFaculty).map((program) => (
                           <option key={program} value={program}>{program}</option>
                         ))}
-                      </select> : <input id={`${formId}-program`} name="program" type="text" value={selectedProgram} onChange={(event) => setSelectedProgram(event.target.value)} placeholder="Məsələn, Riyaziyyat" aria-invalid={Boolean(errors.program)} aria-describedby={errors.program ? `${formId}-program-error` : undefined} disabled={!credentialAuthAvailable || submitting} required />}
+                      </select> : <input id={`${formId}-program`} name="program" type="text" value={selectedProgram} onChange={(event) => setSelectedProgram(event.target.value)} placeholder={t("auth.teachingPlaceholder")} aria-invalid={Boolean(errors.program)} aria-describedby={errors.program ? `${formId}-program-error` : undefined} disabled={!credentialAuthAvailable || submitting} required />}
                     </AuthFieldShell>
                   </>
                 )}
 
                 <div className="auth-form-footer">
                   {mode === "login" && (
-                    <a className="auth-forgot-link" href="/auth/recovery">Şifrəni unutmusansa, bərpa et</a>
+                    <a className="auth-forgot-link" href="/auth/recovery">{t("auth.forgot")}</a>
                   )}
                   {mode === "register" ? (
                     <>
@@ -443,11 +555,11 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                           aria-describedby={errors.legalAccepted ? `${formId}-legalAccepted-error` : undefined}
                           required
                         />
-                        <span><a href="/terms" target="_blank">İstifadə şərtlərini</a> və <a href="/privacy" target="_blank">məxfilik siyasətini</a> oxudum və qəbul edirəm.</span>
+                        <span>{t("auth.legal.prefix")}<a href="/terms" target="_blank">{t("auth.legal.terms")}</a>{t("auth.legal.and")}<a href="/privacy" target="_blank">{t("auth.legal.privacy")}</a>{t("auth.legal.suffix")}</span>
                       </label>
                       {errors.legalAccepted && (
                         <span id={`${formId}-legalAccepted-error`} className="auth-field-error auth-legal-error">
-                          {errors.legalAccepted}
+                          {errorText("legalAccepted")}
                         </span>
                       )}
                     </>
@@ -459,12 +571,12 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                   >
                     <span>
                       {submitting
-                        ? "Yoxlanılır…"
+                        ? t("auth.checking")
                         : !credentialAuthAvailable
-                          ? "E-poçt girişi aktiv deyil"
+                          ? t("auth.disabledSubmit")
                           : mode === "login"
-                            ? "Daxil ol"
-                            : "Hesab yarat"}
+                            ? t("auth.submitSignIn")
+                            : t("auth.submitSignUp")}
                     </span>
                     <ArrowRight size={16} aria-hidden="true" />
                   </button>
@@ -472,14 +584,16 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
 
                 <p
                   className={`auth-form-message${visibleMessage ? " is-visible" : ""}`}
-                  role={formMessage.includes("mümkün olmadı") || formMessage.includes("yoxla") ? "alert" : "status"}
+                  role={messageIsError ? "alert" : "status"}
                   aria-live="polite"
                 >
-                  {visibleMessage}
+                  {visibleMessage ? t(visibleMessage.key, visibleMessage.values) : ""}
                 </p>
-                <p className="auth-legal-links">EduRate müstəqil tələbə pilotudur və universitetin rəsmi informasiya sistemi deyil.</p>
+                <p className="auth-legal-links">{t("auth.disclaimer")}</p>
               </form>}
           </div>
+          </>
+          )}
         </div>
       </div>
     </section>
@@ -492,10 +606,12 @@ type AuthFieldShellProps = {
   error?: string;
   icon: ReactNode;
   action?: ReactNode;
+  /** Sahənin altında, xətadan sonra (məs. şifrə gücü göstəricisi). */
+  after?: ReactNode;
   children: ReactNode;
 };
 
-function AuthFieldShell({ id, label, error, icon, action, children }: AuthFieldShellProps) {
+function AuthFieldShell({ id, label, error, icon, action, after, children }: AuthFieldShellProps) {
   return (
     <div className={`auth-field${error ? " has-error" : ""}`}>
       <label htmlFor={id}>{label}</label>
@@ -505,6 +621,7 @@ function AuthFieldShell({ id, label, error, icon, action, children }: AuthFieldS
         {action}
       </div>
       {error && <span id={`${id}-error`} className="auth-field-error">{error}</span>}
+      {after}
     </div>
   );
 }
@@ -513,6 +630,7 @@ function readFormValues(formData: FormData): AuthFormValues {
   return {
     name: getFormValue(formData, "name"),
     email: getFormValue(formData, "email"),
+    // Əvvəldən kəsilir: mövcud hesabların şifrəsi də qeydiyyatda belə saxlanıb.
     password: getFormValue(formData, "password"),
     university: getFormValue(formData, "university"),
     faculty: getFormValue(formData, "faculty"),
@@ -530,31 +648,29 @@ function getFormValue(formData: FormData, field: AuthField): string {
 function validateAuthForm(mode: AuthMode, values: AuthFormValues): FieldErrors {
   const errors: FieldErrors = {};
 
-  if (mode === "register" && values.name.length < 2) errors.name = "Ad və soyadını yaz.";
-  if (!/^\S+@\S+\.\S+$/.test(values.email)) errors.email = "Düzgün e-poçt ünvanı yaz.";
-  if (values.password.length < 8) {
-    errors.password = "Şifrə ən azı 8 simvol olmalıdır.";
-  } else if (values.password.length > 72) {
-    errors.password = "Şifrə ən çox 72 simvol ola bilər.";
-  } else if (!/[a-zA-ZƏəÖöÜüĞğŞşÇçİı]/.test(values.password)) {
-    errors.password = "Şifrədə ən azı bir hərf olmalıdır.";
-  } else if (!/\d/.test(values.password)) {
-    errors.password = "Şifrədə ən azı bir rəqəm olmalıdır.";
+  if (mode === "register" && values.name.length < 2) errors.name = { key: "auth.error.name" };
+  if (!/^\S+@\S+\.\S+$/.test(values.email)) errors.email = { key: "auth.error.email" };
+  if (mode === "login") {
+    if (!values.password) errors.password = { key: "auth.error.passwordRequired" };
+  } else {
+    // Qeydiyyatda backend ilə eyni siyasət (eyni fayl).
+    const problem = passwordProblemKey(values.password, { email: values.email, name: values.name });
+    if (problem) errors.password = { key: problem };
   }
   if (mode === "register" && values.university !== canonicalUniversity) {
-    errors.university = "Universitet olaraq Qarabağ Universitetini seç.";
+    errors.university = { key: "auth.error.university" };
   }
   if (mode === "register" && values.accountType === "student" && !isFacultyName(values.faculty)) {
-    errors.faculty = "Fakültəni siyahıdan seç.";
+    errors.faculty = { key: "auth.error.faculty" };
   }
   if (mode === "register" && values.accountType === "student" && !isValidFacultyProgram(values.faculty, values.program)) {
-    errors.program = "İxtisası seçilmiş fakültənin siyahısından seç.";
+    errors.program = { key: "auth.error.program" };
   }
   if (mode === "register" && values.accountType !== "student" && values.program.length < 2) {
-    errors.program = values.accountType === "teacher" ? "Tədris sahəsini yaz." : "İxtisası seç.";
+    errors.program = { key: "auth.error.teachingArea" };
   }
   if (mode === "register" && values.legalAccepted !== "true") {
-    errors.legalAccepted = "Davam etmək üçün istifadə şərtlərini və məxfilik siyasətini qəbul et.";
+    errors.legalAccepted = { key: "auth.error.legal" };
   }
 
   return errors;
@@ -568,23 +684,4 @@ function getRoleHome(role: string | undefined, fallback: string) {
   if (role === "owner_admin" || role === "admin" || role === "assistant_admin") return "/admin";
   if (role === "teacher" || role === "mentor") return "/workspace";
   return fallback;
-}
-
-function readApiFieldErrors(error: ApiError): FieldErrors {
-  const fieldErrors: FieldErrors = {};
-  const details = error.details;
-
-  if (details && typeof details === "object" && !Array.isArray(details)) {
-    Object.entries(details).forEach(([field, message]) => {
-      if (isAuthField(field) && typeof message === "string") {
-        fieldErrors[field] = message;
-      }
-    });
-  }
-
-  if (error.code === "EMAIL_EXISTS") {
-    fieldErrors.email = "Bu e-poçtla artıq hesab yaradılıb. Daxil ol bölməsindən istifadə et.";
-  }
-
-  return fieldErrors;
 }

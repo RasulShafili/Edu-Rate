@@ -4,6 +4,7 @@ import { useT } from "../i18n/LanguageProvider";
 import { PageHeader } from "./ui/Primitives";
 import { PushToggle } from "./PushToggle";
 import { DeleteAccountPanel } from "./DeleteAccountPanel";
+import { TwoFactorPanel } from "./TwoFactorPanel";
 
 /**
  * Əvvəl burada üç bildiriş açarı var idi ("Vacib elanlar", "Tədbir
@@ -25,6 +26,7 @@ export function SettingsExperience() {
         </div>
         <PushToggle />
       </div>
+      <TwoFactorPanel />
       <DeleteAccountPanel />
     </section>
   );

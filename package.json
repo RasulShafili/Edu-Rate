@@ -10,7 +10,7 @@
     "build": "next build",
     "build:vercel": "next build",
     "start": "next start",
-    "test": "node --test --experimental-strip-types tests/date.test.mjs tests/security.test.mjs tests/academic-catalog.test.mjs tests/i18n.test.mjs",
+    "test": "node --test --experimental-strip-types tests/date.test.mjs tests/security.test.mjs tests/academic-catalog.test.mjs tests/i18n.test.mjs tests/password-policy.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern backend"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.24.0",
     "next": "16.3.6",
+    "qrcode": "^1.5.4",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "recharts": "^3.9.2",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
