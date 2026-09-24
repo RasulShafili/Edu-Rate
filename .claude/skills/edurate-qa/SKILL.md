@@ -827,3 +827,18 @@ projectPath" deyib panik edir (versiya səhvi deyil). Ona görə `edurate-dev`
 scratchpad-dəki `edurate-dev.mjs` launcher-i işlədir (`process.chdir` + Next
 bin). Scratchpad təmizlənibsə launcher-i yenidən yaz; yolda boşluq var —
 `fileURLToPath` işlət, `URL.pathname` yox (`%20` verir).
+
+## 18. "Minimal reproduksiya" valideyn fayllarını da miras alır
+
+Klublar sessiyasında `notFound()` 200-ü "Next.js səviyyəsində" elan etdim, çünki
+yalnız `notFound()` çağıran ən sadə marşrut da 200 verdi. Yanlış idi: həmin test
+marşrutu da kök `app/loading.tsx`-in altında idi. `loading.tsx` səhifəni axın kimi
+göndərir — status kod səhifə `notFound()` çağırmazdan əvvəl yazılır. Fayl
+müvəqqəti kənara qoyulanda eyni sorğu 404 verdi.
+
+- Reproduksiyanı "minimal" saymazdan əvvəl marşrutun **bütün valideyn
+  seqmentlərindəki** `layout`/`loading`/`error`/`template` fayllarını say.
+- Framework-ü günahlandırmazdan əvvəl ortaq faylları bir-bir götürüb yoxla.
+- Səbəb tapılsa da düzəliş bahalı ola bilər (burada: bütün saytın yüklənmə
+  vəziyyəti). Onda kodu yarımçıq dəyişmə — səbəbi şərhdə düz yaz, seçimi
+  istifadəçiyə ver. `generateMetadata`-da `notFound()` bu halda kömək etmədi.
