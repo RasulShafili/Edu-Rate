@@ -45,9 +45,10 @@ export async function generateMetadata({ params }: ClubDetailPageProps): Promise
   const result = await loadClub(slug);
 
   if (result.state !== "ok") {
-    // `notFound()` bu Next.js quraşdırmasında 200 statusu ilə cavab verir —
-    // sadə yoxlama marşrutunda da eyni davranış var, yəni səbəb bu səhifə
-    // deyil. Axtarış sistemlərinin "tapılmadı" səhifəsini indeksləməməsi üçün
+    // `notFound()` burada 200 ilə cavab verir. Səbəb Next.js deyil, kök
+    // `app/loading.tsx`-dir: səhifə axın kimi göndərilir və status kod işləməmişdən
+    // yazılır (fayl müvəqqəti götürüləndə eyni sorğu 404 verdi; metadata-da
+    // `notFound()` da kömək etmədi — botlar üçün də 200). Ona görə indeksləmə
     // açıq şəkildə qadağan edilir.
     const t = await getServerT();
     return { title: t("meta.clubNotFound.title"), robots: { index: false, follow: false } };
