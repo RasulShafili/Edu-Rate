@@ -842,3 +842,23 @@ müvəqqəti kənara qoyulanda eyni sorğu 404 verdi.
 - Səbəb tapılsa da düzəliş bahalı ola bilər (burada: bütün saytın yüklənmə
   vəziyyəti). Onda kodu yarımçıq dəyişmə — səbəbi şərhdə düz yaz, seçimi
   istifadəçiyə ver. `generateMetadata`-da `notFound()` bu halda kömək etmədi.
+
+## 19. Hazır "problem siyahısı" gələndə hər bəndi əvvəl kodda yoxla
+
+İstifadəçi ümumi audit siyahısı göndərdi ("token localStorage-dədir", "admin
+yoxlaması client-dədir", "/login-də limit yoxdur"…). Beşdən ikisi EduRate üçün
+yanlış idi (token `httpOnly` kukidədir; admin həm server səhifəsində, həm
+backend-də qorunur), biri isə yarı doğru idi: limit var idi, amma yalnız IP üzrə
+— Vercel arxasında bu ortaq ünvan deməkdir. Əsl zəiflik siyahıda yazılandan
+fərqli yerdə idi.
+
+- Hər bəndi `grep` + zəncir (komponent → BFF → backend) ilə təsdiqlə və ya
+  təkzib et; nəticəni istifadəçiyə sübutla (fayl:sətir) de.
+- "Var/yoxdur" sualında dayanma: VAR olan qorumanın həqiqətən işlədiyini yoxla
+  (IP limiti proxy arxasında kimi sayır? sayğac harada saxlanır?).
+- Sahibin özünü bağlaya biləcək məcburi qoruma (məs. admin üçün 2FA) əlavə
+  edəndə: özünə-xidmət yolu (Parametrlər), fövqəladə açar (env) və hesabatda
+  açıq xəbərdarlıq — üçü də olmalıdır.
+- Git Bash-da `sed -i` CRLF faylı LF-ə çevirir (bu repoda `autocrlf` onu
+  commit-də normallaşdırır, amma iş kopyası dəyişir). Çoxsətirli dəyişiklik
+  üçün yenə Write/Edit və ya EOL-u saxlayan Python skripti.
