@@ -16,6 +16,7 @@ import {
   type LanguageCode,
 } from "./config";
 import { baseDictionary, dictionaries, type TranslationKey } from "./dictionaries";
+import { selectPluralForm } from "./plural";
 
 type LanguageContextValue = {
   language: LanguageCode;
@@ -60,7 +61,7 @@ export function LanguageProvider({
       // Tərcümə yoxdursa azərbaycancaya qayıdırıq — boş mətn heç vaxt çıxmır.
       const typedKey = key as TranslationKey;
       const template = dictionaries[language]?.[typedKey] ?? baseDictionary[typedKey] ?? key;
-      return interpolate(template, values);
+      return interpolate(selectPluralForm(template, language, values?.count), values);
     },
     [language],
   );

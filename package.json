@@ -10,7 +10,7 @@
     "build": "next build",
     "build:vercel": "next build",
     "start": "next start",
-    "test": "node --test --experimental-strip-types tests/date.test.mjs tests/security.test.mjs tests/academic-catalog.test.mjs",
+    "test": "node --test --experimental-strip-types tests/date.test.mjs tests/security.test.mjs tests/academic-catalog.test.mjs tests/i18n.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern backend"
   },
   "dependencies": {
