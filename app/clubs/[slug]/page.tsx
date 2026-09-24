@@ -70,13 +70,14 @@ export default async function ClubDetailPage({ params }: ClubDetailPageProps) {
   }
 
   if (result.state === "error") {
+    const t = await getServerT();
     return (
       <main id="main-content" className="route-page global-route-state is-error" tabIndex={-1}>
-        <span>Klub açılmadı</span>
-        <h1>Klub məlumatı yüklənmədi.</h1>
-        <p>Server cavab vermədi. Bu, klubun silindiyi demək deyil — bir qədər sonra yenidən yoxla.</p>
+        <span>{t("club.loadError.eyebrow")}</span>
+        <h1>{t("club.loadError.title")}</h1>
+        <p>{t("club.loadError.text")}</p>
         <div>
-          <Link href="/clubs">Bütün klublar</Link>
+          <Link href="/clubs">{t("club.loadError.back")}</Link>
         </div>
       </main>
     );

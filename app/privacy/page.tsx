@@ -1,11 +1,39 @@
 import type { Metadata } from "next";
-import { pageMetadata } from "../i18n/server";
+import { Fragment } from "react";
+import { getServerT, pageMetadata } from "../i18n/server";
 import { PageHeader } from "../components/ui/Primitives";
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata("privacy", { alternates: { canonical: "/privacy" } });
 }
 
-export default function PrivacyPage() {
-  return <main id="main-content" className="route-page legal-page" tabIndex={-1}><PageHeader id="privacy-title" eyebrow="Hüquqi məlumat · 15 avqust 2026" title="Məxfilik siyasəti" description="EduRate müstəqil tələbə pilotudur; Qarabağ Universitetinin rəsmi informasiya sistemi deyil." /><article><h2>Operator və pilot statusu</h2><p>EduRate tədris və təqdimat məqsədli müstəqil pilot layihədir. Operatorun hüquqi adı və rəsmi əlaqə ünvanı təsdiqlənmədən platforma rəsmi universitet xidməti kimi təqdim edilmir.</p><h2>Toplanan məlumatlar</h2><p>Hesab və profil məlumatları, profil/klub/elan şəkilləri, tədbir və klub iştirakları, müəllim qiymətləndirmələri, mentorluq müraciətləri, dəstək biletləri, əlaqələr, mesajlar və təhlükəsizlik qeydləri emal edilə bilər.</p><h2>Məqsəd və təminatçılar</h2><p>Məlumatlar xidmətin göstərilməsi, hesabın qorunması, moderasiya və xəta araşdırması üçün istifadə olunur. Hosting və məlumat bazası xidmətləri Vercel və Render, şəkillərin təhlükəsiz emalı və çatdırılması isə Cloudinary və onların infrastruktur təminatçıları üzərindən işləyə bilər.</p><h2>Saxlanma və hüquqların</h2><p>Hesabın, məlumatlarının surətinin, düzəlişin və silinmənin tələb edilməsi mümkündür. Şikayət edilmiş məzmun 180 günədək, təhlükəsizlik qeydləri 90 günədək, admin audit qeydləri 365 günədək saxlanıla bilər; hüquqi öhdəlik olduqda müddət uzadıla bilər.</p><h2>Əlaqə</h2><p>Məxfilik, məlumat düzəlişi və ya silinmə sorğusu üçün <a href="/support?topic=privacy">ictimai dəstək formasından</a> istifadə et. Bu mətn hüquqşünas təsdiqinə təqdim edilməlidir.</p></article></main>;
+// Mətn əvvəl yalnız azərbaycanca yazılmışdı; indi seçilmiş dildə serverdə qurulur.
+const sections = ["s1", "s2", "s3", "s4"] as const;
+
+export default async function PrivacyPage() {
+  const t = await getServerT();
+  return (
+    <main id="main-content" className="route-page legal-page" tabIndex={-1}>
+      <PageHeader
+        id="privacy-title"
+        eyebrow={t("legal.eyebrow").replace("{date}", `15 ${t("month.8")} 2026`)}
+        title={t("legal.privacy.title")}
+        description={t("legal.privacy.lead")}
+      />
+      <article>
+        {sections.map((section) => (
+          <Fragment key={section}>
+            <h2>{t(`legal.privacy.${section}.title`)}</h2>
+            <p>{t(`legal.privacy.${section}.body`)}</p>
+          </Fragment>
+        ))}
+        <h2>{t("legal.privacy.s5.title")}</h2>
+        <p>
+          {t("legal.privacy.s5.before")}
+          <a href="/support?topic=privacy">{t("legal.privacy.s5.link")}</a>
+          {t("legal.privacy.s5.after")}
+        </p>
+      </article>
+    </main>
+  );
 }
