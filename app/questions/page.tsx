@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { QuestionsExperience } from "../components/QuestionsExperience";
 
-export const metadata: Metadata = {
-  title: "Kampus sualları — EduRate",
-  description: "Kampus, tədris və yaşayışla bağlı sualları anonim ver, cavabı bilən tələbələrdən öyrən.",
-  alternates: { canonical: "/questions" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("questions", { alternates: { canonical: "/questions" } });
+}
 
 export default function QuestionsPage() {
   return (

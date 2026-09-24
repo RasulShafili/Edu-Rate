@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { redirect } from "next/navigation";
 import { SettingsExperience } from "../components/SettingsExperience";
 import { getServerRequestIdentity } from "../lib/auth/request-identity";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Parametrlər — EduRate",
-  description: "EduRate bildiriş və hesab seçimlərini idarə et.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("settings", { robots: { index: false, follow: false } });
+}
 
 export default async function SettingsPage() {
   const identity = await getServerRequestIdentity();

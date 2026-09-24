@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { redirect } from "next/navigation";
 import { RoleWorkspace } from "../components/RoleWorkspace";
 import { getServerRequestIdentity } from "../lib/auth/request-identity";
 
-export const metadata: Metadata = { title: "İş paneli — EduRate", description: "Roluna uyğun şəxsi EduRate iş paneli." };
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("workspace");
+}
 
 export default async function WorkspacePage() {
   const identity = await getServerRequestIdentity();

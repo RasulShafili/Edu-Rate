@@ -7,14 +7,13 @@ import { cookies } from "next/headers";
 import { getServerRequestIdentity } from "./lib/auth/request-identity";
 import { languageCookieName, normalizeLanguage } from "./i18n/config";
 import { LanguageProvider } from "./i18n/LanguageProvider";
+import { getServerLanguage, getServerT } from "./i18n/server";
 import { getCanonicalSiteOrigin } from "./lib/site-origin";
 import "./globals.css";
 import "./kuds.css";
 import "./creative.css";
 
-const title = "EduRate — Universitet həyatın bir yerdə.";
-const description =
-  "Tədbirləri, tələbə klublarını, etibarlı icma əlaqələrini, mentorluğu, müəllim qiymətləndirməsini və ağıllı idarəetməni bir araya gətirən öyrənmə platforması.";
+const openGraphLocale = { az: "az_AZ", en: "en_GB", ru: "ru_RU" } as const;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -23,9 +22,13 @@ export const viewport: Viewport = {
   themeColor: "#16423c",
 };
 
-export function generateMetadata(): Metadata {
+export async function generateMetadata(): Promise<Metadata> {
   const origin = getCanonicalSiteOrigin();
   const socialImage = `${origin}/og.jpg`;
+  // Başlıq və təsvir seçilmiş dildə; əvvəl hər dildə azərbaycanca idi.
+  const [t, language] = await Promise.all([getServerT(), getServerLanguage()]);
+  const title = t("meta.home.title");
+  const description = t("meta.home.description");
 
   return {
     metadataBase: new URL(origin),
@@ -44,14 +47,14 @@ export function generateMetadata(): Metadata {
       title,
       description,
       type: "website",
-      locale: "az_AZ",
+      locale: openGraphLocale[language],
       url: origin,
       images: [
         {
           url: socialImage,
           width: 1200,
           height: 630,
-          alt: "EduRate universitet şəbəkəsi",
+          alt: t("meta.home.imageAlt"),
         },
       ],
     },

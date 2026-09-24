@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { redirect } from "next/navigation";
 import { UserProfileDashboard } from "../components/UserProfileDashboard";
 import { getServerRequestIdentity } from "../lib/auth/request-identity";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Profil — EduRate",
-  description: "Hesab, təhsil və platforma fəaliyyəti məlumatlarını idarə et.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("profile", { robots: { index: false, follow: false } });
+}
 
 export default async function ProfilePage() {
   const identity = await getServerRequestIdentity();

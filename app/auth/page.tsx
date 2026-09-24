@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { AuthExperience } from "../components/AuthExperience";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { alternates: { canonical: "/auth" },
-  title: "Daxil ol və qeydiyyat — EduRate",
-  description: "EduRate universitet şəbəkəsinə daxil ol və şəxsi tələbə profilini yarat.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("auth", { alternates: { canonical: "/auth" }, robots: { index: false, follow: false } });
+}
 
 type AuthPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

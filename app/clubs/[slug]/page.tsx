@@ -6,6 +6,7 @@ import { ClubDetailExperience } from "../../components/ClubDetailExperience";
 import { clubFromApi, type Club, type ClubApiRecord } from "../../data/clubs";
 import { ApiHttpError } from "../../lib/api/http";
 import { remoteCredentialCookieName, requestRemoteApi } from "../../lib/auth/remote-credential";
+import { getServerT } from "../../i18n/server";
 
 type ClubDetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -48,7 +49,8 @@ export async function generateMetadata({ params }: ClubDetailPageProps): Promise
     // sadə yoxlama marşrutunda da eyni davranış var, yəni səbəb bu səhifə
     // deyil. Axtarış sistemlərinin "tapılmadı" səhifəsini indeksləməməsi üçün
     // açıq şəkildə qadağan edilir.
-    return { title: "Klub tapılmadı — EduRate", robots: { index: false, follow: false } };
+    const t = await getServerT();
+    return { title: t("meta.clubNotFound.title"), robots: { index: false, follow: false } };
   }
 
   return {

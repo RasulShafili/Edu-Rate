@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { ScheduleExperience } from "../components/ScheduleExperience";
 
-export const metadata: Metadata = {
-  title: "Dərs cədvəli — EduRate",
-  description: "Həftəlik dərs cədvəlin və bu gün kampusda baş verənlər bir yerdə.",
-  alternates: { canonical: "/schedule" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("schedule", { alternates: { canonical: "/schedule" } });
+}
 
 export default function SchedulePage() {
   return (

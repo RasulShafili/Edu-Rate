@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../../i18n/server";
 import { TeacherCompare } from "../../components/TeacherCompare";
 
-export const metadata: Metadata = {
-  title: "Hansı müəllimi seçim? — EduRate",
-  description: "Müəllimləri dörd pedaqoji meyar üzrə yan-yana müqayisə et və semestr seçimini məlumatlı et.",
-  alternates: { canonical: "/teachers/compare" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("teachersCompare", { alternates: { canonical: "/teachers/compare" } });
+}
 
 export default function TeacherComparePage() {
   return (

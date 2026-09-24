@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { cookies } from "next/headers";
 import { ClubsExperience } from "../components/ClubsExperience";
 import { clubFromApi, type ClubApiRecord } from "../data/clubs";
 import { remoteCredentialCookieName, requestRemoteApi } from "../lib/auth/remote-credential";
 
-export const metadata: Metadata = { alternates: { canonical: "/clubs" },
-  title: "Klublar və icmalar — EduRate",
-  description:
-    "Tələbə klublarını və təşkilatlarını kəşf et; sənə uyğun kampus çevrəsinə qoşul.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("clubs", { alternates: { canonical: "/clubs" } });
+}
 
 export default async function ClubsPage() {
   const token = (await cookies()).get(remoteCredentialCookieName)?.value;

@@ -1,6 +1,7 @@
 "use client";
 
 import { Languages } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { languages } from "../i18n/config";
 import { useLanguage } from "../i18n/LanguageProvider";
 
@@ -13,6 +14,7 @@ import { useLanguage } from "../i18n/LanguageProvider";
  */
 export function LanguageSwitcher() {
   const { language, setLanguage, t } = useLanguage();
+  const router = useRouter();
 
   return (
     <div className="lang-switch" role="group" aria-label={t("common.language")}>
@@ -27,7 +29,11 @@ export function LanguageSwitcher() {
             aria-pressed={active}
             // Ekran oxuyucu üçün tam dil adı: "AZ" tək başına aydın deyil.
             aria-label={item.name}
-            onClick={() => setLanguage(item.code)}
+            onClick={() => {
+              setLanguage(item.code);
+              // Serverdə render olunan hissə (tab başlığı) yeni çərəzlə yenilənsin.
+              router.refresh();
+            }}
           >
             {item.label}
           </button>

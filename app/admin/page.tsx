@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { redirect } from "next/navigation";
 import { AdminAccessState } from "../components/AdminAccessState";
 import { AdminDashboard } from "../components/AdminDashboard";
@@ -6,12 +7,9 @@ import { resolveAdminAccess } from "../lib/auth/admin-access";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "İdarəetmə mərkəzi — EduRate",
-  description:
-    "EduRate istifadəçilərini, klublarını, tədbirlərini və platforma göstəricilərini vahid idarəetmə mərkəzindən izlə.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("admin", { robots: { index: false, follow: false } });
+}
 
 export default async function AdminPage() {
   const access = await resolveAdminAccess({ allowAssistant: true });

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { StudentFeedRemote } from "../components/StudentFeedRemote";
 
-export const metadata: Metadata = { alternates: { canonical: "/feed" },
-  title: "Elanlar — EduRate",
-  description:
-    "Rəsmi elanları, klub yeniliklərini və fakültə xəbərlərini Elanlar bölməsində izlə.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("feed", { alternates: { canonical: "/feed" } });
+}
 
 export default function FeedPage() {
   return (

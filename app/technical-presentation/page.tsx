@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "../i18n/server";
 import { redirect } from "next/navigation";
 import { AdminAccessState } from "../components/AdminAccessState";
 import { TechnicalPresentation } from "../components/TechnicalPresentation";
@@ -6,12 +7,9 @@ import { resolveAdminAccess } from "../lib/auth/admin-access";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Texniki təqdimat — EduRate",
-  description:
-    "EduRate layihəsini rəhbər şəxslərə aydın, biznes yönümlü və texniki dürüst şəkildə təqdim etmək üçün hazır səhifə.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata("techPresentation", { robots: { index: false, follow: false } });
+}
 
 export default async function TechnicalPresentationPage() {
   const access = await resolveAdminAccess();
