@@ -27,6 +27,7 @@ import {
   listSupportTickets,
   listTeacherReviews,
   listClubs,
+  findClub,
   updateTeacherReviewStatus,
   updateClub,
   updateSupportTicketStatus,
@@ -42,7 +43,7 @@ import {
 import { listAudit, writeAudit } from "../db/audit.js";
 import { createAnnouncement, deleteAnnouncement, deleteFeedPost, findAnnouncementById, listAdminAnnouncements, listAdminFeed, updateAnnouncement, updateFeedPostStatus } from "../db/network.js";
 import { decideMentorApplication, listMentorApplications } from "../db/mentor-applications.js";
-import { ensureClubConversation, listContentReports, updateContentReport } from "../db/messaging.js";
+import { ensureClubConversation, findMessageForReport, listContentReports, updateContentReport } from "../db/messaging.js";
 import { createActionToken } from "../db/auth-security.js";
 import { sendPush } from "../db/push.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
@@ -397,8 +398,32 @@ adminRouter.patch("/reviews/:id", async (request, response) => {
 
 adminRouter.get("/reports", async (request, response) => {
   const { status } = z.object({ status: z.enum(["open", "reviewing", "resolved", "dismissed"]).optional() }).parse(request.query);
-  response.json({ data: await listContentReports(status) });
+  const reports = await listContentReports(status);
+  // Admin əvvəl yalnız səbəbi və növü görürdü — şikayət edilən profilin, klubun və
+  // ya mesajın hansı olduğunu tapmaq mümkün deyildi.
+  const data = await Promise.all(reports.map(async (report) => ({ ...report, target: await describeReportTarget(report.entityType, report.entityId) })));
+  response.json({ data });
 });
+
+async function describeReportTarget(entityType: string, entityId: string) {
+  // Mövcud olmayan və ya uuid olmayan id bazada xəta verə bilər — o halda "tapılmadı".
+  const safe = async <T,>(load: () => Promise<T>) => load().catch(() => null);
+  if (entityType === "profile") {
+    const user = await safe(() => findUserById(entityId));
+    return user ? { label: user.name, detail: user.email } : null;
+  }
+  if (entityType === "club") {
+    const club = await safe(() => findClub(entityId));
+    return club ? { label: club.name, detail: club.slug, href: `/clubs/${club.slug}` } : null;
+  }
+  if (entityType === "message") {
+    const message = await safe(() => findMessageForReport(entityId));
+    if (!message) return null;
+    const sender = await safe(() => findUserById(message.senderId));
+    return { label: sender?.name ?? "", detail: message.body.slice(0, 280), deleted: message.deleted };
+  }
+  return null;
+}
 
 adminRouter.patch("/reports/:id", async (request, response) => {
   const id = z.string().uuid().parse(request.params.id);

@@ -2,10 +2,11 @@
 /* eslint-disable react-hooks/set-state-in-effect -- the authenticated directory refresh is effect-driven */
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Ban, Check, MapPin, MessageCircle, RefreshCw, UserPlus } from "lucide-react";
+import { Ban, Check, Flag, MapPin, MessageCircle, RefreshCw, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { Peer } from "../data/peers";
 import { useT } from "../i18n/LanguageProvider";
+import { ReportDialog, type ReportTarget } from "./ReportDialog";
 
 type Props = { canInteract: boolean; currentUserId?: string; onMessage: (peer: Peer) => void; onRequireAuth: () => void };
 type ApiUser = { id: string; name: string; role: string; faculty: string; program: string; city: string; avatarUrl?:string };
@@ -46,6 +47,8 @@ function toPeer(user: ApiUser, index: number): Peer {
 }
 
 export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequireAuth }: Props) {
+  // Əvvəl profildən yalnız söhbətin içindən şikayət etmək olurdu — yəni əvvəlcə əlaqə qurmaq lazım idi.
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const t = useT();
   const [loading, setLoading] = useState(true);
   const [directory, setDirectory] = useState<Peer[]>([]);
@@ -157,11 +160,13 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
                   </button>
                   <button type="button" className="peer-message" disabled={!accepted} title={!accepted ? t("peers.needAccepted") : undefined} onClick={() => onMessage(peer)}><MessageCircle size={14} />{t("peers.message")}</button>
                 </div>
+                {canInteract ? <button type="button" className="peer-report" onClick={() => setReportTarget({ entityType: "profile", entityId: peer.id, label: peer.name })}><Flag size={12} aria-hidden="true" />{t("chat.report")}</button> : null}
               </motion.article>
             );
           })}
         </AnimatePresence>
       </div>
+      <ReportDialog target={reportTarget} onClose={() => setReportTarget(null)} />
     </section>
   );
 }

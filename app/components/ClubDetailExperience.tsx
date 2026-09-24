@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { ArrowLeft, CalendarDays, Clock3, Crown, MapPin, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock3, Crown, Flag, MapPin, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Club, ClubTabId } from "../data/clubs";
@@ -10,6 +10,7 @@ import { MagneticJoinButton } from "./MagneticJoinButton";
 import { SecureImagePicker } from "./SecureImagePicker";
 import { useAuth } from "./AuthProvider";
 import { useT } from "../i18n/LanguageProvider";
+import { ReportDialog } from "./ReportDialog";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -22,6 +23,7 @@ type ClubManagement={members:ManagedMember[];canManage:boolean;canDelete:boolean
 
 export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   const { user } = useAuth();
+  const [reportOpen, setReportOpen] = useState(false);
   const t = useT();
   const [activeTab, setActiveTab] = useState<ClubTabId>("about");
   const [editable, setEditable] = useState(club);
@@ -144,7 +146,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
             <ArrowLeft size={16} aria-hidden="true" />
             {t("club.back")}
           </Link>
-          <div className="club-detail-owner-actions"><span className="club-detail-category">{t(`clubCategory.${editable.category}`)}</span>{canManage?<button type="button" onClick={()=>setSettingsOpen((value)=>!value)}><Settings2 size={15}/>{t(settingsOpen?"club.settingsClose":"club.settingsOpen")}</button>:null}</div>
+          <ReportDialog target={reportOpen?{entityType:"club",entityId:club.id??club.slug,label:club.name}:null} onClose={()=>setReportOpen(false)}/><div className="club-detail-owner-actions"><span className="club-detail-category">{t(`clubCategory.${editable.category}`)}</span>{canManage?<button type="button" onClick={()=>setSettingsOpen((value)=>!value)}><Settings2 size={15}/>{t(settingsOpen?"club.settingsClose":"club.settingsOpen")}</button>:null}{user&&!canManage?<button type="button" className="club-report" onClick={()=>setReportOpen(true)}><Flag size={14} aria-hidden="true"/>{t("club.report")}</button>:null}</div>
         </div>
 
         <motion.div className="club-detail-hero__content" style={{ y: copyY }}>

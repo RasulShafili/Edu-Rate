@@ -1475,6 +1475,45 @@ describe("İş paneli", () => {
   });
 });
 
+describe("Şikayətlər", () => {
+  it("admin şikayət edilən profili və klubu adı ilə görür", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("EduRate2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const reporter = await createUser({ ...base, name: "Şikayətçi Tələbə", email: "report.reporter@example.az", role: "student" });
+    const reported = await createUser({ ...base, name: "Şikayət Edilən", email: "report.target@example.az", role: "student" });
+    const reporterAuth = `Bearer ${createAccessToken(reporter)}`;
+    const ownerAuth = `Bearer ${reusableAdminToken}`;
+    await request(app).post("/api/admin/clubs").set("Authorization", ownerAuth)
+      .send({ name: "Şikayət Klubu", slug: "sikayet-klubu", category: "Akademik", coordinatorInitials: "ŞK", status: "Aktiv" })
+      .expect(201);
+
+    await request(app).post("/api/community/reports").send({ entityType: "profile", entityId: reported.id, reason: "spam" }).expect(401);
+    await request(app).post("/api/community/reports").set("Authorization", reporterAuth)
+      .send({ entityType: "profile", entityId: reported.id, reason: "spam", details: "Eyni reklamı hər kəsə göndərir." }).expect(201);
+    await request(app).post("/api/community/reports").set("Authorization", reporterAuth)
+      .send({ entityType: "club", entityId: "sikayet-klubu", reason: "fake_profile" }).expect(201);
+    await request(app).post("/api/community/reports").set("Authorization", reporterAuth)
+      .send({ entityType: "profile", entityId: "yoxdur-bele-biri", reason: "other" }).expect(201);
+    await request(app).post("/api/community/reports").set("Authorization", reporterAuth)
+      .send({ entityType: "profile", entityId: reported.id, reason: "yanlis" }).expect(422);
+
+    const list = await request(app).get("/api/admin/reports").set("Authorization", ownerAuth).expect(200);
+    type Report = { entityType: string; entityId: string; reason: string; details: string; target: { label: string; detail?: string; href?: string } | null };
+    const reports = list.body.data as Report[];
+    const profile = reports.find((item) => item.entityId === reported.id);
+    assert.equal(profile?.reason, "spam");
+    assert.equal(profile?.details, "Eyni reklamı hər kəsə göndərir.");
+    assert.deepEqual(profile?.target, { label: "Şikayət Edilən", detail: "report.target@example.az" });
+    const club = reports.find((item) => item.entityType === "club" && item.entityId === "sikayet-klubu");
+    assert.equal(club?.target?.href, "/clubs/sikayet-klubu");
+    assert.equal(reports.find((item) => item.entityId === "yoxdur-bele-biri")?.target, null);
+  });
+});
+
 describe("Göndərilənlərin taleyi", () => {
   it("müəllim öz tədbirinin, müəllif öz elanı və paylaşımının vəziyyətini görür", async () => {
     const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([

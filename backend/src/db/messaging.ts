@@ -433,6 +433,21 @@ export async function muteConversation(conversationId:string,userId:string,muted
 
 export async function reportContent(reporterId:string,input:{entityType:"message"|"profile"|"review"|"club";entityId:string;reason:"abuse"|"threat"|"discrimination"|"spam"|"fake_profile"|"personal_data"|"other";details:string}){const id=randomUUID();if(!databasePool){const createdAt=now();const report:ContentReport={id,reporterId,entityType:input.entityType,entityId:input.entityId,reason:input.reason,details:input.details,status:"open",reviewedBy:null,resolutionNote:"",createdAt,updatedAt:createdAt};reports.set(id,report);return report;}const result=await databasePool.query("INSERT INTO content_reports(id,reporter_id,entity_type,entity_id,reason,details) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",[id,reporterId,input.entityType,input.entityId,input.reason,input.details]);return mapReport(result.rows[0]);}
 
+/** Admin şikayət siyahısı üçün: mesajın mətni və göndərəni (id ilə). */
+export async function findMessageForReport(messageId: string): Promise<{ body: string; senderId: string; deleted: boolean } | null> {
+  if (!databasePool) {
+    for (const list of messages.values()) {
+      const found = list.find((message) => message.id === messageId);
+      if (found) return { body: found.deleted ? "" : found.body, senderId: found.senderId, deleted: Boolean(found.deleted) };
+    }
+    return null;
+  }
+  const result = await databasePool.query("SELECT body, sender_id, deleted_at FROM messages WHERE id = $1 LIMIT 1", [messageId]);
+  const row = result.rows[0];
+  if (!row) return null;
+  return { body: row.deleted_at ? "" : String(row.body), senderId: String(row.sender_id), deleted: Boolean(row.deleted_at) };
+}
+
 export async function listContentReports(status?:ContentReport["status"]):Promise<ContentReport[]>{if(!databasePool)return [...reports.values()].filter((item)=>!status||item.status===status).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));const result=await databasePool.query(`SELECT * FROM content_reports WHERE ($1::text IS NULL OR status=$1) ORDER BY created_at DESC LIMIT 200`,[status??null]);return result.rows.map(mapReport);}
 
 export async function updateContentReport(id:string,reviewerId:string,input:{status:"reviewing"|"resolved"|"dismissed";resolutionNote:string}):Promise<ContentReport|null>{if(!databasePool){const report=reports.get(id);if(!report)return null;report.status=input.status;report.reviewedBy=reviewerId;report.resolutionNote=input.resolutionNote;report.updatedAt=now();return report;}const result=await databasePool.query("UPDATE content_reports SET status=$2,reviewed_by=$3,reviewed_at=NOW(),resolution_note=$4,updated_at=NOW() WHERE id=$1 RETURNING *",[id,input.status,reviewerId,input.resolutionNote]);return result.rows[0]?mapReport(result.rows[0]):null;}

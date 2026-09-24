@@ -21,6 +21,9 @@ type Item = {
   reason?: string;
   details?: string;
   entityType?: string;
+  entityId?: string;
+  /** Şikayət edilən obyekt: profil (ad, e-poçt), klub (ad, keçid), mesaj (göndərən, mətn). */
+  target?: { label: string; detail?: string; href?: string; deleted?: boolean } | null;
   status: string;
   imageUrl?: string;
 };
@@ -232,6 +235,17 @@ export function AdminOperationsPanel() {
                 <small>{item.reference ?? item.source ?? item.name ?? (item.entityType ? labelOr(`admin.ops.entity.${item.entityType}`, item.entityType) : "EduRate")}</small>
                 <h3>{item.title ?? item.topic ?? (item.reason ? labelOr(`admin.ops.reason.${item.reason}`, item.reason) : t("admin.ops.fallbackTitle"))}</h3>
                 <p>{item.summary ?? item.message ?? (item.details || t("admin.ops.noDetails"))}</p>
+                {tab === "reports" ? (
+                  <small className="admin-ticket-contact">
+                    {item.target ? (
+                      <>
+                        {item.target.href ? <a href={item.target.href} target="_blank" rel="noreferrer">{item.target.label}</a> : <strong>{item.target.label || t("admin.ops.target.unknown")}</strong>}
+                        {item.target.detail ? ` · ${item.target.detail}` : ""}
+                        {item.target.deleted ? ` · ${t("admin.ops.target.deleted")}` : ""}
+                      </>
+                    ) : t("admin.ops.target.missing")}
+                  </small>
+                ) : null}
                 {tab === "support-tickets" && item.email ? (
                   <small className="admin-ticket-contact">{item.name} · <a href={`mailto:${item.email}?subject=${encodeURIComponent(item.reference ?? "EduRate")}`}>{item.email}</a></small>
                 ) : null}
