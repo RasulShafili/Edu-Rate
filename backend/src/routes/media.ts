@@ -10,9 +10,14 @@ import { findEventById } from "../db/business.js";
 import { findAnnouncementById } from "../db/network.js";
 import { ApiError } from "../lib/api-error.js";
 import { authenticate } from "../middleware/authenticate.js";
+import { userOrIpKey } from "../lib/client-key.js";
 
 export const mediaRouter=Router();
-mediaRouter.use(authenticate,rateLimit({windowMs:15*60_000,limit:20,standardHeaders:true,legacyHeaders:false}));
+mediaRouter.use(authenticate);
+// Limit yalnız Cloudinary-yə gedən yazma əməliyyatlarındadır. Əvvəl router-in
+// hamısına tətbiq olunurdu: hər səhifə açılışı `GET /avatar/me` çağırır və 20
+// səhifədən sonra profil şəkli 429 ilə itirdi (BFF arxasında — bütün sayt üçün).
+const writeLimiter=rateLimit({windowMs:15*60_000,limit:20,keyGenerator:userOrIpKey,standardHeaders:true,legacyHeaders:false});
 const kindSchema=z.enum(["avatar","club","announcement","event"]);
 type CloudinarySignatureAlgorithm="sha1"|"sha256";
 const signCloudinaryRequest=cloudinary.utils.api_sign_request as unknown as (params:Record<string,string|number>,secret:string,algorithm:CloudinarySignatureAlgorithm,version:number)=>string;
@@ -24,7 +29,7 @@ if(configured)cloudinary.config({cloud_name:env.CLOUDINARY_CLOUD_NAME,api_key:en
 mediaRouter.get("/status",(_request,response)=>response.json({data:{enabled:configured,formats:["jpg","jpeg","png","webp"],avatarMaxBytes:2*1024*1024,coverMaxBytes:5*1024*1024}}));
 mediaRouter.get("/avatar/me",async(request,response)=>response.json({data:await getMedia("avatar",request.auth!.userId)}));
 
-mediaRouter.post("/sign",async(request,response)=>{
+mediaRouter.post("/sign",writeLimiter,async(request,response)=>{
   const input=signSchema.parse(request.body);const ownerId=await resolveWriteOwner(input.kind,input.ownerId,request.auth!);assertConfigured();
   const timestamp=Math.floor(Date.now()/1000);const publicId=`edurate/${input.kind}/${ownerId}/${randomUUID()}`;
   const limits=policy(input.kind);const params={timestamp,public_id:publicId,overwrite:"false",allowed_formats:"jpg,jpeg,png,webp",transformation:limits.transformation,upload_preset:env.CLOUDINARY_UPLOAD_PRESET!};
@@ -32,7 +37,7 @@ mediaRouter.post("/sign",async(request,response)=>{
   response.status(201).json({data:{cloudName:env.CLOUDINARY_CLOUD_NAME,apiKey:env.CLOUDINARY_API_KEY,uploadUrl:`https://api.cloudinary.com/v1_1/${encodeURIComponent(env.CLOUDINARY_CLOUD_NAME!)}/image/upload`,timestamp,publicId,signature,allowedFormats:"jpg,jpeg,png,webp",transformation:limits.transformation,uploadPreset:env.CLOUDINARY_UPLOAD_PRESET,maxBytes:limits.maxBytes}});
 });
 
-mediaRouter.post("/confirm",async(request,response)=>{
+mediaRouter.post("/confirm",writeLimiter,async(request,response)=>{
   const input=confirmSchema.parse(request.body);const ownerId=await resolveWriteOwner(input.kind,input.ownerId,request.auth!);assertConfigured();const prefix=`edurate/${input.kind}/${ownerId}/`;
   if(!input.publicId.startsWith(prefix))throw new ApiError(403,"MEDIA_OWNER_MISMATCH","Şəkil bu hesaba və ya qeydə aid deyil.");
   if(!verifyCloudinaryResponseSignature(input.publicId,input.version,input.signature))throw new ApiError(422,"INVALID_MEDIA_SIGNATURE","Şəkil cavabının imzası yanlışdır.");
@@ -44,7 +49,7 @@ mediaRouter.post("/confirm",async(request,response)=>{
   response.status(201).json({data:asset});
 });
 
-mediaRouter.delete("/:kind/:ownerId",async(request,response)=>{const kind=kindSchema.parse(request.params.kind);const requested=z.string().min(1).max(120).parse(request.params.ownerId);const ownerId=await resolveDeleteOwner(kind,requested,request.auth!);assertConfigured();const removed=await removeMedia(kind,ownerId);if(!removed)throw new ApiError(404,"MEDIA_NOT_FOUND","Silinə bilən şəkil tapılmadı.");await cloudinary.uploader.destroy(removed.publicId,{resource_type:"image",invalidate:true});response.status(204).send();});
+mediaRouter.delete("/:kind/:ownerId",writeLimiter,async(request,response)=>{const kind=kindSchema.parse(request.params.kind);const requested=z.string().min(1).max(120).parse(request.params.ownerId);const ownerId=await resolveDeleteOwner(kind,requested,request.auth!);assertConfigured();const removed=await removeMedia(kind,ownerId);if(!removed)throw new ApiError(404,"MEDIA_NOT_FOUND","Silinə bilən şəkil tapılmadı.");await cloudinary.uploader.destroy(removed.publicId,{resource_type:"image",invalidate:true});response.status(204).send();});
 
 async function resolveWriteOwner(kind:MediaKind,requested:string|undefined,auth:{userId:string;role:string}){if(kind==="avatar")return auth.userId;if(!requested)throw new ApiError(422,"OWNER_REQUIRED","Şəklin aid olduğu qeyd tələb olunur.");const ownerId=requested.replace(/[^a-zA-Z0-9_-]/g,"-");if(auth.role==="admin"||auth.role==="owner_admin"||auth.role==="assistant_admin")return ownerId;if(kind==="announcement"){const item=await findAnnouncementById(ownerId);if(item?.createdBy===auth.userId&&item.status==="draft")return ownerId;}if(kind==="event"){const event=await findEventById(ownerId);if(event?.createdBy===auth.userId&&event.adminStatus==="Qaralama")return ownerId;}if(kind==="club"){const club=await findClub(ownerId);if(club&&await isClubLeader(club.id,auth.userId))return club.id;}throw new ApiError(403,"MEDIA_OWNER_MISMATCH","Bu şəkli dəyişmək üçün qeydin sahibi və ya rəhbərlik olmalısan.");}
 async function resolveDeleteOwner(kind:MediaKind,requested:string,auth:{userId:string;role:string}){if(kind!=="avatar")return resolveWriteOwner(kind,requested,auth);if(requested==="me"||requested===auth.userId)return auth.userId;if(auth.role==="admin"||auth.role==="owner_admin")return requested.replace(/[^a-zA-Z0-9_-]/g,"-");throw new ApiError(403,"MEDIA_OWNER_MISMATCH","Başqa istifadəçinin profil şəklini silmək icazən yoxdur.");}

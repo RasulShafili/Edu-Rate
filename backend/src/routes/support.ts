@@ -5,12 +5,15 @@ import { createSupportTicket, listSupportTickets, updateSupportTicketStatus } fr
 import { authenticate, optionalAuthenticate, requireAdmin } from "../middleware/authenticate.js";
 import { findUserById } from "../db/database.js";
 import { ApiError } from "../lib/api-error.js";
+import { userOrIpKey } from "../lib/client-key.js";
 
 export const supportRouter = Router();
 
+// Daxil olmuş istifadəçi üçün hesab üzrə, anonim üçün real IP üzrə.
 const limiter = rateLimit({
   windowMs: 30 * 60 * 1000,
   limit: 4,
+  keyGenerator: userOrIpKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "RATE_LIMITED", message: "Çox sayda dəstək sorğusu göndərilib." } },
@@ -39,7 +42,7 @@ supportRouter.patch("/tickets/:id", authenticate, requireAdmin, async (request, 
   response.json({data:ticket});
 });
 
-supportRouter.post("/tickets", limiter, optionalAuthenticate, async (request, response) => {
+supportRouter.post("/tickets", optionalAuthenticate, limiter, async (request, response) => {
   const user=request.auth ? await findUserById(request.auth.userId) : null;
   const input=ticketSchema.parse(request.body);
   const ticket = await createSupportTicket(user ? { ...input, name:user.name, email:user.email } : input, user?.id??null);

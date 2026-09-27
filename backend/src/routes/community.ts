@@ -5,10 +5,12 @@ import { acceptConnection, blockConnection, createConnection, createConversation
 import { ApiError } from "../lib/api-error.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { publishRealtime } from "../realtime.js";
+import { userOrIpKey } from "../lib/client-key.js";
 
 export const communityRouter=Router();
 communityRouter.use(authenticate);
-const messageLimiter=rateLimit({windowMs:60_000,limit:30,standardHeaders:true,legacyHeaders:false});
+// Söhbət limiti hesaba bağlıdır: `communityRouter.use(authenticate)` yuxarıdadır.
+const messageLimiter=rateLimit({windowMs:60_000,limit:30,keyGenerator:userOrIpKey,standardHeaders:true,legacyHeaders:false});
 communityRouter.get("/users",async(req,res)=>res.json({data:await listCommunityUsers(req.auth!.userId)}));
 communityRouter.get("/connections",async(req,res)=>res.json({data:await listConnections(req.auth!.userId)}));
 communityRouter.post("/connections",async(req,res)=>{const {userId}=z.object({userId:z.string().uuid()}).strict().parse(req.body);res.status(201).json({data:await createConnection(req.auth!.userId,userId)});});

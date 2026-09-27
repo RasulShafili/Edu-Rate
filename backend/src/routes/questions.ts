@@ -12,13 +12,16 @@ import {
   toggleVote,
 } from "../db/questions.js";
 import { ApiError } from "../lib/api-error.js";
+import { userOrIpKey } from "../lib/client-key.js";
 import { authenticate, optionalAuthenticate } from "../middleware/authenticate.js";
 
 export const questionsRouter = Router();
 
+// `authenticate`-dən sonra işləyir, ona görə limit hər hesab üçün ayrıdır.
 const writeLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 15,
+  keyGenerator: userOrIpKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "RATE_LIMITED", message: "Qısa müddətdə çox sayda paylaşım edildi." } },

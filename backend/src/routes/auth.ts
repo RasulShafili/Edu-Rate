@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Router } from "express";
+import { Router, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import {
@@ -62,12 +62,14 @@ import {
 } from "../lib/totp.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 import { env } from "../config/env.js";
+import { clientIp, clientIpKey } from "../lib/client-key.js";
 
 export const authRouter = Router();
 
 const signupLimiter = rateLimit({
   windowMs: 30 * 60 * 1000,
   limit: 5,
+  keyGenerator: clientIpKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "RATE_LIMITED", message: "Çox sayda qeydiyyat cəhdi edildi." } },
@@ -76,6 +78,7 @@ const signupLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
+  keyGenerator: clientIpKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "RATE_LIMITED", message: "Çox sayda giriş cəhdi edildi." } },
@@ -197,9 +200,9 @@ const resetSchema=z.object({
   passwordConfirm:z.string().max(200),
 }).strict().refine((input)=>input.password===input.passwordConfirm,{path:["passwordConfirm"],message:"Şifrələr eyni deyil."});
 
-async function issueSession(user:UserRecord,request:{get(name:string):string|undefined;ip?:string}){
+async function issueSession(user:UserRecord,request:Request){
   const sessionId=randomUUID();const token=createAccessToken(user,sessionId);
-  await registerSessionToken(user.id,token,sessionId,request.get("user-agent")??"",request.ip??"");
+  await registerSessionToken(user.id,token,sessionId,request.get("user-agent")??"",clientIp(request));
   return token;
 }
 

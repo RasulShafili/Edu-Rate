@@ -25,6 +25,10 @@ services:
         value: https://edu-rate-nu.vercel.app
       - key: TRUST_PROXY
         value: "true"
+      # Vercel-dəki EDURATE_PROXY_SECRET ilə EYNİ dəyər (openssl rand -base64 48).
+      # Olmasa giriş/qeydiyyat limitləri bütün istifadəçilər üçün ortaq olur.
+      - key: EDURATE_PROXY_SECRET
+        sync: false
       - key: BREVO_API_KEY
         sync: false
       - key: EMAIL_FROM
