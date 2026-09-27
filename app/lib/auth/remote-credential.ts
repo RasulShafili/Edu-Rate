@@ -60,6 +60,9 @@ export async function requestRemoteApi<T>(
     method?: "GET" | "POST" | "PATCH" | "DELETE";
     body?: unknown;
     token?: string;
+    /** Standartı əvəz edir: səhifəni bloklayan yoxlamalar üçün qısa gözləmə. */
+    timeoutMs?: number;
+    attempts?: number;
   } = {},
 ): Promise<T> {
   const headers = new Headers({ Accept: "application/json" });
@@ -68,12 +71,12 @@ export async function requestRemoteApi<T>(
   await forwardClientContext(headers);
 
   const method=options.method??"GET";
-  const attempts=method==="GET"?2:1;
+  const attempts=options.attempts??(method==="GET"?2:1);
   // Oxuma sorğuları tez uğursuz olmalıdır ki, backend "yuxuda" olanda (Render
   // pulsuz plan soyuq start ~30-60s) sayt 65 saniyə donmasın — bunun əvəzinə
   // nümunə məlumatla dərhal açılır. Yazma sorğuları (giriş/qeydiyyat) bir qədər
   // daha uzun gözləyir, çünki onların uğuru vacibdir.
-  const timeoutMs=method==="GET"?8_000:22_000;
+  const timeoutMs=options.timeoutMs??(method==="GET"?8_000:22_000);
   let response:Response|null=null;
   for(let attempt=0;attempt<attempts;attempt+=1){
     try{
@@ -116,8 +119,8 @@ export async function requestRemoteApi<T>(
   return payload.data;
 }
 
-export async function getRemoteSession(token: string) {
-  return requestRemoteApi<{ user: RemoteApiUser }>("/api/auth/session", { token });
+export async function getRemoteSession(token: string, options: { timeoutMs?: number; attempts?: number } = {}) {
+  return requestRemoteApi<{ user: RemoteApiUser }>("/api/auth/session", { token, ...options });
 }
 
 /**

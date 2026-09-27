@@ -29,6 +29,8 @@ type AuthStatus = "idle" | "submitting";
 
 type AuthContextValue = {
   user: UserProfile | null;
+  /** Server sessiyanı yoxlaya bilmədi; brauzer yoxlayana qədər "daxil ol" göstərilmir. */
+  sessionPending: boolean;
   status: AuthStatus;
   credentialAuthAvailable: boolean;
   signOutHref: string | null;
@@ -44,6 +46,7 @@ type AuthContextValue = {
 type AuthProviderProps = PropsWithChildren<{
   gateway?: AuthGateway;
   initialUser?: UserProfile | null;
+  initialSessionPending?: boolean;
   signOutHref?: string | null;
 }>;
 
@@ -55,9 +58,11 @@ export function AuthProvider({
   children,
   gateway,
   initialUser = null,
+  initialSessionPending = false,
   signOutHref = null,
 }: AuthProviderProps) {
   const [user, setUser] = useState<UserProfile | null>(initialUser);
+  const [sessionPending, setSessionPending] = useState(initialSessionPending);
   const [status, setStatus] = useState<AuthStatus>("idle");
   const activeGateway = gateway ?? credentialAuthGateway;
   const credentialAuthAvailable = !signOutHref;
@@ -68,15 +73,18 @@ export function AuthProvider({
   useEffect(() => {
     let cancelled = false;
     async function hydrateSession(){
-      for(let attempt=0;attempt<3&&!cancelled;attempt+=1){
+      // Backend oyanırsa (server artıq bunu bildirib) daha uzun gözləyirik.
+      const attempts=initialSessionPending?6:3;
+      for(let attempt=0;attempt<attempts&&!cancelled;attempt+=1){
         try{
           const sessionUser=await getCredentialSession();
-          if(!cancelled)setUser(sessionUser);
+          if(!cancelled){setUser(sessionUser);setSessionPending(false);}
           return;
         }catch{
-          if(attempt<2)await new Promise((resolve)=>window.setTimeout(resolve,attempt===0?500:1400));
+          if(attempt<attempts-1)await new Promise((resolve)=>window.setTimeout(resolve,attempt===0?500:1400));
         }
       }
+      if(!cancelled)setSessionPending(false);
     }
     void hydrateSession();
     const restore=()=>void hydrateSession();
@@ -86,7 +94,7 @@ export function AuthProvider({
       cancelled = true;
       window.removeEventListener("online",restore);
     };
-  }, []);
+  }, [initialSessionPending]);
 
   const signIn = useCallback(async (input: SignInInput) => {
     setStatus("submitting");
@@ -150,13 +158,14 @@ export function AuthProvider({
     isAdmin: Boolean(adminRole),
     adminRole,
     user,
+    sessionPending,
     status,
     signIn,
     completeTwoFactor,
     register,
     signOut,
     updateProfile,
-  }), [adminRole, completeTwoFactor, credentialAuthAvailable, register, signIn, signOut, signOutHref, status, updateProfile, user]);
+  }), [adminRole, completeTwoFactor, credentialAuthAvailable, register, sessionPending, signIn, signOut, signOutHref, status, updateProfile, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

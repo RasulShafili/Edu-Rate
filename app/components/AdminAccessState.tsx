@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, KeyRound, ShieldAlert, Smartphone, WifiOff } from "lucide-react";
+import { ArrowLeft, KeyRound, ShieldAlert, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useT } from "../i18n/LanguageProvider";
+import { SessionWaking } from "./SessionWaking";
 
 export type AdminAccessDeniedState =
   | { status: "signed-out"; signInHref: string }
@@ -18,21 +19,20 @@ const content = {
   "signed-out": { prefix: "admin.access.signedOut", action: "admin.access.signedOut.action", icon: KeyRound },
   forbidden: { prefix: "admin.access.forbidden", action: "admin.access.forbidden.action", icon: ShieldAlert },
   "two-factor-required": { prefix: "admin.access.twoFactor", action: "admin.access.twoFactor.action", icon: Smartphone },
-  unavailable: { prefix: "admin.access.unavailable", action: "common.retry", icon: WifiOff },
 } as const;
 
 export function AdminAccessState({ access }: AdminAccessStateProps) {
   const t = useT();
+  // Backend oyanırsa gözləyib özü yenilənir — əvvəl yalnız əl ilə "Yenidən yoxla" idi.
+  if (access.status === "unavailable") return <SessionWaking />;
   const state = content[access.status];
   const Icon = state.icon;
   const href =
     access.status === "signed-out"
       ? access.signInHref
-      : access.status === "unavailable"
-        ? "/admin"
-        : access.status === "two-factor-required"
-          ? "/settings#two-factor"
-          : "/";
+      : access.status === "two-factor-required"
+        ? "/settings#two-factor"
+        : "/";
 
   return (
     <section
@@ -41,7 +41,7 @@ export function AdminAccessState({ access }: AdminAccessStateProps) {
     >
       <div
         className="profile-empty-card"
-        role={access.status === "unavailable" ? "alert" : "status"}
+        role="status"
         aria-live="polite"
       >
         <span className="profile-empty-mark" aria-hidden="true">
