@@ -171,6 +171,9 @@ clubsRouter.get("/:clubId/members", authenticate, async (request,response)=>{
   const clubId=z.string().parse(request.params.clubId);
   const club=await findClub(clubId);if(!club)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
   const canManage=isLeadershipRole(request.auth!.role)||await isClubLeader(clubId,request.auth!.userId);
+  // Klub səhifəsi ilə eyni qayda: yoxlanışdakı klubu kənar şəxs görmür. Əvvəl
+  // səhifə 404 verirdi, üzv siyahısı isə klubu, statusunu və yaradanı açırdı.
+  if(club.status!=="Aktiv"&&!canManage)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
   response.json({data:{members:await listClubMembers(clubId),canManage,canDelete:canDeleteClub(request.auth!.role,club.createdBy,request.auth!.userId),status:club.status}});
 });
 

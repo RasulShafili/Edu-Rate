@@ -566,9 +566,9 @@ authRouter.delete("/account", authenticate, async (request, response) => {
   const user = await findUserById(request.auth!.userId);
   if (!user) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
 
-  if (!(await verifyPassword(password, user.passwordHash))) {
-    throw new ApiError(401, "INVALID_CREDENTIALS", "Şifrə düzgün deyil.");
-  }
+  // Əvvəl burada limitsiz `verifyPassword` idi: açıq qalmış sessiyası olan şəxs
+  // şifrəni sonsuz təxmin edə bilirdi. İndi girişlə eyni hesab sayğacıdır.
+  await assertCurrentPassword(user, password);
   if (user.role === "admin" || user.role === "assistant_admin" || user.role === "owner_admin") {
     throw new ApiError(409, "ADMIN_SELF_DELETE_FORBIDDEN", "Administrator hesabı bu yolla silinmir. Digər administratorla əlaqə saxla.");
   }

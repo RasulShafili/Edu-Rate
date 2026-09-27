@@ -91,11 +91,17 @@ eventsRouter.patch("/:eventId", authenticate, async (request, response) => {
   const eventId = z.string().parse(request.params.eventId);
   const current = await findEventById(eventId);
   if (!current) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
-  if (!["owner_admin", "admin", "assistant_admin"].includes(request.auth!.role) && current.createdBy !== request.auth!.userId) {
+  const isLeadership = ["owner_admin", "admin", "assistant_admin"].includes(request.auth!.role);
+  if (!isLeadership && current.createdBy !== request.auth!.userId) {
     throw new ApiError(403, "EVENT_EDIT_FORBIDDEN", "Yalnız yaratdığın tədbiri dəyişə bilərsən.");
   }
   const patch = z.record(z.string(), z.unknown()).parse(request.body);
-  const event = await updateEvent(eventId, eventSchema.parse({ ...current, ...patch }));
+  const input = eventSchema.parse({ ...current, ...patch });
+  // Müəllimin tədbiri rəhbərliyin yoxlamasından sonra dərc olunur. Əvvəl dərc
+  // olunmuş tədbiri müəllim yenidən yoxlamasız dəyişə bilirdi — başlıq və mətn
+  // moderasiyadan yan keçirdi. İndi belə dəyişiklik tədbiri yoxlamaya qaytarır.
+  const adminStatus = !isLeadership && current.adminStatus !== "Qaralama" ? "Qaralama" : undefined;
+  const event = await updateEvent(eventId, { ...input, adminStatus });
   response.json({ data: event });
 });
 

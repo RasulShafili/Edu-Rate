@@ -8,6 +8,8 @@ process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "edurate-test-secret-with-at-least-32-characters";
 process.env.FRONTEND_URL = "http://localhost:3000";
 process.env.TRUST_PROXY = "true";
+const PROXY_SECRET = "edurate-test-proxy-secret-with-at-least-32-chars";
+process.env.EDURATE_PROXY_SECRET = PROXY_SECRET;
 
 let app: Express;
 let reusableStudentId = "";
@@ -1768,5 +1770,120 @@ describe("Giriş təhlükəsizliyi: şifrə siyasəti, hesab limiti, 2FA", () =>
     await request(app).post("/api/auth/2fa/disable").set("Authorization", auth).send({ password: strongPassword, code: recoveryCodes[2] }).expect(200);
     const afterDisable = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: user.email, password: strongPassword }).expect(200);
     assert.ok(afterDisable.body.data.token);
+  });
+});
+
+describe("QA auditi: limitlər, moderasiya və görünürlük", () => {
+  const password = "Kampus-Yolu-2026";
+  let passwordHashPromise: Promise<string> | null = null;
+
+  async function makeUser(email: string, role: "student" | "teacher" | "owner_admin" = "student") {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([import("../src/db/database.js"), import("../src/lib/auth.js")]);
+    passwordHashPromise ??= hashPassword(password);
+    const user = await createUser({ name: "Audit Testi", email, passwordHash: await passwordHashPromise, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role, status: "Aktiv" });
+    return { user, auth: `Bearer ${createAccessToken(user)}` };
+  }
+
+  it("eyni proxy IP-si arxasındakı fərqli istifadəçiləri ayrıca sayır, saxta IP başlığına inanmır", async () => {
+    const { user } = await makeUser("proxy.login@example.az");
+    // Reqressiya: BFF arxasında bütün istifadəçilər Vercel-in bir IP-si ilə gəlirdi
+    // və 11-ci giriş (düzgün şifrə ilə belə) HAMI üçün 429 alırdı.
+    const vercelIp = "203.0.113.50";
+    for (let index = 1; index <= 12; index += 1) {
+      await request(app).post("/api/auth/login").set("X-Forwarded-For", vercelIp)
+        .set("X-EduRate-Proxy-Secret", PROXY_SECRET).set("X-EduRate-Client-IP", `192.0.2.${index}`)
+        .send({ email: user.email, password }).expect(200);
+    }
+    const sessions = await request(app).get("/api/auth/sessions")
+      .set("Authorization", `Bearer ${(await request(app).post("/api/auth/login").set("X-Forwarded-For", vercelIp)
+        .set("X-EduRate-Proxy-Secret", PROXY_SECRET).set("X-EduRate-Client-IP", "192.0.2.77").set("User-Agent", "Audit Browser")
+        .send({ email: user.email, password }).expect(200)).body.data.token}`)
+      .expect(200);
+    const current = sessions.body.data.find((session: { current: boolean }) => session.current);
+    assert.equal(current.ipAddress, "192.0.2.77");
+    assert.equal(current.userAgent, "Audit Browser");
+
+    // Sirr düz deyilsə başlıq nəzərə alınmır: hamısı bir IP kimi sayılır və limitlənir.
+    const attackerIp = "203.0.113.51";
+    let limited = false;
+    for (let index = 1; index <= 12 && !limited; index += 1) {
+      const attempt = await request(app).post("/api/auth/login").set("X-Forwarded-For", attackerIp)
+        .set("X-EduRate-Proxy-Secret", "x".repeat(PROXY_SECRET.length)).set("X-EduRate-Client-IP", `192.0.2.${100 + index}`)
+        .send({ email: user.email, password });
+      if (attempt.status === 429) {
+        assert.equal(attempt.body.error.code, "RATE_LIMITED");
+        limited = true;
+      }
+    }
+    assert.equal(limited, true);
+  });
+
+  it("daxil olmuş istifadəçinin limitini IP-yə yox, hesaba bağlayır", async () => {
+    // Reqressiya: söhbət bileti limiti `authenticate`-dən əvvəl və IP üzrə idi —
+    // bir dəqiqədə 11-ci istifadəçinin söhbəti qoşulmurdu.
+    const sharedIp = "203.0.113.60";
+    for (let index = 1; index <= 12; index += 1) {
+      const { auth } = await makeUser(`ticket.user${index}@example.az`);
+      await request(app).post("/api/realtime/ticket").set("X-Forwarded-For", sharedIp).set("Authorization", auth).expect(201);
+    }
+  });
+
+  it("müəllim dərc olunmuş tədbiri dəyişəndə tədbir yenidən yoxlamaya düşür", async () => {
+    const { auth: teacherAuth } = await makeUser("audit.teacher@example.az", "teacher");
+    const { auth: ownerAuth } = await makeUser("audit.owner@example.az", "owner_admin");
+    const created = await request(app).post("/api/events").set("Authorization", teacherAuth).send({
+      title: "Audit olimpiadası", category: "Technology", description: "Moderasiya testi üçün tədbir.",
+      longDescription: "Bu tədbir təsdiqdən sonrakı redaktəni yoxlamaq üçün yaradılıb.", location: "Auditoriya 101",
+      city: "Xankəndi", organizer: "Audit Testi", startAt: "2030-11-10T10:00:00+04:00", endAt: "2030-11-10T13:00:00+04:00",
+      registrationDeadline: "2030-11-09T10:00:00+04:00", capacity: 30,
+    }).expect(201);
+    const id = created.body.data.id as string;
+    assert.equal(created.body.data.adminStatus, "Qaralama");
+    await request(app).patch(`/api/admin/events/${id}`).set("Authorization", ownerAuth).send({ status: "Açıq" }).expect(200);
+    await request(app).get(`/api/events/${id}`).expect(200);
+
+    // Reqressiya: əvvəl başlıq dəyişirdi, tədbir isə yoxlamasız "Açıq" qalırdı.
+    const edited = await request(app).patch(`/api/events/${id}`).set("Authorization", teacherAuth).send({ title: "Yoxlanmamış başlıq" }).expect(200);
+    assert.equal(edited.body.data.adminStatus, "Qaralama");
+    await request(app).get(`/api/events/${id}`).expect(404);
+
+    // Rəhbərliyin öz redaktəsi tədbiri dərcdə saxlayır.
+    await request(app).patch(`/api/admin/events/${id}`).set("Authorization", ownerAuth).send({ status: "Açıq" }).expect(200);
+    const byOwner = await request(app).patch(`/api/events/${id}`).set("Authorization", ownerAuth).send({ title: "Rəhbərliyin başlığı" }).expect(200);
+    assert.equal(byOwner.body.data.adminStatus, "Açıq");
+  });
+
+  it("hesab silmə formasında şifrə təxmini limitlənir", async () => {
+    const { user, auth } = await makeUser("audit.delete@example.az");
+    // Reqressiya: əvvəl limitsiz idi — açıq qalmış sessiya ilə şifrə sonsuz sınanırdı.
+    for (let attempt = 1; attempt <= 9; attempt += 1) {
+      await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password: `yanlis-parol-${attempt}` }).expect(401);
+    }
+    const locked = await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password: "yanlis-parol-10" }).expect(429);
+    assert.equal(locked.body.error.code, "ACCOUNT_THROTTLED");
+    await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password }).expect(429);
+    const { findUserById } = await import("../src/db/database.js");
+    assert.ok(await findUserById(user.id));
+  });
+
+  it("yoxlanışdakı klubun üzv siyahısını kənar şəxsə açmır", async () => {
+    const { auth: teacherAuth } = await makeUser("audit.club.teacher@example.az", "teacher");
+    const { auth: studentAuth } = await makeUser("audit.club.student@example.az");
+    const created = await request(app).post("/api/clubs").set("Authorization", teacherAuth)
+      .send({ name: "Audit Klubu", category: "Akademik", tagline: "Audit üçün yaradılmış klub.", about: ["Bu klub avtomatik testdə yaradılıb."], meeting: { cadence: "Həftəlik", day: "Çərşənbə", time: "18:00", place: "B 204" } })
+      .expect(201);
+    const slug = created.body.data.slug as string;
+    // Reqressiya: səhifə 404 verirdi, üzv siyahısı isə klubu və yaradanı açırdı.
+    await request(app).get(`/api/clubs/${slug}/members`).set("Authorization", studentAuth).expect(404);
+    await request(app).get(`/api/clubs/${slug}/members`).set("Authorization", teacherAuth).expect(200);
+  });
+
+  it("profil şəklini oxumaq yükləmə limitinə düşmür", async () => {
+    const { auth } = await makeUser("audit.avatar@example.az");
+    // Reqressiya: hər səhifə açılışı bu sorğunu edir; limit bütün router-də idi və
+    // 21-ci səhifədən sonra profil şəkli 429 ilə itirdi.
+    for (let view = 1; view <= 25; view += 1) {
+      await request(app).get("/api/media/avatar/me").set("Authorization", auth).expect(200);
+    }
   });
 });
