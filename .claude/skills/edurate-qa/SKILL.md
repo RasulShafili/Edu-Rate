@@ -862,3 +862,50 @@ fərqli yerdə idi.
 - Git Bash-da `sed -i` CRLF faylı LF-ə çevirir (bu repoda `autocrlf` onu
   commit-də normallaşdırır, amma iş kopyası dəyişir). Çoxsətirli dəyişiklik
   üçün yenə Write/Edit və ya EOL-u saxlayan Python skripti.
+
+## 20. Bulud (Linux) mühitində tam audit — sentyabr 2026
+
+### Lokal Postgres VAR — SQL qolunu sına
+§8 və §9 "lokalda Postgres yoxdur" deyir; bu, Windows maşını üçün doğrudur.
+Claude Code bulud konteynerində `pg_ctlcluster 16 main start` işləyir. Baza
+yaradıb `backend/.env`-də `DATABASE_URL` qoy — server 27 miqrasiyanı təmiz
+bazada icra edir və `SEED_DEMO_DATA=true` ilə məlumat yaranır. Rol hesablarını
+`createUser` + `createAccessToken` + `registerSessionToken` ilə skriptdən yarat
+(`.mts` faylı, `npx tsx --env-file=.env`) — giriş limitini xərcləmir.
+Backend testlərini isə CI kimi `DATABASE_URL= npm test` ilə işlət: `dotenv`
+lokal `.env`-i oxuyur və testlər səssizcə Postgres-ə yazar.
+
+### Limitləri BFF ÜZƏRİNDƏN sına, birbaşa backend-ə yox
+Backend-in IP limitləri birbaşa `curl`-da düzgün görünürdü. BFF-dən keçəndə
+isə hamı bir IP idi: 11-ci istifadəçi düzgün şifrə ilə 429 alırdı (canlıda
+Vercel IP-si). Sınaq: BFF-ə fərqli `x-real-ip` ilə 12 **uğurlu** giriş.
+Həmçinin `mediaRouter.use(limiter)` kimi router səviyyəli limit oxuma
+sorğularını da tutur — hər səhifədə çağırılan `GET /avatar/me` 20 səhifədən
+sonra 429 verirdi. Limit görəndə soruş: bu sorğu hər səhifə açılışında gedirmi?
+
+### Köhnə server yeni kodu gizlədir (iki dəfə yanlış "düzəliş işləmir")
+`kill $(npx-in PID-i)` yalnız bükücünü öldürür, `node` uşaq prosesi portda
+qalır; yeni server `EADDRINUSE` ilə düşür, testlər isə KÖHNƏ kodu yoxlayır.
+`next start` də eynidir (`next-server` adlı proses). `pkill -f "tsx src/server.ts"`
+isə öz shell-ini də öldürür (əmr sətri uyğun gəlir). Qayda: serveri
+`node --import tsx src/server.ts` ilə birbaşa başlat, PID-i fayla yaz, hər
+yenidən başlatmadan sonra logda "işləyir"/"Ready" sətrini və
+`ps aux | grep next-server`-də başlama vaxtını yoxla.
+
+### Brauzer saat qurşağını həmişə açıq ver
+Playwright kontekstində `timezoneId` verilməyəndə konteynerin UTC-si işləyir.
+Bir yoxlamada ana səhifə 17:00, başqasında 21:00 göstərdi — hansının "səhv"
+olduğunu mənbə məlumatla (`…+04:00`) və üç qurşaqda (UTC, New York, Bakı)
+yoxlamadan demə. Brauzer qurşağından asılı hər tarix `bakuDateParts`-a keçməlidir.
+
+### `<Link>` yalnız səhifələr üçündür
+`<Link href="/api/...">` Next tərəfindən RSC kimi prefetch olunur və sorğu asılı
+qalır — `/api-docs` heç vaxt "yüklənib" olmurdu. API/fayl ünvanına `<a>`.
+
+### Hər səhifə × rol × ekran × dil — skriptlə
+Kuki inyeksiyası (`edurate_api_token` httpOnly, `edurate_lang`) ilə Playwright
+skripti 26 marşrutu 4 rol, 2 ekran, 3 dildə gəzir: konsol xətası, ≥500 cavab,
+`scrollWidth > clientWidth`, `undefined/NaN/Invalid Date` və xam i18n açarı
+axtarır. Parol brauzerə yazılmır (§15). Lüğət boşluğunu isə səhifədə yox,
+proqramla tap: `dictionaries.az` açarlarını `en`/`ru` ilə müqayisə et; qalan
+tərcüməsiz mətn komponentə birbaşa yazılmış sətirdir (`grep` az hərfləri).
