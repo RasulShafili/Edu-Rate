@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { Club, ClubTabId } from "../data/clubs";
 import { clubTabIds } from "../data/clubs";
+import { getInitials } from "../data/user";
 import { MagneticJoinButton } from "./MagneticJoinButton";
 import { SecureImagePicker } from "./SecureImagePicker";
 import { useAuth } from "./AuthProvider";
@@ -318,18 +319,28 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                   <div><span className="club-panel-kicker">{t("club.membersKicker")}</span><h2>{t("club.membersTitle")}</h2></div>
                   <p><UsersRound size={15} aria-hidden="true" /> {t("club.membersPrivacy")}</p>
                 </div>
-                <ul className="club-member-grid">
-                  {club.members.map((member) => (
-                    <li key={member.id} className="club-member-card">
-                      <span className="club-member-avatar" aria-hidden="true">{member.initials}</span>
-                      <div><h3>{member.role}</h3><p>{member.focus}</p></div>
-                    </li>
-                  ))}
-                </ul>
-                {club.members.length === 0 && (
+                {/* Əvvəl burada klubun statik `members` sahəsi (seed-dəki tək "koordinator")
+                    göstərilirdi: kim qoşulursa qoşulsun siyahı dəyişmirdi, sayğac isə real
+                    sayı göstərirdi. İndi real üzvlər — məxfilik üçün yalnız inisial və rol. */}
+                {management?.members.length ? (
+                  <ul className="club-member-grid">
+                    {management.members.map((member) => (
+                      <li key={member.id} className="club-member-card">
+                        <span className="club-member-avatar" aria-hidden="true">{getInitials(member.name)}</span>
+                        <div><h3>{t(member.isCreator ? "club.roleCreator" : member.role === "leader" ? "club.roleLeader" : "club.roleMember")}</h3></div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : user && !management ? (
+                  <p className="club-members-loading" role="status">{t("club.membersLoading")}</p>
+                ) : (
                   <div className="club-tab-empty">
                     <UsersRound size={22} aria-hidden="true" />
-                    <div><h3>{t("club.membersEmptyTitle")}</h3><p>{t("club.membersEmptyBody")}</p></div>
+                    {user ? (
+                      <div><h3>{t("club.membersEmptyTitle")}</h3><p>{t("club.membersEmptyBody")}</p></div>
+                    ) : (
+                      <div><h3>{t("club.membersSignInTitle")}</h3><p>{t("club.membersSignInBody")}</p></div>
+                    )}
                   </div>
                 )}
               </div>

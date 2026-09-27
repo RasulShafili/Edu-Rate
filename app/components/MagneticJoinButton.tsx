@@ -63,6 +63,9 @@ export function MagneticJoinButton({ clubId, clubName, onJoin }: MagneticJoinBut
       return;
     }
     if (membershipLoading) return;
+    // Qoşulandan sonra düymədə "Kluba qoşuldun" yazılır, amma ona basmaq klubdan
+    // xəbərdarlıqsız çıxarırdı — təsadüfi klik üzvlüyü itirirdi.
+    if (isJoined && !window.confirm(t("club.leaveConfirm", { name: clubName }))) return;
     setPending(true);
     try {
       const response = await fetch(`/api/clubs/${encodeURIComponent(clubId)}/memberships`, { method: isJoined ? "DELETE" : "POST" });

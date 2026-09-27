@@ -16,7 +16,7 @@
   --kuds-surface: #ffffff;
   --kuds-border: #e2e8f0;
   --kuds-text: #1e293b;
-  --kuds-muted: #64748b;
+  --kuds-muted: #566476; /* əvvəl #64748b: açıq tonlu fonlarda 3.8–4.3:1 idi */
   --kuds-success: #10b981;
   --kuds-warning: #f59e0b;
   --kuds-danger: #ef4444;
@@ -2121,20 +2121,48 @@ body {
 .message-day::after { background: #dce5e2 !important; }
 .kuds-shell .message-sender-name,
 .message-sender-name { color: var(--ku-dark-green) !important; }
-.kuds-shell .message-peer p,
-.message-peer p {
+/* Görünən qabarcıq .message-bubble-dır (creative.css), <p> yalnız mətndir. Əvvəl
+   açıq tema rəngləri <p>-yə verilirdi: qarşı tərəfin qabarcığı tünd temanın
+   şəffaf fonunda qalırdı, mətnin arxasında isə marker kimi zolaq görünürdü;
+   saat, sitat və əməliyyat düymələri ağ fonda ağ idi. */
+.kuds-shell .message-list .message-bubble > p,
+.message-list .message-bubble > p {
+  color: inherit !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+/* WhatsApp üslubu: qabarcıqlarda yalnız yüngül kölgə (neon parıltı əvəzinə). */
+.kuds-shell .message-peer .message-bubble,
+.message-peer .message-bubble {
   color: #1c302c !important;
   border-color: #dbe4e0 !important;
   background: #ffffff !important;
-}
-.kuds-shell .message-own p,
-.message-own p { color: #10221e !important; background: #c9f36a !important; }
-/* WhatsApp üslubu: qabarcıqlarda yalnız yüngül kölgə (neon parıltı əvəzinə).
-   Kənar quyruq götürüldü — qısa mətndə üçbucaq yazının üstünə çıxırdı. */
-.kuds-shell .message-own p, .message-own p,
-.kuds-shell .message-peer p, .message-peer p {
   box-shadow: 0 1px 1.5px rgba(16, 52, 45, 0.13) !important;
 }
+.kuds-shell .message-own .message-bubble,
+.message-own .message-bubble {
+  color: #10221e !important;
+  border-color: transparent !important;
+  background: #c9f36a !important;
+  box-shadow: 0 1px 1.5px rgba(16, 52, 45, 0.13) !important;
+}
+.message-peer .message-meta { color: #62746f !important; }
+.message-own .message-meta { color: rgba(16, 34, 30, 0.7) !important; }
+.message-peer .message-quote { background: #eef3f1 !important; }
+.message-own .message-quote { background: rgba(16, 36, 29, 0.1) !important; }
+.message-quote span { color: var(--ku-dark-green) !important; }
+.message-quote small { color: #4b5f5a !important; opacity: 1 !important; }
+.message-actions button {
+  color: #41574f !important;
+  border-color: #dbe4e0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(16, 52, 45, 0.12) !important;
+}
+.message-actions button:hover { color: #ffffff !important; background: var(--ku-green) !important; }
+/* Tünd temanın dekorativ serif şrifti (Georgia) yalnız avatarlarda qalmışdı. */
+.message-avatar,
+.chat-person-avatar { font-family: inherit !important; font-weight: 700; }
 .kuds-shell .message-row > div > span,
 .message-row > div > span { color: #70817d !important; }
 .kuds-shell .typing-bubble,
@@ -2154,6 +2182,34 @@ body {
 .chat-composer textarea::placeholder { color: #788985 !important; opacity: 1; }
 .kuds-shell .chat-composer textarea:focus,
 .chat-composer textarea:focus { border-color: var(--ku-green) !important; background: #fff !important; }
+/* Composer hissələri tünd temada qalmışdı: emoji düyməsi, cavab önizləməsi və
+   emoji paneli ağ fonda ağımtıl idi. */
+.composer-emoji-trigger {
+  color: #41574f !important;
+  border-color: #dbe4e0 !important;
+  background: #f5f8f7 !important;
+}
+.composer-emoji-trigger:hover,
+.composer-emoji-trigger[aria-expanded="true"] { color: var(--ku-green) !important; background: #eaf2ef !important; }
+.composer-emoji-panel {
+  border-color: #dbe4e0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 40px rgba(16, 52, 45, 0.16) !important;
+}
+.composer-emoji-panel button:hover { background: #eef3f1 !important; }
+.composer-context { background: #f1f5f3 !important; }
+.composer-context-body span { color: var(--ku-dark-green) !important; }
+.composer-context-body small { color: #4b5f5a !important; }
+.composer-context > button { color: #41574f !important; background: #e4ece9 !important; }
+.chat-composer .composer-hint { color: #62746f !important; font-size: 10px !important; }
+.message-bubble .reaction-bar {
+  border-color: #dbe4e0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(16, 52, 45, 0.16) !important;
+}
+.reaction-bar button:hover { background: #eef3f1 !important; }
+.message-reactions button { color: #1c302c !important; border-color: #dbe4e0 !important; background: #ffffff !important; }
+.message-reactions button.mine { border-color: var(--ku-green) !important; background: #eaf4ef !important; }
 .kuds-shell .composer-hint,
 .composer-hint { color: #71827e !important; }
 
@@ -3610,7 +3666,13 @@ body {
   }
   .chat-back:active { background: rgba(20, 42, 38, 0.08); }
   .chat-center-main .chat-center-close { display: none !important; }
-  .chat-center-main .chat-header { padding-right: 12px !important; }
+  /* Bağla düyməsi burada gizlidir: ⋮ ən sağa keçir və ona yer saxlanılır. Əvvəl
+     yer 12px-ə endirilirdi, "space-between" isə həmsöhbəti sağa itələyirdi — ⋮ adın
+     üstünə düşürdü. */
+  .chat-center-main .chat-header { justify-content: flex-start !important; gap: 6px; padding-right: 56px !important; }
+  .chat-center-main .chat-person, .chat-center-main .chat-person > div { min-width: 0; }
+  .chat-center-main .chat-person h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-center-main .chat-more { right: 12px !important; }
 
   /* Siyahı görünüşündə çatı bağla */
   .chat-sidebar-close {
@@ -4287,3 +4349,72 @@ body {
 /* Giriş: 2FA mərhələsindəki mətn düymələri */
 .kuds-shell .auth-link-button { padding: 0; border: 0; background: none; cursor: pointer; text-align: left; min-height: 44px; }
 .kuds-shell .auth-two-factor .auth-form-footer { display: grid; gap: 4px; }
+
+/* ============================================================
+   Kontrast təmiri (sentyabr 2026 auditi)
+   globals.css köhnə TÜND temanın yarımşəffaf açıq mətn rənglərini
+   (rgba(243,241,233,…), rgba(244,243,237,…)) saxlayır. Bu fayl valideyn
+   elementin rəngini dəyişəndə, öz rəngi olan uşaq element onu irs almırdı:
+   aşağıdakılar ağ fonda ağ (kontrast ≈ 1:1) və ya 2–3:1 idi. Hər biri
+   brauzerdə piksel səviyyəsində ölçülüb.
+   ============================================================ */
+.kuds-shell .profile-empty-card p,
+.profile-empty-card p { color: #4b5f5a !important; }
+.kuds-shell .profile-empty-mark,
+.profile-empty-mark { color: #ffffff !important; }
+.kuds-shell .teacher-rating-empty p,
+.teacher-rating-empty p { color: #5b6f6a !important; font-size: 12px !important; }
+.kuds-shell .reviews-heading > p,
+.reviews-heading > p { color: #4b5f5a !important; font-size: 12px !important; }
+.kuds-shell .drawer-topline > span,
+.drawer-topline > span { color: #5b6f6a !important; font-size: 10px !important; }
+.kuds-shell .platform-search-empty,
+.platform-search-empty { color: #5b6f6a !important; border-color: #d7e1de !important; font-size: 12px !important; }
+.kuds-shell .platform-utility-panel-header button,
+.platform-utility-panel-header button { color: #41574f !important; }
+.kuds-shell .week-day__empty,
+.week-day__empty { color: #5f716d !important; }
+.kuds-shell .today-panel__head small,
+.today-panel__head small { color: rgb(238 250 241 / 92%) !important; }
+.kuds-shell .auth-legal-links,
+.auth-legal-links { color: #5f716d !important; font-size: 10.5px !important; }
+
+/* 8–9px mətnlər köhnə temanın qalığıdır: hərflərin nazik xətti ekranda tam
+   rəng almır və oxunmur. Tapılanlar ən azı 10px-ə qaldırılır. */
+.kuds-shell :is(.teacher-card-rating small, .peer-location, .message-day, .chat-composer .composer-hint, .event-date small, .mentor-label, .faq-number, .chat-settings > span),
+:is(.teacher-card-rating small, .peer-location, .message-day, .chat-composer .composer-hint, .event-date small, .mentor-label, .faq-number, .chat-settings > span) { font-size: 10px !important; }
+.kuds-shell :is(.peer-location, .teacher-card-rating small, .message-day),
+:is(.peer-location, .teacher-card-rating small, .message-day) { color: #5f716d !important; }
+
+/* Açıq temada dekorativ serif dəyişəni Georgia/Times-a düşür (bu faylın başı).
+   Başlıq sitatlarında bu redaksiya üslubudur, amma inisiallarda və rəqəmlərdə
+   Poppins dizaynı içində sınıq şrift kimi görünürdü. */
+.kuds-shell :is(.club-detail-stats dd, .peer-avatar > span, .mentor-avatar > span, .event-date span, .rating-value, .ticket-progress-head strong),
+:is(.club-detail-stats dd, .peer-avatar > span, .mentor-avatar > span, .event-date span, .rating-value, .ticket-progress-head strong) { font-family: inherit !important; font-weight: 700; }
+.kuds-shell .club-detail-stats dt,
+.club-detail-stats dt { font-size: 10px !important; }
+
+/* Klub qoşulma bloku: status sətri ayrıca sətirdə, amma köhnə `text-align:right`
+   onu düymədən qoparıb səhifənin ortasına atırdı; iki düymənin mətni 10px və
+   16px idi. */
+.kuds-shell .club-detail .club-join-action__status { text-align: left !important; }
+.kuds-shell .club-detail .magnetic-join-button__content,
+.kuds-shell .club-detail .club-group-shortcut { font-size: 13px !important; font-weight: 700 !important; }
+.kuds-shell :is(.admin-data-table__header th, .admin-overview__heading time, .profile-facts dt),
+:is(.admin-data-table__header th, .admin-overview__heading time, .profile-facts dt) { color: #526660 !important; font-size: 11px !important; }
+
+/* Sonsuz animasiyalar (layihə qaydası: yoxdur). Söhbət düyməsi hər səhifədə
+   dayanmadan döyünürdü, avatarların "orbit" halqaları dayanmadan fırlanırdı —
+   diqqəti yayındırır və zəif telefonlarda prosessoru boş yerə yükləyir.
+   Nəbz 3 dəfə oynayıb sönür; halqalar yerində qalır. */
+.kuds-shell .launcher-pulse,
+.launcher-pulse { animation-iteration-count: 3 !important; animation-fill-mode: forwards !important; }
+:is(.mentor-avatar, .club-member-avatar, .admin-account-chip > span, .feed-card-avatar)::before,
+.announcement-card footer > span:first-child::before,
+.teacher-avatar-orbit { animation: none !important; }
+
+/* Layout sıçrayışı: məlumat brauzerdə yüklənir; ilk kadrda məzmun qısa olduğu üçün
+   footer ekranın ortasında görünür, sonra ~1600px aşağı sıçrayırdı (CLS /feed-də
+   0.18). Məzmun sahəsi ən azı ekran hündürlüyündə olanda footer kadrdan kənarda
+   başlayır və sıçrayış görünmür. */
+.kuds-shell .route-frame { min-height: calc(100dvh - 72px); }

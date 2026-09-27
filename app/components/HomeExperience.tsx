@@ -15,7 +15,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { useAuth } from "./AuthProvider";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { bakuDateParts } from "../lib/date";
+import { bakuDateParts, isExpired } from "../lib/date";
 
 /**
  * Ana səhifə — sıx idarə paneli.
@@ -53,6 +53,7 @@ type Announcement = {
   dateLabel?: string;
   source?: string;
   sourceInitials?: string;
+  expiresAt?: string;
 };
 
 type CampusEvent = {
@@ -111,7 +112,10 @@ export function HomeExperience() {
     dedupingInterval: 60_000,
   });
 
-  const announcements = network.data?.announcements ?? [];
+  // Elanlar səhifəsi və bildiriş paneli yalnız aktiv elanları göstərir; ana səhifə
+  // isə vaxtı keçmişləri də "Son elanlar" kimi verirdi (25 avqustda bağlanan
+  // "müraciətlər açıqdır" sentyabrda da görünürdü). Arxiv "Hamısı" keçidindədir.
+  const announcements = (network.data?.announcements ?? []).filter((item) => !item.expiresAt || !isExpired(item.expiresAt));
   const topClubs = [...(clubs.data ?? [])]
     .sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0))
     .slice(0, 4);
