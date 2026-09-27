@@ -5,6 +5,7 @@ import { PageHeader } from "./ui/Primitives";
 import { PushToggle } from "./PushToggle";
 import { DeleteAccountPanel } from "./DeleteAccountPanel";
 import { TwoFactorPanel } from "./TwoFactorPanel";
+import { useAuth } from "./AuthProvider";
 
 /**
  * Əvvəl burada üç bildiriş açarı var idi ("Vacib elanlar", "Tədbir
@@ -16,6 +17,7 @@ import { TwoFactorPanel } from "./TwoFactorPanel";
  */
 export function SettingsExperience() {
   const t = useT();
+  const { user } = useAuth();
   return (
     <section className="settings-page" aria-labelledby="settings-title">
       <PageHeader id="settings-title" eyebrow={t("settings.eyebrow")} title={t("settings.title")} />
@@ -26,7 +28,9 @@ export function SettingsExperience() {
         </div>
         <PushToggle />
       </div>
-      <TwoFactorPanel />
+      {/* 2FA hələlik yığışdırılıb: yeni quraşdırma yoxdur. Artıq aktiv edən hesab
+          paneli görür ki, onu söndürə bilsin (yoxsa girişdə kod soruşulmağa davam edir). */}
+      {user?.twoFactorEnabled ? <TwoFactorPanel /> : null}
       <DeleteAccountPanel />
     </section>
   );

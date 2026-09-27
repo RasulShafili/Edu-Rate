@@ -40,9 +40,8 @@ const envSchema = z
      */
     EDURATE_PROXY_SECRET: z.string().min(32).optional().or(z.literal("")),
     /**
-     * Admin API-si üçün iki mərhələli giriş məcburidir. Verilməyibsə: test
-     * mühitindən başqa hər yerdə `true`. `false` yalnız fövqəladə hal üçündür
-     * (sahib həm telefonu, həm bərpa kodlarını itiribsə).
+     * Admin API-si üçün iki mərhələli girişi məcburi edir. Hələlik söndürülüb
+     * (sahibin qərarı): yalnız açıq `true` verildikdə tələb olunur.
      */
     ADMIN_2FA_REQUIRED: z.enum(["true", "false"]).optional(),
     SEED_DEMO_DATA: booleanValue,
@@ -110,9 +109,7 @@ export const env = {
   ...parsed.data,
   DATABASE_URL: parsed.data.DATABASE_URL || undefined,
   EDURATE_PROXY_SECRET: parsed.data.EDURATE_PROXY_SECRET || undefined,
-  ADMIN_2FA_REQUIRED: parsed.data.ADMIN_2FA_REQUIRED
-    ? parsed.data.ADMIN_2FA_REQUIRED === "true"
-    : parsed.data.NODE_ENV !== "test",
+  ADMIN_2FA_REQUIRED: parsed.data.ADMIN_2FA_REQUIRED === "true",
   ALLOWED_ORIGINS: parsed.data.FRONTEND_URL.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
