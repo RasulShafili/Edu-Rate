@@ -909,3 +909,46 @@ skripti 26 marşrutu 4 rol, 2 ekran, 3 dildə gəzir: konsol xətası, ≥500 ca
 axtarır. Parol brauzerə yazılmır (§15). Lüğət boşluğunu isə səhifədə yox,
 proqramla tap: `dictionaries.az` açarlarını `en`/`ru` ilə müqayisə et; qalan
 tərcüməsiz mətn komponentə birbaşa yazılmış sətirdir (`grep` az hərfləri).
+
+## 21. Vizual audit — piksellə ölç, animasiyanı açıq saxla
+
+### Kontrastı pikseldən ölç, DOM-dan yox
+DOM üsulu (§3) qradiyent fonu, `::before` və qardaş elementlə çəkilən fonu
+(aktiv tabın hərəkət edən "pill"-i) görmür: yarıdan çoxu yanlış həyəcan idi.
+İşləyən üsul: elementin ekran görüntüsünü iki dəfə çək — biri normal, biri
+`color: transparent !important` ilə. Fərqlənən piksellər hərfdir; güclü
+fərqli 25%-in medianı real mətn/fon rəngini verir. Əvvəl `elementFromPoint`
+ilə elementin üstünü başqa şeyin örtmədiyini yoxla — çərəz banneri
+(`localStorage["edurate-cookie-consent"]="declined"`) aşağı-soldakı hər şeyi
+"görünməz" göstərirdi. 8–10px mətndə ölçülən rəng CSS-dən açıq çıxır (nazik
+xətt tam rəng almır) — orada problem ölçüdür, rəng yox.
+
+### `reducedMotion: "reduce"` animasiya xətalarını gizlədir
+Bütün vizual skanları azaldılmış hərəkətlə apardım — sonsuz animasiyalar,
+CLS və ilişən giriş animasiyaları görünmədi. Animasiya auditi AYRICA,
+hərəkət açıq: `document.getAnimations()` (iterations === Infinity),
+`PerformanceObserver("layout-shift")`, bölmə-bölmə sürüşdürüb opacity zənciri.
+"Görünməz" çıxanları təsnif et: hover ilə açılan (`.peer-actions`, toxunma
+ekranında `@media (hover:none)` açır), karuselin ekrandan kənar slaydı
+(x > innerWidth), scroll-progress zolağı (`MotionLayer`) — üçü də xəta deyil.
+
+### Açıq panelləri skan et
+Ən pis xətalar yalnız klikdən sonra görünürdü: söhbət qabarcıqları (açıq
+tema rəngi `<p>`-də, creative.css isə qabarcığı `.message-bubble`-a
+köçürmüşdü), bildiriş panelinin boş vəziyyəti, müəllim çekmecəsi. Skan
+siyahısına söhbət (siyahı/mövzu/emoji/menyu/qrup), zəng paneli, klub tabları,
+FAQ, çekmecələr daxil olsun. Eyni `aria-controls` paylaşan düymələrdə (axtarış
+və zəng) birincisini klikləmə — ikonla seç.
+
+### Hunk-la bölmək + `stash --keep-index` faylı pozdu
+`git diff -U0` hunk-larını `git apply --cached --unidiff-zero` ilə stage
+edib `git stash --keep-index` → `stash pop` etdim: pop indekslə iş nüsxəsini
+"auto-merge" etdi — `PlatformHeader.tsx`-in sonuna sətirlər düşdü, lüğətdə
+7 açar ikiləşdi (tsc tutdu). Qayda: commit-i bütöv fayllarla böl; bölmək
+mütləqdirsə stash etmə — bölünmüş vəziyyəti `git worktree`-də yoxla. Hər
+halda sonra `npx tsc --noEmit` və lüğətdə açar təkrarı yoxlaması.
+
+### Yatmış backend-i simulyasiya et
+`kill -STOP <backend node pid>` — bağlantı qəbul olunur, cavab gəlmir
+(Render soyuq başlanğıcı kimi). Sonra `kill -CONT`. Bununla tapıldı: layout
+2×8s gözləyib daxil olmuş istifadəçini /auth-a atırdı.
