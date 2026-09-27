@@ -39,7 +39,7 @@ export function ReviewCard({ review, index }: ReviewCardProps) {
         ))}
       </div>
       {criterionScores.length > 0 && (
-        <dl className="review-criteria" aria-label="Qiymətləndirmə meyarları">
+        <dl className="review-criteria" aria-label={t("review.criteriaLabel")}>
           {criterionScores.map(([criterion, score]) => (
             <div key={criterion}>
               <dt>{t(criteriaLabels[criterion])}</dt>

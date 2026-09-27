@@ -92,28 +92,28 @@ export function PlatformNavigationRail(props: PlatformNavigationRailProps) {
 
   return (
     <>
-      <aside className="platform-left-rail" aria-label="Əsas naviqasiya">
+      <aside className="platform-left-rail" aria-label={t("shell.mainNavigation")}>
         <Brand pathname={props.pathname} />
-        <nav className="platform-rail-navigation" aria-label="Platforma bölmələri">{navigation}</nav>
+        <nav className="platform-rail-navigation" aria-label={t("shell.sections")}>{navigation}</nav>
       </aside>
 
       <AnimatePresence>
         {props.mobileOpen && (
           <motion.div className="platform-mobile-navigation-layer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <button type="button" className="platform-mobile-navigation-backdrop" onClick={props.onMobileClose} aria-label="Naviqasiyanı bağla" />
+            <button type="button" className="platform-mobile-navigation-backdrop" onClick={props.onMobileClose} aria-label={t("shell.navClose")} />
             <motion.aside
               id="platform-mobile-navigation"
               className="platform-mobile-navigation"
               role="dialog"
               aria-modal="true"
-              aria-label="Əsas naviqasiya"
+              aria-label={t("shell.mainNavigation")}
               initial={reducedMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
               exit={reducedMotion ? { opacity: 0 } : { x: "-100%" }}
               transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 36 }}
             >
-              <header><Brand pathname={props.pathname} onClick={props.onMobileClose} /><button type="button" onClick={props.onMobileClose} aria-label="Naviqasiyanı bağla"><X size={19} /></button></header>
-              <nav aria-label="Platforma bölmələri" onClick={props.onMobileClose}>{navigation}</nav>
+              <header><Brand pathname={props.pathname} onClick={props.onMobileClose} /><button type="button" onClick={props.onMobileClose} aria-label={t("shell.navClose")}><X size={19} /></button></header>
+              <nav aria-label={t("shell.sections")} onClick={props.onMobileClose}>{navigation}</nav>
             </motion.aside>
           </motion.div>
         )}
@@ -123,7 +123,8 @@ export function PlatformNavigationRail(props: PlatformNavigationRailProps) {
 }
 
 function Brand({ pathname, onClick }: { pathname: string; onClick?: () => void }) {
-  return <Link href="/" className="platform-sidebar-brand" onClick={onClick} aria-label="EduRate ana səhifəsi" aria-current={pathname === "/" ? "page" : undefined}><span className="brand-mark" aria-hidden="true"><span /></span><strong>EDURATE</strong></Link>;
+  const t = useT();
+  return <Link href="/" className="platform-sidebar-brand" onClick={onClick} aria-label={t("shell.homeLink")} aria-current={pathname === "/" ? "page" : undefined}><span className="brand-mark" aria-hidden="true"><span /></span><strong>EDURATE</strong></Link>;
 }
 
 function NavigationLink({ href, label, pathname, icon: Icon, reducedMotion }: { href: string; label: string; pathname: string; icon?: LucideIcon; reducedMotion: boolean }) {

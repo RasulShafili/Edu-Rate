@@ -33,7 +33,7 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
   return (
     <header className="platform-header" aria-label={t("nav.home")}>
       <div className="platform-header-context">
-        <div className="platform-breadcrumb" aria-label="Səhifə yolu">
+        <div className="platform-breadcrumb" aria-label={t("shell.breadcrumb")}>
           <span>EduRate</span>
           <ChevronRight size={14} aria-hidden="true" />
           <strong>{t(routeLabelKeys[pathname] ?? context.labelKey)}</strong>
@@ -56,10 +56,10 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
           type="button"
           className="platform-header-icon"
           onClick={onUpdatesToggle}
-          aria-label="Bildirişlər panelini aç"
+          aria-label={t("shell.notificationsOpen")}
           aria-expanded={updatesOpen}
           aria-controls="platform-desktop-utility-panel"
-          title="Bildirişlər"
+          title={t("shell.notifications")}
         >
           <Bell size={18} aria-hidden="true" />
           <i aria-hidden="true" />

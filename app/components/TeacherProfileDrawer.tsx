@@ -110,7 +110,7 @@ export function TeacherProfileDrawer({
           <motion.button
             type="button"
             className="drawer-backdrop"
-            aria-label="Müəllim profilini bağla"
+            aria-label={t("teachers.closeProfile")}
             onClick={onClose}
           />
 
@@ -141,7 +141,7 @@ export function TeacherProfileDrawer({
                 type="button"
                 onClick={onClose}
                 className="drawer-close"
-                aria-label="Müəllim profilini bağla"
+                aria-label={t("teachers.closeProfile")}
               >
                 <X size={20} strokeWidth={1.6} />
               </button>

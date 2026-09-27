@@ -85,7 +85,7 @@ export function PlatformTabBar({ pathname, menuOpen, onMenu }: PlatformTabBarPro
         onClick={onMenu}
         aria-expanded={menuOpen}
         aria-controls="platform-mobile-navigation"
-        aria-label={menuOpen ? "Menyunu bağla" : "Menyunu aç"}
+        aria-label={t(menuOpen ? "shell.menuClose" : "shell.menuOpen")}
       >
         <span className="platform-tabbar-icon"><Menu size={22} aria-hidden="true" /></span>
         <span className="platform-tabbar-label">{t("nav.menu")}</span>
