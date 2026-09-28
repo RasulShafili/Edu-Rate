@@ -4802,3 +4802,95 @@ body {
 @media (max-width: 640px) {
   .kuds-shell .event-period-tabs button { padding: 0 8px; font-size: 12px; }
 }
+
+/* Klub hero-su: örtük şəkli masaüstündə hero-nun yarısını (519×813px) tuturdu —
+   boş-boşuna böyük yer. İndi sağ üstdə yığcam kvadrat kartdır. */
+@media (min-width: 981px) {
+  .kuds-shell .club-detail .club-detail-hero:has(.club-detail-hero__visual.has-cover) { min-height: 0; }
+  .kuds-shell .club-detail .club-detail-hero__visual.has-cover {
+    top: 84px;
+    right: clamp(28px, 4vw, 60px);
+    bottom: auto;
+    width: min(30%, 320px);
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgb(37 82 72 / 12%);
+    border-radius: 24px;
+    box-shadow: 0 26px 60px -34px rgb(25 67 58 / 55%);
+  }
+  .kuds-shell .club-detail .club-detail-hero__visual.has-cover::after { display: none; }
+  .kuds-shell .club-detail .club-detail-hero:has(.club-detail-hero__visual.has-cover) .club-detail-hero__content {
+    width: calc(100% - min(30%, 320px) - 60px);
+    max-width: 720px;
+  }
+}
+
+/* Klub üzvləri: ad-soyad, rol, klikləyəndə əlaqə sorğusu. */
+.kuds-shell .club-people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-items: start; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.kuds-shell .club-person {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--kuds-border);
+  border-radius: 16px;
+  background: var(--kuds-surface);
+  box-shadow: var(--kuds-shadow-sm);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.kuds-shell .club-person.is-open,
+.kuds-shell .club-person:hover { border-color: rgb(68 118 108 / 45%); }
+.kuds-shell .club-person__main {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  color: var(--kuds-text);
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.kuds-shell .club-person__avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #fff;
+  border-radius: 50%;
+  background: var(--ku-green);
+  background-position: center;
+  background-size: cover;
+  font-size: 15px;
+  font-weight: 750;
+}
+.kuds-shell .club-person__text { display: grid; min-width: 0; gap: 3px; }
+.kuds-shell .club-person__text strong { overflow: hidden; font-size: 15px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.kuds-shell .club-person__text small { display: inline-flex; align-items: center; gap: 5px; color: var(--kuds-muted); font-size: 12px; }
+.kuds-shell .club-person__text small svg { color: #9b7835; }
+.kuds-shell .club-person__actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; border-top: 1px solid var(--kuds-border); }
+.kuds-shell .club-person__actions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 10px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .club-person__actions button.is-primary { color: #fff; border-color: transparent; background: var(--ku-green); }
+.kuds-shell .club-person__actions button:disabled { opacity: .6; cursor: progress; }
+.kuds-shell .club-person__state { display: inline-flex; align-items: center; gap: 6px; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+.kuds-shell .club-person__message { margin: 0; color: var(--ku-dark-green); font-size: 12px; font-weight: 650; }
+@media (max-width: 640px) {
+  .kuds-shell .club-people-grid { grid-template-columns: 1fr; }
+  .kuds-shell .club-person__actions button { flex: 1; justify-content: center; }
+}

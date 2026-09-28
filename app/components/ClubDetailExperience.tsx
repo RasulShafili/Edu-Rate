@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, CalendarDays, Clock3, Crown, Flag, MapPin, Plus, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, Clock3, Crown, Flag, MapPin, MessageCircle, Plus, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
 import type { Club, ClubEvent, ClubEventFormat, ClubHistoryMilestone, ClubTabId } from "../data/clubs";
@@ -13,6 +13,7 @@ import { SecureImagePicker } from "./SecureImagePicker";
 import { useAuth } from "./AuthProvider";
 import { useT } from "../i18n/LanguageProvider";
 import { ReportDialog } from "./ReportDialog";
+import { usePlatform } from "./PlatformProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -23,6 +24,8 @@ type ClubDetailExperienceProps = {
 type ManagedMember={id:string;name:string;role:"leader"|"member";isCreator:boolean;avatarUrl?:string};
 type ClubManagement={members:ManagedMember[];canManage:boolean;canDelete:boolean};
 type EntryList="events"|"history";
+type Connection={id:string;requesterId:string;recipientId:string;status:"pending"|"accepted"|"blocked"};
+type PeerState="self"|"none"|"sent"|"incoming"|"connected"|"blocked";
 type EventDraft={title:string;summary:string;date:string;time:string;place:string;format:ClubEventFormat};
 type HistoryDraft={year:string;title:string;description:string};
 const emptyEventDraft:EventDraft={title:"",summary:"",date:"",time:"18:00",place:"",format:"meetup"};
@@ -60,6 +63,12 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   const [entryBusy,setEntryBusy]=useState("");
   const [entryConfirm,setEntryConfirm]=useState("");
   const [entryMessage,setEntryMessage]=useState("");
+  // Üzvlər: kimə klikləndi, əlaqə vəziyyətləri və əməliyyatın nəticəsi.
+  const [selectedMember,setSelectedMember]=useState("");
+  const [connections,setConnections]=useState<Connection[]|null>(null);
+  const [connectionBusy,setConnectionBusy]=useState("");
+  const [connectionMessage,setConnectionMessage]=useState<{id:string;key:string}|null>(null);
+  const { openConversation } = usePlatform();
   // "Keçib" nişanı üçün cari vaxt yalnız brauzerdə oxunur (serverdə null) ki,
   // server və brauzer eyni HTML-i versin. Dəqiqəyə yuvarlanır — snapshot sabit qalır.
   const now=useSyncExternalStore(subscribeNoop,currentMinute,()=>null);
@@ -174,6 +183,48 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
       aria-label={confirming?t("club.entryDeleteConfirm"):`${t("club.entryDelete")}: ${label}`}>
       <Trash2 size={14} aria-hidden="true"/>{confirming?<span>{t("club.entryDeleteConfirm")}</span>:null}
     </button>;
+  }
+
+  // Əlaqə vəziyyəti yalnız "Üzvlər" tabı açılanda yüklənir.
+  useEffect(()=>{
+    if(!user||activeTab!=="members"||connections)return;
+    const controller=new AbortController();
+    fetch("/api/community/connections",{cache:"no-store",signal:controller.signal}).then(async(response)=>{
+      const payload=await response.json().catch(()=>null) as {data?:Connection[]}|null;
+      setConnections(response.ok?payload?.data??[]:[]);
+    }).catch(()=>undefined);
+    return()=>controller.abort();
+  },[activeTab,connections,user]);
+
+  function peerState(memberId:string):PeerState{
+    if(memberId===user?.id)return"self";
+    const link=connections?.find((item)=>item.requesterId===memberId||item.recipientId===memberId);
+    if(!link)return"none";
+    if(link.status==="accepted")return"connected";
+    if(link.status==="blocked")return"blocked";
+    return link.requesterId===user?.id?"sent":"incoming";
+  }
+
+  async function connectWith(member:ManagedMember){
+    const state=peerState(member.id);
+    setConnectionBusy(member.id);setConnectionMessage(null);
+    try{
+      const incoming=state==="incoming"?connections?.find((item)=>item.requesterId===member.id&&item.status==="pending"):undefined;
+      const response=incoming
+        ?await fetch(`/api/community/connections/${encodeURIComponent(incoming.id)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({})})
+        :await fetch("/api/community/connections",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({userId:member.id})});
+      const payload=await response.json().catch(()=>null) as {data?:Connection;error?:{code?:string}}|null;
+      if(!response.ok||!payload?.data)throw new Error(response.status===401?"admin.error.session":"club.connectFailed");
+      const saved=payload.data;
+      setConnections((current)=>[...(current??[]).filter((item)=>item.id!==saved.id),saved]);
+      setConnectionMessage({id:member.id,key:incoming?"club.connectAccepted":"club.connectSent"});
+      window.dispatchEvent(new CustomEvent("edurate:connections-changed"));
+    }catch(error){setConnectionMessage({id:member.id,key:error instanceof Error?error.message:"club.connectFailed"});}
+    finally{setConnectionBusy("");}
+  }
+
+  function messageMember(member:ManagedMember){
+    openConversation({id:member.id,name:member.name,initials:getInitials(member.name),role:member.role==="leader"?"club.roleLeader":"club.roleMember",focus:editable.name,bio:"",city:"",status:"online",accent:"#8fc15f",glow:"rgba(143,193,95,.28)",mutuals:0,tags:[],openingMessage:"",reply:"",avatarUrl:member.avatarUrl});
   }
 
   function selectTab(tab: ClubTabId, moveFocus = false) {
@@ -420,19 +471,45 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
               <div className="club-members-section">
                 <div className="club-panel-heading">
                   <div><span className="club-panel-kicker">{t("club.membersKicker")}</span><h2>{t("club.membersTitle")}</h2></div>
-                  <p><UsersRound size={15} aria-hidden="true" /> {t("club.membersPrivacy")}</p>
+                  <p><UsersRound size={15} aria-hidden="true" /> {t("club.membersHint", { count: management?.members.length ?? 0 })}</p>
                 </div>
-                {/* Əvvəl burada klubun statik `members` sahəsi (seed-dəki tək "koordinator")
-                    göstərilirdi: kim qoşulursa qoşulsun siyahı dəyişmirdi, sayğac isə real
-                    sayı göstərirdi. İndi real üzvlər — məxfilik üçün yalnız inisial və rol. */}
+                {/* Real üzvlər ad-soyadı ilə; üzvə klikləyəndə əlaqə sorğusu göndərmək
+                    və ya (əlaqədədirsə) mesaj yazmaq olur. Siyahı yalnız daxil olmuş
+                    istifadəçiyə açıqdır (backend). */}
                 {management?.members.length ? (
-                  <ul className="club-member-grid">
-                    {management.members.map((member) => (
-                      <li key={member.id} className="club-member-card">
-                        <span className="club-member-avatar" aria-hidden="true">{getInitials(member.name)}</span>
-                        <div><h3>{t(member.isCreator ? "club.roleCreator" : member.role === "leader" ? "club.roleLeader" : "club.roleMember")}</h3></div>
-                      </li>
-                    ))}
+                  <ul className="club-people-grid">
+                    {[...management.members].sort((a, b) => Number(b.isCreator) - Number(a.isCreator) || Number(b.role === "leader") - Number(a.role === "leader") || a.name.localeCompare(b.name, "az")).map((member) => {
+                      const state = peerState(member.id);
+                      const open = selectedMember === member.id;
+                      const message = connectionMessage?.id === member.id ? connectionMessage.key : "";
+                      return (
+                        <li key={member.id} className={`club-person${open ? " is-open" : ""}`}>
+                          <button type="button" className="club-person__main" aria-expanded={open} onClick={() => setSelectedMember(open ? "" : member.id)}>
+                            <span className={`club-person__avatar${member.avatarUrl ? " has-image" : ""}`} style={member.avatarUrl ? { backgroundImage: `url("${member.avatarUrl}")` } : undefined} aria-hidden="true">{member.avatarUrl ? null : getInitials(member.name)}</span>
+                            <span className="club-person__text">
+                              <strong>{member.name}</strong>
+                              <small>{member.isCreator || member.role === "leader" ? <Crown size={12} aria-hidden="true" /> : null}{t(member.isCreator ? "club.roleCreator" : member.role === "leader" ? "club.roleLeader" : "club.roleMember")}{state === "self" ? ` · ${t("club.you")}` : ""}</small>
+                            </span>
+                          </button>
+                          {open && state !== "self" ? (
+                            <div className="club-person__actions">
+                              {state === "connected" ? (
+                                <button type="button" onClick={() => messageMember(member)}><MessageCircle size={14} aria-hidden="true" /> {t("club.messageMember")}</button>
+                              ) : state === "sent" ? (
+                                <span className="club-person__state"><Check size={14} aria-hidden="true" /> {t("club.requestSent")}</span>
+                              ) : state === "blocked" ? (
+                                <span className="club-person__state">{t("club.connectUnavailable")}</span>
+                              ) : (
+                                <button type="button" className="is-primary" disabled={connectionBusy === member.id || !connections} onClick={() => void connectWith(member)}>
+                                  <UserPlus size={14} aria-hidden="true" /> {t(state === "incoming" ? "club.acceptRequest" : "club.sendRequest")}
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
+                          {message ? <p className="club-person__message" role="status">{t(message)}</p> : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : user && !management ? (
                   <p className="club-members-loading" role="status">{t("club.membersLoading")}</p>
