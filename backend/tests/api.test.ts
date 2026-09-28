@@ -1001,10 +1001,19 @@ describe("EduRate API", () => {
     await request(app).patch(`/api/admin/reports/${report.body.data.id}`).set("Authorization",`Bearer ${reusableAdminToken}`).send({status:"resolved",resolutionNote:"Məzmun yoxlanıldı və qərar auditə yazıldı."}).expect(200);
     const history=await request(app).get(`/api/community/conversations/${id}/messages`).set("Authorization",peerAuthorization).expect(200);
     assert.equal(history.body.data[0].id,sent.body.data.id);
+    // Köhnə mesajların səhifələnməsi: `before` kursorundan əvvəlki mesajlar, xronoloji sırada.
+    const second=await request(app).post(`/api/community/conversations/${id}/messages`).set("Authorization",peerAuthorization).send({body:"İkinci mesaj."}).expect(201);
+    const third=await request(app).post(`/api/community/conversations/${id}/messages`).set("Authorization",studentAuthorization).send({body:"Üçüncü mesaj."}).expect(201);
+    const latestPage=await request(app).get(`/api/community/conversations/${id}/messages?limit=2`).set("Authorization",peerAuthorization).expect(200);
+    assert.deepEqual(latestPage.body.data.map((item:{id:string})=>item.id),[second.body.data.id,third.body.data.id]);
+    const olderPage=await request(app).get(`/api/community/conversations/${id}/messages?limit=2&before=${second.body.data.id}`).set("Authorization",peerAuthorization).expect(200);
+    assert.deepEqual(olderPage.body.data.map((item:{id:string})=>item.id),[sent.body.data.id]);
+    await request(app).delete(`/api/community/conversations/${id}/messages/${second.body.data.id}`).set("Authorization",peerAuthorization).expect(204);
+    await request(app).delete(`/api/community/conversations/${id}/messages/${third.body.data.id}`).set("Authorization",studentAuthorization).expect(204);
     await request(app).delete(`/api/community/conversations/${id}/messages/${sent.body.data.id}`).set("Authorization",peerAuthorization).expect(404);
     await request(app).delete(`/api/community/conversations/${id}/messages/${sent.body.data.id}`).set("Authorization",studentAuthorization).expect(204);
     const historyAfterDeletion=await request(app).get(`/api/community/conversations/${id}/messages`).set("Authorization",peerAuthorization).expect(200);
-    assert.equal(historyAfterDeletion.body.data.length,1);
+    assert.equal(historyAfterDeletion.body.data.length,3);
     assert.equal(historyAfterDeletion.body.data[0].body,"Mesaj silindi");
     assert.equal(historyAfterDeletion.body.data[0].deleted,true);
     await request(app).patch(`/api/community/conversations/${id}/read`).set("Authorization",peerAuthorization).send({}).expect(200);

@@ -2290,7 +2290,7 @@ body {
   .chat-contact-picker { position: fixed; inset: 70px 8px 8px; border: 1px solid var(--kuds-border); border-radius: 14px; box-shadow: 0 18px 50px rgb(20 54 47 / 18%); }
   .chat-contact-picker > header div { display: grid; }
   .chat-center-tabs { grid-template-columns: 1fr; }
-  .chat-center-tabs button { min-height: 30px; font-size: 8px; }
+  .chat-center-tabs button { min-height: 30px; font-size: 11px; }
   .chat-center-list > button { grid-template-columns: 34px minmax(0, 1fr); padding: 7px; }
   .chat-center-list > button > b,
   .chat-center-list > button > svg { display: none; }
@@ -3648,6 +3648,10 @@ body {
   .chat-center[data-view="list"] .chat-center-main { display: none !important; }
   .chat-center[data-view="thread"] .chat-center-sidebar { display: none !important; }
   .chat-center-sidebar { border-right: 0 !important; }
+  /* Tam ekran siyahıda tablar yan-yana: planşetin dar sütun qaydası (1 sütun, 8px)
+     burada ikinci tabı adi mətn kimi göstərirdi. */
+  .chat-center-tabs { grid-template-columns: 1fr 1fr !important; }
+  .chat-center-tabs button { min-height: 36px !important; font-size: 12px !important; }
 
   /* Söhbətdən geri (siyahıya) — köhnə X-i əvəz edir */
   .chat-back {
@@ -4580,3 +4584,76 @@ body {
   .kuds-shell .club-event-item:has(.club-entry-delete) .club-event-place { padding-right: 0; }
 }
 .kuds-shell .club-history-list li:has(.club-entry-delete) > div { padding-right: 44px; }
+
+/* Yazışma: axtarış, köhnə mesajlar, silmə təsdiqi və oxunaqlı siyahı. */
+.chat-search { position: relative; display: block; margin: 8px 10px 0; }
+.chat-search svg { position: absolute; top: 50%; left: 11px; color: #70817d; transform: translateY(-50%); pointer-events: none; }
+.chat-search input { width: 100%; min-height: 38px; padding: 0 10px 0 34px; color: #142a26; outline: 0; font: inherit; font-size: 13px; }
+.chat-search input::placeholder { color: #70817d; }
+.chat-load-older {
+  display: block;
+  margin: 4px auto 12px;
+  padding: 7px 14px;
+  color: var(--ku-dark-green);
+  border: 1px solid #d3dfdb;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.chat-load-older:disabled { opacity: 0.6; cursor: progress; }
+.message-actions button.is-confirming {
+  display: inline-flex !important;
+  width: auto !important;
+  gap: 4px;
+  padding: 0 9px;
+  color: #fff !important;
+  border-color: #b42318 !important;
+  border-radius: 999px !important;
+  background: #b42318 !important;
+  font-size: 11px;
+  font-weight: 750;
+  align-items: center;
+}
+.chat-center-tabs button { font-size: 12px; }
+.chat-center-list > button strong,
+.chat-contact-picker > div > button strong { font-size: 13px; }
+.chat-center-list > button small,
+.chat-contact-picker > div > button small { font-size: 12px; }
+.chat-center-list > button > b { min-width: 20px; height: 20px; font-size: 11px; }
+.chat-center-list > p,
+.chat-contact-picker > div > p { font-size: 12px; }
+.chat-contact-picker > header small { font-size: 11px; }
+/* Planşet (769–899px): panel dock düyməsinə (right: 20px) nisbətən yerləşirdi,
+   eni isə 100vw − 16px idi — sol kənardan kənara çıxırdı. */
+@media (min-width: 769px) and (max-width: 899px) {
+  .kuds-shell .chat-panel.chat-center,
+  .chat-panel.chat-center { position: fixed !important; inset: 8px !important; width: auto !important; height: auto !important; }
+  /* Söhbət siyahısı: 118px-lik dar sütunda adlar və axtarış kəsilirdi. */
+  .kuds-shell .chat-center,
+  .chat-center { grid-template-columns: 220px minmax(0, 1fr) !important; }
+  .chat-center-sidebar > header div { display: grid !important; flex: 1; min-width: 0; }
+  .chat-center-tabs { grid-template-columns: 1fr 1fr !important; }
+  .chat-center-list > button { grid-template-columns: 34px minmax(0, 1fr) auto !important; }
+  .chat-center-list > button > span:nth-child(2) { display: grid !important; }
+  .chat-center-list > button > b { display: grid !important; }
+}
+/* 768–1080px: "Səhifə alətləri" düyməsi köhnə tünd stildə qalıb başlıqdakı
+   istifadəçi adının üstünə düşürdü. Açıq mövzuya uyğunlaşdırılıb, başlığa yer ayrılıb. */
+@media (min-width: 768px) and (max-width: 1080px) {
+  .kuds-shell .platform-mobile-tools-trigger {
+    top: 14px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    color: var(--ku-dark-green);
+    border: 1px solid var(--kuds-border);
+    border-radius: 12px;
+    background: var(--kuds-surface);
+    box-shadow: var(--kuds-shadow-xs);
+    backdrop-filter: none;
+  }
+  .kuds-shell .platform-header { padding-right: 76px; }
+}
