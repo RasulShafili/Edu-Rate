@@ -218,14 +218,18 @@ export function EventDrawer({ event, onClose, registered, registrationLoading, r
                   <span>{startDate}</span>
                 </div>
                 <div><Clock3 size={17} /><span>{event.time}</span></div>
-                <div><MapPin size={17} /><span>{event.location}, {event.city}</span></div>
+                <div><MapPin size={17} /><span>{[event.location, event.city].filter(Boolean).join(", ")}</span></div>
               </div>
 
               <div className="drawer-hosts">
                 <span>{t("events.drawer.organizer")}</span>
                 <p>{event.organizer}</p>
-                <span>{t("events.drawer.speakers")}</span>
-                <p>{event.speakers.join(" · ")}</p>
+                {event.speakers.length ? (
+                  <>
+                    <span>{t("events.drawer.speakers")}</span>
+                    <p>{event.speakers.join(" · ")}</p>
+                  </>
+                ) : null}
               </div>
 
               <div className="drawer-bottom">

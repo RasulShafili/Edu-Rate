@@ -36,6 +36,7 @@ export type AnnouncementItem = NetworkItemBase & {
   viewCount?: number;
   reactions?: Record<string, number>;
   myReaction?: string | null;
+  commentCount?: number;
   read?: boolean;
   bookmarked?: boolean;
 };

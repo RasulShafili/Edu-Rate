@@ -229,6 +229,15 @@ export const openApiDocument = {
       patch: { tags: ["Clubs"], summary: "Klub üzvünü əlavə lider təyin et", security: [{ bearerAuth: [] }], responses: { "200": { description: "Lider təyin edildi" }, "403": { description: "Yaradıcı və ya əsas admin icazəsi tələb olunur" }, "404": { description: "Klub və ya üzv tapılmadı" } } },
       delete: { tags: ["Clubs"], summary: "Əlavə liderin səlahiyyətini götür", security: [{ bearerAuth: [] }], responses: { "200": { description: "Liderlik götürüldü" }, "409": { description: "Klub yaradıcısının liderliyi götürülə bilməz" } } },
     },
+    "/api/network/announcements/{id}/comments": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+      get: { tags: ["Announcements"], summary: "Elan şərhləri (anonim şərhdə müəllif gizlidir)", responses: { "200": { description: "Şərhlər" }, "404": { description: "Elan tapılmadı" } } },
+      post: { tags: ["Announcements"], summary: "Elana şərh yaz (anonim seçimi ilə)", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["body"], properties: { body: { type: "string", minLength: 2, maxLength: 600 }, anonymous: { type: "boolean" } } } } } }, responses: { "201": { description: "Yenilənmiş şərhlər və say" }, "401": { description: "Giriş tələb olunur" }, "429": { description: "Çox tez-tez" } } },
+    },
+    "/api/network/announcements/{id}/comments/{commentId}": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }, { name: "commentId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      delete: { tags: ["Announcements"], summary: "Şərhi sil (müəllif və ya moderator)", security: [{ bearerAuth: [] }], responses: { "200": { description: "Yenilənmiş şərhlər və say" }, "404": { description: "Silinə bilən şərh tapılmadı" } } },
+    },
     "/api/notifications": {
       get: { tags: ["Notifications"], summary: "Şəxsi bildirişlər və oxunmamış say", security: [{ bearerAuth: [] }], parameters: [{ name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100 } }], responses: { "200": { description: "{ items, unread }" }, "401": { description: "Giriş tələb olunur" } } },
     },
