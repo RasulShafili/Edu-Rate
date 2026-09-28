@@ -4,6 +4,7 @@ import { useT } from "../i18n/LanguageProvider";
 import { PageHeader } from "./ui/Primitives";
 import { PushToggle } from "./PushToggle";
 import { DeleteAccountPanel } from "./DeleteAccountPanel";
+import { PrivacyDataPanel } from "./PrivacyDataPanel";
 import { TwoFactorPanel } from "./TwoFactorPanel";
 import { useAuth } from "./AuthProvider";
 
@@ -31,6 +32,7 @@ export function SettingsExperience() {
       {/* 2FA hələlik yığışdırılıb: yeni quraşdırma yoxdur. Artıq aktiv edən hesab
           paneli görür ki, onu söndürə bilsin (yoxsa girişdə kod soruşulmağa davam edir). */}
       {user?.twoFactorEnabled ? <TwoFactorPanel /> : null}
+      <PrivacyDataPanel />
       <DeleteAccountPanel />
     </section>
   );

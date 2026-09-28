@@ -56,7 +56,7 @@ const envSchema = z
     CLOUDINARY_UPLOAD_PRESET: z.string().optional().or(z.literal("")),
     VAPID_PUBLIC_KEY: z.string().optional().or(z.literal("")),
     VAPID_PRIVATE_KEY: z.string().optional().or(z.literal("")),
-    VAPID_SUBJECT: z.string().default("mailto:support@edurate.az"),
+    VAPID_SUBJECT: z.string().default("mailto:edurate111@gmail.com"),
   })
   .superRefine((value, context) => {
     // Koddan silinmiş köhnə default və sənədlərdəki nümunə mətn ictimai-məlumdur.

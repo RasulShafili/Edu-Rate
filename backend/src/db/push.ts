@@ -59,6 +59,15 @@ export async function removeSubscription(userId: string, endpoint: string) {
   await databasePool.query("DELETE FROM push_subscriptions WHERE endpoint=$1 AND user_id=$2", [endpoint, userId]);
 }
 
+/** Hesab silinəndə: istifadəçinin bütün cihaz abunələri. */
+export async function removeAllSubscriptions(userId: string) {
+  if (!databasePool) {
+    for (const [endpoint, item] of memory) if (item.userId === userId) memory.delete(endpoint);
+    return;
+  }
+  await databasePool.query("DELETE FROM push_subscriptions WHERE user_id=$1", [userId]);
+}
+
 async function listSubscriptions(userIds?: string[]): Promise<StoredSubscription[]> {
   if (!databasePool) {
     const all = [...memory.values()];

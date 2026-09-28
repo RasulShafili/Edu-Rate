@@ -135,6 +135,15 @@ export async function markNotificationRead(userId: string, id: string): Promise<
   return Boolean(result.rowCount);
 }
 
+/** Hesab silinəndə bildirişlər də silinir. */
+export async function deleteNotificationsForUser(userId: string) {
+  if (!databasePool) {
+    memory.delete(userId);
+    return;
+  }
+  await databasePool.query("DELETE FROM notifications WHERE user_id=$1", [userId]);
+}
+
 export async function markAllNotificationsRead(userId: string): Promise<number> {
   if (!databasePool) {
     let count = 0;

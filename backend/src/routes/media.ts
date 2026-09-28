@@ -61,4 +61,7 @@ function verifyCloudinaryResponseSignature(publicId:string,version:number,signat
   const receivedBuffer=Buffer.from(signature,"hex");const expectedBuffer=Buffer.from(expected,"hex");
   return receivedBuffer.length===expectedBuffer.length&&timingSafeEqual(receivedBuffer,expectedBuffer);
 }
+/** Hesab silinəndə profil şəkli həm bazadan, həm Cloudinary-dən silinir. */
+export async function removeUserAvatar(userId:string){const removed=await removeMedia("avatar",userId);if(removed&&configured)await cloudinary.uploader.destroy(removed.publicId,{resource_type:"image",invalidate:true}).catch(()=>undefined);}
+
 function assertConfigured(){if(!configured)throw new ApiError(503,"MEDIA_NOT_CONFIGURED","Şəkil yaddaşı hələ konfiqurasiya edilməyib.");}

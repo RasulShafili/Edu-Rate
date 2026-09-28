@@ -4944,3 +4944,82 @@ body {
   .kuds-shell .announcement-comment-form__row { align-items: stretch; flex-direction: column; }
   .kuds-shell .announcement-comment-form button[type="submit"] { justify-content: center; }
 }
+
+/* ---- Hüquqi sənədlər: footer linkləri, sənəd səhifəsi, razılıq pəncərəsi ---- */
+.kuds-shell .site-footer .site-footer__legal { display: flex; grid-column: 1 / -1; flex-wrap: wrap; gap: 6px 18px; padding-top: 14px; border-top: 1px solid var(--kuds-border); font-size: 12.5px; }
+.kuds-shell .site-footer__legal a,
+.kuds-shell .site-footer__legal button { padding: 0; color: var(--ku-dark-green); border: 0; background: none; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+.kuds-shell .site-footer__legal a:hover,
+.kuds-shell .site-footer__legal button:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.kuds-shell .legal-page { max-width: 1080px; }
+.kuds-shell .legal-switcher { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 18px; }
+.kuds-shell .legal-switcher a { display: inline-flex; min-height: 38px; align-items: center; padding: 0 14px; color: var(--ku-dark-green); border: 1px solid rgba(22,66,60,.16); border-radius: 999px; background: rgba(255,255,255,.7); font-size: 13px; font-weight: 700; text-decoration: none; }
+.kuds-shell .legal-switcher a[aria-current="page"] { color: #fff; border-color: var(--ku-dark-green); background: var(--ku-dark-green); }
+.kuds-shell .legal-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 20px; align-items: start; }
+.kuds-shell .legal-toc { position: sticky; top: 88px; display: grid; gap: 10px; padding: 18px; border: 1px solid var(--premium-edge); border-radius: 18px; background: var(--premium-glass); box-shadow: var(--premium-shadow); }
+.kuds-shell .legal-toc strong { color: var(--ku-dark-green); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.kuds-shell .legal-toc ol { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: var(--kuds-muted); font-size: 13px; line-height: 1.4; }
+.kuds-shell .legal-toc a { color: inherit; text-decoration: none; }
+.kuds-shell .legal-toc a:hover { color: var(--ku-dark-green); text-decoration: underline; }
+.kuds-shell .legal-page article { display: grid; gap: 22px; padding: 28px; }
+.kuds-shell .legal-page article section { display: grid; gap: 10px; scroll-margin-top: 90px; }
+.kuds-shell .legal-page article h2 { margin: 0; color: var(--ku-dark-green); font-size: 19px; }
+.kuds-shell .legal-page article p,
+.kuds-shell .legal-page article li { margin: 0; color: #3f4d5c; font-size: 14.5px; line-height: 1.75; }
+.kuds-shell .legal-page article ul { display: grid; gap: 6px; margin: 0; padding-left: 20px; }
+.kuds-shell .legal-page .legal-meta { color: var(--kuds-muted); font-size: 13px; font-weight: 600; }
+.kuds-shell .legal-page .legal-note { padding: 12px 14px; border-left: 3px solid #44766c; border-radius: 10px; background: #edf4f1; }
+.kuds-shell .legal-table { overflow-x: auto; border: 1px solid rgba(22,66,60,.12); border-radius: 12px; background: #fff; }
+.kuds-shell .legal-table table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.55; }
+.kuds-shell .legal-table th { padding: 10px 12px; color: var(--ku-dark-green); background: #edf4f1; font-size: 12.5px; text-align: left; }
+.kuds-shell .legal-table td { padding: 10px 12px; color: #3f4d5c; border-top: 1px solid rgba(22,66,60,.08); vertical-align: top; }
+.kuds-shell .legal-table td strong { color: #1f2d3a; }
+@media (max-width: 900px) {
+  .kuds-shell .legal-layout { grid-template-columns: 1fr; }
+  .kuds-shell .legal-toc { position: static; }
+}
+@media (max-width: 640px) {
+  .kuds-shell .legal-page article { padding: 18px; }
+  .kuds-shell .legal-table { overflow: visible; border: 0; background: transparent; }
+  .kuds-shell .legal-table thead { display: none; }
+  .kuds-shell .legal-table tr { display: grid; gap: 4px; margin-bottom: 10px; padding: 10px 12px; border: 1px solid rgba(22,66,60,.12); border-radius: 12px; background: #fff; }
+  .kuds-shell .legal-table td { display: grid; gap: 2px; padding: 0; border: 0; }
+  .kuds-shell .legal-table td::before { content: attr(data-label); color: var(--kuds-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+}
+
+/* Qeydiyyatda razılıq qutusu: əvvəl 8–9px idi və demək olar görünmürdü. */
+.kuds-shell .auth-legal-consent { display: flex !important; max-width: none !important; gap: 10px !important; padding: 13px 14px !important; color: #2f3e4c !important; border: 1px solid rgba(22,66,60,.2) !important; border-radius: 12px !important; background: #f3f8f6 !important; font-size: 13px !important; line-height: 1.55 !important; }
+.kuds-shell .auth-legal-consent input { color-scheme: light; width: 19px !important; height: 19px !important; margin-top: 1px !important; }
+.kuds-shell .auth-legal-consent a { color: #16423c !important; font-weight: 700; }
+.kuds-shell .auth-legal-consent:has(input:checked) { border-color: rgba(68,118,108,.55) !important; background: #e6f1ec !important; }
+.kuds-shell .auth-submit:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Yenidən razılıq pəncərəsi (BodyPortal ilə body-yə çıxır — .kuds-shell xaricində). */
+.legal-gate { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 16px; background: rgba(12,28,25,.55); backdrop-filter: blur(4px); }
+.legal-gate__dialog { color-scheme: light; display: grid; gap: 12px; width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px; color: #1f2d3a; border-radius: 20px; background: #fff; box-shadow: 0 30px 80px -30px rgba(0,0,0,.5); font-family: inherit; }
+.legal-gate__icon { display: grid; width: 42px; height: 42px; place-items: center; color: #16423c; border-radius: 12px; background: #e6f1ec; }
+.legal-gate__dialog h2 { margin: 0; color: #16423c; font-size: 20px; }
+.legal-gate__dialog p { margin: 0; color: #3f4d5c; font-size: 14px; line-height: 1.6; }
+.legal-gate__links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; }
+.legal-gate__links a { color: #16423c; font-size: 14px; font-weight: 700; text-underline-offset: 3px; }
+.legal-gate__check { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid rgba(22,66,60,.2); border-radius: 12px; background: #f3f8f6; font-size: 13.5px; line-height: 1.5; cursor: pointer; }
+.legal-gate__check input { width: 18px; height: 18px; margin-top: 1px; flex: none; accent-color: #44766c; }
+.legal-gate__error { color: #9d3e35 !important; }
+.legal-gate__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.legal-gate__actions button { min-height: 42px; padding: 0 18px; border-radius: 11px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.legal-gate__primary { color: #fff; border: 0; background: #16423c; }
+.legal-gate__primary:disabled { opacity: .5; cursor: not-allowed; }
+.legal-gate__secondary { color: #16423c; border: 1px solid rgba(22,66,60,.25); background: #fff; }
+
+/* Ayarlar → Məxfilik və məlumatlarım */
+.kuds-shell .privacy-data-panel { display: grid; gap: 12px; }
+.kuds-shell .privacy-data-panel h2 { display: flex; align-items: center; gap: 8px; }
+.kuds-shell .privacy-data-panel__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.kuds-shell .privacy-data-panel__actions button { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; padding: 0 16px; color: #fff; border: 0; border-radius: 11px; background: var(--ku-dark-green); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.kuds-shell .privacy-data-panel__actions button.is-secondary { color: var(--ku-dark-green); border: 1px solid rgba(22,66,60,.25); background: #fff; }
+.kuds-shell .privacy-data-panel__actions button:disabled { opacity: .6; cursor: progress; }
+.kuds-shell .privacy-data-panel__message { margin: 0; color: #2f6b55; font-size: 13px; }
+.kuds-shell .privacy-data-panel__message.is-error { color: #9d3e35; }
+.kuds-shell .privacy-data-panel__meta { margin: 0; color: var(--kuds-muted); font-size: 12.5px; }
+.kuds-shell .privacy-data-panel__meta a { color: var(--ku-dark-green); font-weight: 600; }

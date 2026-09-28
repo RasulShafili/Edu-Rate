@@ -143,6 +143,16 @@ const routeContexts: Record<string, PlatformRouteContext> = {
     labelKey: "rail.label.terms",
     shortcuts: [],
   },
+  "/cookies": {
+    key: "cookies",
+    labelKey: "rail.label.cookies",
+    shortcuts: [],
+  },
+  "/community-guidelines": {
+    key: "guidelines",
+    labelKey: "rail.label.guidelines",
+    shortcuts: [],
+  },
   "/auth": {
     key: "auth",
     labelKey: "nav.signIn",

@@ -208,4 +208,9 @@ export async function cleanupExpiredSecurityData(){
   await databasePool.query("DELETE FROM auth_sessions WHERE expires_at < NOW() - INTERVAL '7 days' OR revoked_at < NOW() - INTERVAL '30 days'");
   await databasePool.query("DELETE FROM auth_action_tokens WHERE expires_at < NOW() - INTERVAL '1 day' OR used_at < NOW() - INTERVAL '7 days'");
   await databasePool.query("DELETE FROM content_reports WHERE status IN ('resolved','dismissed') AND updated_at < NOW() - INTERVAL '180 days'");
+  // Məxfilik siyasətindəki saxlama müddətləri: audit jurnalı 1 il, bağlanmış
+  // dəstək müraciətləri 2 il, oxunmuş bildirişlər 180 gün.
+  await databasePool.query("DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '365 days'");
+  await databasePool.query("DELETE FROM support_tickets WHERE status='resolved' AND updated_at < NOW() - INTERVAL '730 days'");
+  await databasePool.query("DELETE FROM notifications WHERE read_at IS NOT NULL AND read_at < NOW() - INTERVAL '180 days'");
 }
