@@ -2031,3 +2031,28 @@ describe("Tədbir qaydaları və iştirakçı bildirişləri", () => {
     assert.equal(inbox.body.data.items[0].params.title, "Ləğv ediləcək seminar");
   });
 });
+
+describe("Sadələşdirilmiş tədbir forması", () => {
+  it("qısa təsvirsiz, şəhərsiz və çıxışçısız tədbir yaradır; qısa təsviri mətndən qurur", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const teacher = await createUser({ name: "Sadə Forma Müəllimi", email: "events.simple.teacher@example.az", passwordHash: await hashPassword("Kampus-Yolu-2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role: "teacher", status: "Aktiv" });
+    const auth = `Bearer ${createAccessToken(teacher)}`;
+    const about = "Açıq mühazirədə süni intellektin təhsildə tətbiqini müzakirə edəcəyik. Noutbuk gətirmək tövsiyə olunur.";
+    const created = await request(app).post("/api/events").set("Authorization", auth).send({
+      title: "Sadə forma seminarı", category: "Technology", longDescription: about, location: "Tədris zalı", organizer: "Sadə Forma Müəllimi",
+      startAt: "2027-06-10T14:00:00+04:00", endAt: "2027-06-10T16:00:00+04:00", registrationDeadline: "2027-06-09T18:00:00+04:00", capacity: 40,
+    }).expect(201);
+    assert.equal(created.body.data.description, "Açıq mühazirədə süni intellektin təhsildə tətbiqini müzakirə edəcəyik.");
+    assert.equal(created.body.data.city, "");
+    assert.deepEqual(created.body.data.speakers, []);
+    // Mətn dəyişəndə qısa təsvir də yenilənir.
+    const updated = await request(app).patch(`/api/events/${created.body.data.id}`).set("Authorization", auth)
+      .send({ longDescription: "Seminar praktiki məşğələ formatında keçiriləcək və hər kəs iştirak edə bilər." }).expect(200);
+    assert.equal(updated.body.data.description, "Seminar praktiki məşğələ formatında keçiriləcək və hər kəs iştirak edə bilər.");
+    // Mətnsiz tədbir qəbul olunmur.
+    await request(app).post("/api/events").set("Authorization", auth).send({ title: "Boş", category: "Technology", location: "Zal", organizer: "X", startAt: "2027-06-10T14:00:00+04:00", endAt: "2027-06-10T16:00:00+04:00", registrationDeadline: "2027-06-09T18:00:00+04:00", capacity: 10 }).expect(422);
+  });
+});

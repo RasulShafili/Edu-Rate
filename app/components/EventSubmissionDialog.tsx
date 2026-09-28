@@ -92,12 +92,17 @@ export function EventSubmissionDialog({ open, onClose, onCreated, organizerName,
     }
     setBusy(true);
     try {
+      // Qısa təsvir, çıxışçılar və şəhər formadan çıxarılıb: qısa təsviri backend
+      // "Tədbir haqqında məlumat" mətnindən qurur.
       const fields = {
-        ...draft,
+        title: draft.title,
+        category: draft.category,
+        longDescription: draft.longDescription,
+        location: draft.location,
+        organizer: draft.organizer,
         startAt: new Date(draft.startAt).toISOString(),
         endAt: new Date(draft.endAt).toISOString(),
         registrationDeadline: new Date(draft.registrationDeadline).toISOString(),
-        speakers: draft.speakers.split(",").map((value) => value.trim()).filter(Boolean),
         capacity: Number(draft.capacity),
       };
       const response = await fetch(editing ? `/api/events/${encodeURIComponent(editing.id)}` : "/api/events", {
@@ -168,12 +173,9 @@ export function EventSubmissionDialog({ open, onClose, onCreated, organizerName,
                 </select>
               </label>
               <label><span>{t("eventForm.capacity")}</span><input type="number" min={Math.max(1, editing?.registered ?? 1)} max="10000" {...field("capacity")} required /></label>
-              <label className="is-wide"><span>{t("eventForm.description")}</span><input {...field("description")} minLength={10} maxLength={280} required /></label>
-              <label className="is-wide"><span>{t("eventForm.longDescription")}</span><textarea {...field("longDescription")} minLength={20} maxLength={1600} rows={4} required /></label>
+              <label className="is-wide"><span>{t("eventForm.about")}</span><textarea {...field("longDescription")} minLength={20} maxLength={1600} rows={5} placeholder={t("eventForm.aboutHint")} required /></label>
               <label><span>{t("eventForm.organizer")}</span><input {...field("organizer")} minLength={2} maxLength={180} required /></label>
-              <label><span>{t("eventForm.speakers")}</span><input {...field("speakers")} placeholder={t("eventForm.speakersHint")} /></label>
               <label><span>{t("eventForm.location")}</span><input {...field("location")} minLength={2} maxLength={180} required /></label>
-              <label><span>{t("eventForm.city")}</span><input {...field("city")} minLength={2} maxLength={120} required /></label>
               <label><span>{t("eventForm.startAt")}</span><input type="datetime-local" {...field("startAt")} required /></label>
               <label><span>{t("eventForm.endAt")}</span><input type="datetime-local" {...field("endAt")} required /></label>
               <label className="is-wide"><span>{t("eventForm.deadline")}</span><input type="datetime-local" {...field("registrationDeadline")} required /></label>

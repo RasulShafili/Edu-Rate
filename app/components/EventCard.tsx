@@ -82,7 +82,7 @@ export function EventCard({ event, index, onSelect, registered = false }: EventC
             </span>
             <span className="event-location">
               <MapPin size={13} strokeWidth={1.8} aria-hidden="true" />
-              {event.city} · {event.location}
+              {[event.city, event.location].filter(Boolean).join(" · ")}
             </span>
             <span className="event-organizer">{event.organizer}</span>
             <span className="event-primary-action">{t("events.more")}</span>
