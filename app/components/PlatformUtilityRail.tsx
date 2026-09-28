@@ -88,7 +88,8 @@ function searchPlatform(query: string, t: (key: string) => string) {
 /** Bildirişin mətni: parametrlər (status kimi) seçilmiş dilə çevrilir. */
 function notificationText(item: NotificationItem, t: (key: string, values?: Record<string, string | number>) => string) {
   const params = { ...item.params, ...(item.params.status ? { status: t(`notif.status.${item.params.status}`) } : {}) };
-  const key = `notif.${item.kind}`;
+  // Anonim şərhdə ad göndərilmir — ayrıca mətn.
+  const key = item.kind === "announcement_commented" && !item.params.name ? "notif.announcement_commented_anon" : `notif.${item.kind}`;
   const text = t(key, params);
   return text === key ? t("notif.generic") : text;
 }

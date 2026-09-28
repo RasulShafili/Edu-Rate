@@ -1,5 +1,9 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
+import { countAnnouncementComments, createAnnouncementComment, deleteAnnouncementComment, listAnnouncementComments } from "../db/announcement-comments.js";
+import { notifyUser } from "../db/notifications.js";
+import { userOrIpKey } from "../lib/client-key.js";
 import { createAnnouncement, createFeedPost, findAnnouncementById, getAnnouncementReactionState, listAnnouncements, listAnnouncementsByCreator, listFeed, listFeedPostsByAuthor, recordAnnouncementView, setAnnouncementReaction, setAnnouncementUserState } from "../db/network.js";
 import { authenticate, optionalAuthenticate } from "../middleware/authenticate.js";
 import { findUserById } from "../db/database.js";
@@ -40,6 +44,32 @@ networkRouter.post("/announcements/:id/view",authenticate,async(request,response
 networkRouter.get("/announcements/:id/reactions",authenticate,async(request,response)=>{const id=z.string().parse(request.params.id);await requirePublishedAnnouncement(id);response.json({data:await getAnnouncementReactionState(id,request.auth!.userId)});});
 networkRouter.patch("/announcements/:id/reaction",authenticate,async(request,response)=>{const id=z.string().parse(request.params.id);await requirePublishedAnnouncement(id);const {emoji}=z.object({emoji:reactionSchema.nullable()}).parse(request.body);await setAnnouncementReaction(id,request.auth!.userId,emoji);response.json({data:await getAnnouncementReactionState(id,request.auth!.userId)});});
 networkRouter.patch("/announcements/:id/state",authenticate,async(request,response)=>{const id=z.string().parse(request.params.id);await requirePublishedAnnouncement(id);const input=z.object({read:z.boolean().optional(),bookmarked:z.boolean().optional()}).strict().refine((value)=>value.read!==undefined||value.bookmarked!==undefined).parse(request.body);response.json({data:await setAnnouncementUserState(id,request.auth!.userId,input)});});
+
+// Şərhlər: oxumaq hamıya (dərc olunmuş elan), yazmaq daxil olmuş istifadəçiyə.
+const commentLimiter = rateLimit({ windowMs: 60_000, limit: 8, keyGenerator: userOrIpKey, standardHeaders: true, legacyHeaders: false });
+const MODERATOR_ROLES = ["owner_admin", "admin", "assistant_admin"];
+networkRouter.get("/announcements/:id/comments", optionalAuthenticate, async (request, response) => {
+  const id = z.string().parse(request.params.id);
+  await requirePublishedAnnouncement(id);
+  response.json({ data: await listAnnouncementComments(id, request.auth?.userId) });
+});
+networkRouter.post("/announcements/:id/comments", authenticate, commentLimiter, async (request, response) => {
+  const id = z.string().parse(request.params.id);
+  const announcement = await requirePublishedAnnouncement(id);
+  const { body, anonymous } = z.object({ body: z.string().trim().min(2).max(600), anonymous: z.boolean().default(false) }).strict().parse(request.body);
+  await createAnnouncementComment(id, request.auth!.userId, body, anonymous);
+  // Elanın müəllifinə xəbər: anonim şərhdə ad göndərilmir.
+  const author = anonymous ? null : await findUserById(request.auth!.userId);
+  await notifyUser(announcement.createdBy, "announcement_commented", { title: announcement.title, ...(author ? { name: author.name } : {}) }, "/feed", request.auth!.userId);
+  response.status(201).json({ data: { comments: await listAnnouncementComments(id, request.auth!.userId), count: await countAnnouncementComments(id) } });
+});
+networkRouter.delete("/announcements/:id/comments/:commentId", authenticate, async (request, response) => {
+  const id = z.string().parse(request.params.id);
+  const commentId = z.string().uuid().parse(request.params.commentId);
+  const removed = await deleteAnnouncementComment(id, commentId, request.auth!.userId, MODERATOR_ROLES.includes(request.auth!.role));
+  if (!removed) throw new ApiError(404, "COMMENT_NOT_FOUND", "Silinə bilən şərh tapılmadı.");
+  response.json({ data: { comments: await listAnnouncementComments(id, request.auth!.userId), count: await countAnnouncementComments(id) } });
+});
 
 networkRouter.get("/feed", async (request, response) => {
   const { category } = querySchema.parse(request.query);

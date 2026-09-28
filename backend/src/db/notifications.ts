@@ -21,6 +21,7 @@ export const NOTIFICATION_KINDS = [
   "connection_accepted",
   "event_cancelled",
   "event_changed",
+  "announcement_commented",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 export type NotificationParams = Record<string, string>;
@@ -48,6 +49,7 @@ const pushTitles: Record<NotificationKind, (params: NotificationParams) => strin
   connection_accepted: (p) => `${p.name ?? ""} əlaqə sorğunu qəbul etdi`,
   event_cancelled: (p) => `Tədbir ləğv olundu: ${p.title ?? ""}`,
   event_changed: (p) => `Tədbirin vaxtı və ya yeri dəyişdi: ${p.title ?? ""}`,
+  announcement_commented: (p) => `Elanına şərh yazıldı: ${p.title ?? ""}`,
 };
 
 function clean(params: NotificationParams): NotificationParams {

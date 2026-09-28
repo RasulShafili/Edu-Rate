@@ -2056,3 +2056,55 @@ describe("Sadələşdirilmiş tədbir forması", () => {
     await request(app).post("/api/events").set("Authorization", auth).send({ title: "Boş", category: "Technology", location: "Zal", organizer: "X", startAt: "2027-06-10T14:00:00+04:00", endAt: "2027-06-10T16:00:00+04:00", registrationDeadline: "2027-06-09T18:00:00+04:00", capacity: 10 }).expect(422);
   });
 });
+
+describe("Elan şərhləri", () => {
+  it("anonim və adlı şərh yazır, anonim müəllifin kimliyini gizlədir, silmə hüququnu qoruyur", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const, role: "student" as const };
+    const anon = await createUser({ ...base, name: "Gizli Şərhçi", email: "comments.anon@example.az" });
+    const named = await createUser({ ...base, name: "Açıq Şərhçi", email: "comments.named@example.az" });
+    const anonAuth = `Bearer ${createAccessToken(anon)}`;
+    const namedAuth = `Bearer ${createAccessToken(named)}`;
+    const list = await request(app).get("/api/network/announcements").expect(200);
+    const announcementId = list.body.data[0].id as string;
+    const url = `/api/network/announcements/${announcementId}/comments`;
+
+    await request(app).post(url).send({ body: "Anonim olmayan sorğu" }).expect(401);
+    await request(app).post(url).set("Authorization", anonAuth).send({ body: "x" }).expect(422);
+    await request(app).post("/api/network/announcements/yoxdur/comments").set("Authorization", anonAuth).send({ body: "Salam hamıya" }).expect(404);
+
+    await request(app).post(url).set("Authorization", anonAuth).send({ body: "Bu elan çox faydalıdır.", anonymous: true }).expect(201);
+    await request(app).post(url).set("Authorization", namedAuth).send({ body: "Razıyam, təşəkkürlər!" }).expect(201);
+
+    // Anonim şərhin müəllifi API cavabının heç bir yerində görünmür.
+    const publicView = await request(app).get(url).expect(200);
+    const raw = JSON.stringify(publicView.body);
+    assert.equal(raw.includes("Gizli Şərhçi"), false);
+    assert.equal(raw.includes(anon.id), false);
+    const [first, second] = publicView.body.data;
+    assert.equal(first.anonymous, true);
+    assert.equal(first.author, null);
+    assert.equal(second.author.name, "Açıq Şərhçi");
+    assert.equal(first.mine, false);
+
+    const ownView = await request(app).get(url).set("Authorization", anonAuth).expect(200);
+    assert.equal(ownView.body.data[0].mine, true);
+    assert.equal(ownView.body.data[1].mine, false);
+
+    // Başqasının şərhini silmək olmur; öz şərhini və moderator hamısını silir.
+    await request(app).delete(`${url}/${first.id}`).set("Authorization", namedAuth).expect(404);
+    const afterOwn = await request(app).delete(`${url}/${first.id}`).set("Authorization", anonAuth).expect(200);
+    assert.equal(afterOwn.body.data.count, 1);
+    const afterModerator = await request(app).delete(`${url}/${second.id}`).set("Authorization", `Bearer ${reusableAdminToken}`).expect(200);
+    assert.equal(afterModerator.body.data.count, 0);
+
+    // Siyahıda şərh sayı var.
+    await request(app).post(url).set("Authorization", namedAuth).send({ body: "Yenidən yazıram." }).expect(201);
+    const refreshed = await request(app).get("/api/network/announcements").expect(200);
+    assert.equal(refreshed.body.data.find((item: { id: string }) => item.id === announcementId).commentCount, 1);
+  });
+});

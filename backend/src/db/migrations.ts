@@ -645,6 +645,23 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS notifications_user_unread_idx ON notifications(user_id) WHERE read_at IS NULL;
     `,
   },
+  {
+    version: 29,
+    name: "announcement comments",
+    sql: `
+      -- Anonim şərhdə author_id yalnız moderasiya və "mənim şərhim" üçün saxlanılır;
+      -- API onu heç vaxt qaytarmır.
+      CREATE TABLE IF NOT EXISTS announcement_comments (
+        id UUID PRIMARY KEY,
+        announcement_id VARCHAR(120) NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+        author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body VARCHAR(600) NOT NULL,
+        anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS announcement_comments_announcement_idx ON announcement_comments(announcement_id, created_at);
+    `,
+  },
 ];
 
 export const latestMigrationVersion = Math.max(...migrations.map((migration) => migration.version));

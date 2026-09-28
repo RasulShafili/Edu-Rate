@@ -4894,3 +4894,53 @@ body {
   .kuds-shell .club-people-grid { grid-template-columns: 1fr; }
   .kuds-shell .club-person__actions button { flex: 1; justify-content: center; }
 }
+
+/* Elan şərhləri (anonim seçimi ilə). */
+.kuds-shell .announcement-comments { margin-top: 10px; }
+.kuds-shell .announcement-comments-toggle {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .announcement-comments-toggle[aria-expanded="true"] { color: #fff; border-color: var(--ku-green); background: var(--ku-green); }
+.kuds-shell .announcement-comments-panel { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--kuds-border); border-radius: 14px; background: var(--kuds-bg); }
+.kuds-shell .announcement-comments-state { margin: 0; color: var(--kuds-muted); font-size: 13px; }
+.kuds-shell .announcement-comments-state.is-error { color: #b42318; }
+.kuds-shell .announcement-comments-state button { margin-left: 6px; color: var(--ku-dark-green); border: 0; background: none; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.kuds-shell .announcement-comments-state a { color: var(--ku-dark-green); font-weight: 700; }
+.kuds-shell .announcement-comment-list { display: grid; gap: 8px; max-height: 360px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.kuds-shell .announcement-comment-list li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 10px; border-radius: 12px; background: var(--kuds-surface); }
+.kuds-shell .announcement-comment-avatar { display: grid; width: 32px; height: 32px; place-items: center; color: #fff; border-radius: 50%; background: var(--ku-green); background-position: center; background-size: cover; font-size: 12px; font-weight: 750; }
+.kuds-shell .announcement-comment-list li.is-anonymous .announcement-comment-avatar { color: var(--kuds-muted); background: #e7ecea; }
+.kuds-shell .announcement-comment-list header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.kuds-shell .announcement-comment-list header strong { color: var(--kuds-text); font-size: 13px; }
+.kuds-shell .announcement-comment-list header em { color: var(--ku-green); font-size: 11px; font-style: normal; font-weight: 700; }
+.kuds-shell .announcement-comment-list header time { color: var(--kuds-muted); font-size: 11px; }
+.kuds-shell .announcement-comment-list p { margin: 3px 0 0; color: var(--kuds-text); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.kuds-shell .announcement-comment-delete { display: inline-flex; min-width: 30px; height: 30px; align-items: center; justify-content: center; gap: 4px; padding: 0 8px; color: var(--kuds-muted); border: 1px solid var(--kuds-border); border-radius: 8px; background: var(--kuds-surface); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.kuds-shell .announcement-comment-delete:hover,
+.kuds-shell .announcement-comment-delete.is-confirming { color: #fff; border-color: #b42318; background: #b42318; }
+.kuds-shell .announcement-comment-form { display: grid; gap: 8px; }
+.kuds-shell .announcement-comment-form textarea { width: 100%; min-height: 64px; padding: 10px 12px; color: var(--kuds-text); outline: 0; font: inherit; font-size: 13px; resize: vertical; }
+.kuds-shell .announcement-comment-form__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.kuds-shell .announcement-comment-anon { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.kuds-shell .announcement-comment-anon input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--ku-green); }
+.kuds-shell .announcement-comment-anon span { display: grid; gap: 1px; }
+.kuds-shell .announcement-comment-anon strong { color: var(--kuds-text); font-size: 13px; }
+.kuds-shell .announcement-comment-anon small { color: var(--kuds-muted); font-size: 11px; }
+.kuds-shell .announcement-comment-form button[type="submit"] { display: inline-flex; min-height: 38px; align-items: center; gap: 6px; padding: 0 14px; color: #fff; border: 0; border-radius: 10px; background: var(--ku-green); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.kuds-shell .announcement-comment-form button[type="submit"]:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .kuds-shell .announcement-comment-form__row { align-items: stretch; flex-direction: column; }
+  .kuds-shell .announcement-comment-form button[type="submit"] { justify-content: center; }
+}
