@@ -4,8 +4,8 @@ import { Bell, ChevronRight, LoaderCircle, LogIn, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
-import { useEffect, useSyncExternalStore } from "react";
-import useSWR from "swr";
+import { useSyncExternalStore } from "react";
+import { useUpdates } from "../hooks/useUpdates";
 import { getPlatformRouteContext } from "../data/platform-shell";
 import { useCurrentAvatar } from "../lib/current-avatar";
 import type { CSSProperties } from "react";
@@ -27,23 +27,9 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
   // Zəngdəki nöqtə əvvəl şərtsiz çəkilirdi — panel "yeni bildiriş yoxdur" desə də
   // həmişə "yenilik var" göstərirdi. İndi yalnız gözləyən əlaqə sorğusu və ya
   // oxunmamış söhbət olanda görünür (panelin "Sənə gələnlər" siyahısı ilə eyni qayda).
-  const updates = useSWR(user ? ["header-updates", user.id] : null, async ([, userId]: [string, string]) => {
-    const [connections, conversations] = await Promise.all([
-      fetch("/api/community/connections", { cache: "no-store" }),
-      fetch("/api/community/conversations", { cache: "no-store" }),
-    ]);
-    if (!connections.ok || !conversations.ok) return false;
-    const connectionList = ((await connections.json()) as { data?: Array<{ status: string; recipientId: string }> }).data ?? [];
-    const conversationList = ((await conversations.json()) as { data?: Array<{ unreadCount: number }> }).data ?? [];
-    return connectionList.some((entry) => entry.status === "pending" && entry.recipientId === userId)
-      || conversationList.some((entry) => entry.unreadCount > 0);
-  }, { dedupingInterval: 30_000, refreshInterval: 60_000 });
-  const refreshUpdates = updates.mutate;
-  useEffect(() => {
-    const refresh = () => void refreshUpdates();
-    window.addEventListener("edurate:connections-changed", refresh);
-    return () => window.removeEventListener("edurate:connections-changed", refresh);
-  }, [refreshUpdates]);
+  // Panel ilə eyni mənbə: şəxsi bildirişlər, gözləyən sorğular, oxunmamış söhbətlər.
+  const updates = useUpdates(user?.id);
+  const updateCount = updates.data?.total ?? 0;
   const context = getPlatformRouteContext(pathname);
   const shortcutLabel = useSyncExternalStore(
     () => () => undefined,
@@ -77,13 +63,13 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
           type="button"
           className="platform-header-icon"
           onClick={onUpdatesToggle}
-          aria-label={t("shell.notificationsOpen")}
+          aria-label={updateCount ? t("shell.notificationsCount", { count: updateCount }) : t("shell.notificationsOpen")}
           aria-expanded={updatesOpen}
           aria-controls="platform-desktop-utility-panel"
           title={t("shell.notifications")}
         >
           <Bell size={18} aria-hidden="true" />
-          {updates.data ? <i aria-hidden="true" /> : null}
+          {updateCount ? <i aria-hidden="true">{updateCount > 9 ? "9+" : updateCount}</i> : null}
         </button>
         <Link
           href={user ? "/profile" : "/auth"}

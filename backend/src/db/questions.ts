@@ -133,13 +133,13 @@ export async function createAnswer(questionId: string, authorId: string, body: s
     if (!question) return null;
     const answer = { id: randomUUID(), authorId, body, createdAt: now() };
     question.answers.push(answer);
-    return { id: answer.id };
+    return { id: answer.id, questionAuthorId: question.authorId, questionTitle: question.title };
   }
-  const exists = await databasePool.query("SELECT 1 FROM campus_questions WHERE id=$1 AND status='published'", [questionId]);
+  const exists = await databasePool.query("SELECT author_id,title FROM campus_questions WHERE id=$1 AND status='published'", [questionId]);
   if (!exists.rowCount) return null;
   const id = randomUUID();
   await databasePool.query("INSERT INTO campus_answers(id,question_id,author_id,body) VALUES($1,$2,$3,$4)", [id, questionId, authorId, body]);
-  return { id };
+  return { id, questionAuthorId: String(exists.rows[0].author_id), questionTitle: String(exists.rows[0].title) };
 }
 
 /** Səsi çevirir: verilmişdisə geri alır, yoxdursa əlavə edir. */

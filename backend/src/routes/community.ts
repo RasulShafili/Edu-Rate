@@ -6,6 +6,8 @@ import { ApiError } from "../lib/api-error.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { publishRealtime } from "../realtime.js";
 import { userOrIpKey } from "../lib/client-key.js";
+import { findUserById } from "../db/database.js";
+import { notifyUser } from "../db/notifications.js";
 
 export const communityRouter=Router();
 communityRouter.use(authenticate);
@@ -14,7 +16,7 @@ const messageLimiter=rateLimit({windowMs:60_000,limit:30,keyGenerator:userOrIpKe
 communityRouter.get("/users",async(req,res)=>res.json({data:await listCommunityUsers(req.auth!.userId)}));
 communityRouter.get("/connections",async(req,res)=>res.json({data:await listConnections(req.auth!.userId)}));
 communityRouter.post("/connections",async(req,res)=>{const {userId}=z.object({userId:z.string().uuid()}).strict().parse(req.body);res.status(201).json({data:await createConnection(req.auth!.userId,userId)});});
-communityRouter.patch("/connections/:id",async(req,res)=>{const id=z.string().uuid().parse(req.params.id);const c=await acceptConnection(id,req.auth!.userId);if(!c)throw new ApiError(404,"CONNECTION_NOT_FOUND","Gözləyən əlaqə tapılmadı.");res.json({data:c});});
+communityRouter.patch("/connections/:id",async(req,res)=>{const id=z.string().uuid().parse(req.params.id);const c=await acceptConnection(id,req.auth!.userId);if(!c)throw new ApiError(404,"CONNECTION_NOT_FOUND","Gözləyən əlaqə tapılmadı.");const accepter=await findUserById(req.auth!.userId);await notifyUser(c.requesterId,"connection_accepted",{name:accepter?.name??""},"/community",req.auth!.userId);res.json({data:c});});
 communityRouter.delete("/connections/:id",async(req,res)=>{if(!await deleteConnection(z.string().uuid().parse(req.params.id),req.auth!.userId))throw new ApiError(404,"CONNECTION_NOT_FOUND","Əlaqə tapılmadı.");res.status(204).send();});
 communityRouter.post("/blocks",async(req,res)=>{const {userId}=z.object({userId:z.string().uuid()}).strict().parse(req.body);await blockConnection(req.auth!.userId,userId);res.status(204).send();});
 communityRouter.delete("/blocks/:userId",async(req,res)=>{const peerId=z.string().uuid().parse(req.params.userId);if(!await unblockConnection(req.auth!.userId,peerId))throw new ApiError(404,"BLOCK_NOT_FOUND","Açılması mümkün olan blok tapılmadı.");res.status(204).send();});

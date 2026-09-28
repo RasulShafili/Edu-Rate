@@ -11,6 +11,7 @@ import type { Peer } from "../data/peers";
 import { useAuth } from "./AuthProvider";
 import type { ClubChatTarget } from "./PlatformProvider";
 import { ReportDialog, type ReportTarget } from "./ReportDialog";
+import { announceUpdates } from "../hooks/useUpdates";
 
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
 /** Bir dəfəyə yüklənən mesaj sayı (backend limiti 80). */
@@ -98,7 +99,7 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
   /** Ardıcıl gələn hadisələr üçün siyahını bir dəfə yeniləyir. */
   const scheduleRefresh = useCallback(() => {
     if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-    refreshTimer.current = window.setTimeout(() => void refreshRef.current(), 600);
+    refreshTimer.current = window.setTimeout(() => { void refreshRef.current(); announceUpdates("edurate:chat-changed"); }, 600);
   }, []);
 
   useEffect(() => {
@@ -177,6 +178,8 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
       socket.on("message:edited", (payload: { conversationId: string; messageId: string; body: string; editedAt: string }) => { if (matchesActive(payload.conversationId)) setMessages((current) => current.map((item) => item.id === payload.messageId ? { ...item, body: payload.body, editedAt: payload.editedAt } : item)); });
       socket.on("message:reaction", (payload: { conversationId: string; messageId: string; reactions: ApiReaction[] }) => { if (matchesActive(payload.conversationId)) setMessages((current) => current.map((item) => item.id === payload.messageId ? { ...item, reactions: mergeReactions(item.reactions, payload.reactions) } : item)); });
       socket.on("message:read", (payload: { conversationId: string; userId: string }) => { if (matchesActive(payload.conversationId) && payload.userId !== userId) setMessages((current) => current.map((item) => item.senderId === userId && item.status ? { ...item, status: "read" } : item)); });
+      // Şəxsi bildiriş (cavab, təsdiq, qəbul): zəng və panel dərhal yenilənsin.
+      socket.on("notification:new", () => announceUpdates("edurate:notifications-changed"));
       socket.on("typing", (payload: { conversationId: string; userId: string; active: boolean }) => {
         if (payload.conversationId !== activeIdRef.current || payload.userId === userId) return;
         setTyping(payload.active);
@@ -614,7 +617,9 @@ function mergeReactions(current: ApiReaction[] | undefined, incoming: ApiReactio
 function previewText(value: string, t: (key: string) => string) { return value === "Mesaj silindi" ? t("chat.deletedMessage") : value; }
 
 function markRead(conversationId: string) {
-  void fetch(`/api/community/conversations/${conversationId}/read`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({}) }).catch(() => undefined);
+  void fetch(`/api/community/conversations/${conversationId}/read`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({}) })
+    .then(() => announceUpdates("edurate:chat-changed"))
+    .catch(() => undefined);
 }
 
 function initials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join(""); }

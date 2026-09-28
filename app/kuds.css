@@ -4657,3 +4657,97 @@ body {
   }
   .kuds-shell .platform-header { padding-right: 76px; }
 }
+
+/* Bildirişlər: zəngdə say, paneldə oxunmuş/oxunmamış siyahı. */
+.kuds-shell .platform-header-icon i {
+  top: 4px;
+  right: 3px;
+  display: grid;
+  width: auto;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  place-items: center;
+  color: #fff;
+  border: 2px solid var(--kuds-surface);
+  border-radius: 999px;
+  background: #c2410c;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+.kuds-shell .platform-update-group header { display: flex; align-items: center; gap: 8px; }
+.kuds-shell .platform-mark-all {
+  display: inline-flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .platform-mark-all:disabled { opacity: 0.6; cursor: progress; }
+.kuds-shell .platform-notification-item {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 56px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  color: var(--kuds-text);
+  text-align: left;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.kuds-shell .platform-notification-item:hover,
+.kuds-shell .platform-notification-item:focus-visible { outline: none; background: var(--ku-soft-green); }
+.kuds-shell .platform-notification-item.is-unread { background: rgb(211 232 191 / 32%); }
+.kuds-shell .platform-notification-item.is-unread::after {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ku-green);
+  content: "";
+}
+.kuds-shell .platform-notification-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--ku-dark-green);
+  border-radius: 9px;
+  background: var(--ku-soft-green);
+}
+.kuds-shell .platform-notification-item strong { display: block; padding-right: 14px; font-size: 13px; font-weight: 650; line-height: 1.4; }
+.kuds-shell .platform-notification-item small { display: block; margin-top: 3px; color: var(--kuds-muted); font-size: 12px; }
+.kuds-shell .platform-notification-item:not(.is-unread) strong { font-weight: 500; }
+/* Panel mətnləri 8–10px idi (köhnə tünd tema). */
+.kuds-shell .platform-search-results strong,
+.kuds-shell .platform-shortcut-list strong,
+.kuds-shell .platform-update-group a strong,
+.kuds-shell .platform-connection-request strong { font-size: 13px; }
+.kuds-shell .platform-search-results small,
+.kuds-shell .platform-shortcut-list small,
+.kuds-shell .platform-update-group a small,
+.kuds-shell .platform-connection-request small,
+.kuds-shell .platform-update-group .platform-search-empty { font-size: 12px; }
+/* Telefonda zəng gizli idi, "Səhifə alətləri" düyməsi də — bildirişlərə heç bir
+   yol yox idi. Zəng axtarışın yanında qalır və mobil vərəqi açır. */
+@media (max-width: 767px) {
+  .kuds-shell .platform-header-icon { display: grid; width: 40px; height: 40px; min-width: 40px; }
+}

@@ -8,6 +8,7 @@ import { authenticate } from "../middleware/authenticate.js";
 import { ensureProfessionalProfileForUser, findProfessionalByUser, findProfessionalProfile, updateMentorDetails, type ProfessionalProfile } from "../db/professionals.js";
 import { createMentorApplication, getMentorApplication } from "../db/mentor-applications.js";
 import { ensureMentorshipConversation } from "../db/messaging.js";
+import { notifyUser } from "../db/notifications.js";
 
 export const workspaceRouter = Router();
 workspaceRouter.use(authenticate);
@@ -149,6 +150,9 @@ workspaceRouter.patch("/mentorship/:id", async (request, response) => {
   const conversation = status === "accepted"
     ? await ensureMentorshipConversation(result.userId, user.id)
     : null;
+  if (status !== "cancelled") {
+    await notifyUser(result.userId, status === "accepted" ? "mentorship_accepted" : "mentorship_rejected", { name: user.name }, "/mentors", user.id);
+  }
   response.json({ data: { ...result, conversationId: conversation?.id } });
 });
 

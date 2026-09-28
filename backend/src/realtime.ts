@@ -31,4 +31,9 @@ export async function publishRealtime(conversationId:string,event:string,payload
   for(const userId of await conversationParticipants(conversationId))io.to(`user:${userId}`).emit(event,payload);
 }
 
+/** Yalnız bir istifadəçiyə (bütün açıq tablarına) hadisə göndərir. */
+export function publishToUser(userId:string,event:string,payload:unknown){
+  io?.to(`user:${userId}`).emit(event,payload);
+}
+
 export async function closeRealtime(){await io?.close();io=null;}

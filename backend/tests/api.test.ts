@@ -1916,3 +1916,56 @@ describe("QA auditi: limitlər, moderasiya və görünürlük", () => {
     }
   });
 });
+
+describe("Şəxsi bildirişlər", () => {
+  it("cavab və əlaqə qəbulunda bildiriş yaradır, oxunmuş işarələyir, başqasınınkını qoruyur", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const, role: "student" as const };
+    const asker = await createUser({ ...base, name: "Bildiriş Alan", email: "notify.asker@example.az" });
+    const replier = await createUser({ ...base, name: "Bildiriş Göndərən", email: "notify.replier@example.az" });
+    const askerAuth = `Bearer ${createAccessToken(asker)}`;
+    const replierAuth = `Bearer ${createAccessToken(replier)}`;
+
+    await request(app).get("/api/notifications").expect(401);
+    const question = await request(app).post("/api/questions").set("Authorization", askerAuth)
+      .send({ title: "Yataqxanada internet nə vaxt düzələcək?", topic: "kampus" }).expect(201);
+    const questionId = question.body.data.id as string;
+
+    // Öz sualına cavab bildiriş yaratmır.
+    await request(app).post(`/api/questions/${questionId}/answers`).set("Authorization", askerAuth).send({ body: "Əlavə: ikinci mərtəbədə problem var." }).expect(201);
+    let inbox = await request(app).get("/api/notifications").set("Authorization", askerAuth).expect(200);
+    assert.equal(inbox.body.data.items.length, 0);
+
+    await request(app).post(`/api/questions/${questionId}/answers`).set("Authorization", replierAuth).send({ body: "Bu həftə sonu təmir olunur." }).expect(201);
+    inbox = await request(app).get("/api/notifications").set("Authorization", askerAuth).expect(200);
+    assert.equal(inbox.body.data.unread, 1);
+    const [answered] = inbox.body.data.items;
+    assert.equal(answered.kind, "question_answered");
+    assert.equal(answered.params.title, "Yataqxanada internet nə vaxt düzələcək?");
+    // Suallar anonimdir: bildirişdə cavab yazanın adı yoxdur.
+    assert.equal(JSON.stringify(answered).includes("Bildiriş Göndərən"), false);
+    assert.equal(answered.readAt, null);
+
+    // Başqasının bildirişini oxunmuş etmək olmur.
+    await request(app).patch(`/api/notifications/${answered.id}/read`).set("Authorization", replierAuth).expect(404);
+    await request(app).patch(`/api/notifications/${answered.id}/read`).set("Authorization", askerAuth).expect(200);
+    inbox = await request(app).get("/api/notifications").set("Authorization", askerAuth).expect(200);
+    assert.equal(inbox.body.data.unread, 0);
+    assert.ok(inbox.body.data.items[0].readAt);
+
+    // Əlaqə sorğusu qəbul edilir -> sorğunu göndərən bildiriş alır.
+    const connection = await request(app).post("/api/community/connections").set("Authorization", replierAuth).send({ userId: asker.id }).expect(201);
+    await request(app).patch(`/api/community/connections/${connection.body.data.id}`).set("Authorization", askerAuth).send({}).expect(200);
+    const replierInbox = await request(app).get("/api/notifications").set("Authorization", replierAuth).expect(200);
+    assert.equal(replierInbox.body.data.items[0].kind, "connection_accepted");
+    assert.equal(replierInbox.body.data.items[0].params.name, "Bildiriş Alan");
+
+    const readAll = await request(app).post("/api/notifications/read-all").set("Authorization", replierAuth).expect(200);
+    assert.equal(readAll.body.data.updated, 1);
+    assert.equal((await request(app).get("/api/notifications").set("Authorization", replierAuth).expect(200)).body.data.unread, 0);
+  });
+});

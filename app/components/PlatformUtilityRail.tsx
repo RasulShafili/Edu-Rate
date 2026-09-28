@@ -6,7 +6,9 @@ import {
   Bell,
   CalendarDays,
   Check,
+  CheckCheck,
   Command,
+  MessageCircle,
   Search,
   Sparkles,
   UserX,
@@ -32,6 +34,9 @@ import {
 } from "../data/platform-shell";
 import { useAuth } from "./AuthProvider";
 import { useT } from "../i18n/LanguageProvider";
+import { usePlatform } from "./PlatformProvider";
+import { roleLabelKey } from "./PeerDirectory";
+import { announceUpdates, useUpdates, type NotificationItem, type UnreadConversation } from "../hooks/useUpdates";
 
 export type UtilityTab = "search" | "shortcuts" | "updates";
 
@@ -80,6 +85,22 @@ function searchPlatform(query: string, t: (key: string) => string) {
   );
 }
 
+/** Bildirişin mətni: parametrlər (status kimi) seçilmiş dilə çevrilir. */
+function notificationText(item: NotificationItem, t: (key: string, values?: Record<string, string | number>) => string) {
+  const params = { ...item.params, ...(item.params.status ? { status: t(`notif.status.${item.params.status}`) } : {}) };
+  const key = `notif.${item.kind}`;
+  const text = t(key, params);
+  return text === key ? t("notif.generic") : text;
+}
+
+/** Bu gün üçün saat, əvvəlki günlər üçün "5 okt" (Bakı vaxtı). */
+function notificationTime(value: string, t: (key: string) => string) {
+  const parts = bakuDateParts(value);
+  const today = bakuDateParts(new Date().toISOString());
+  if (parts.day === today.day && parts.month === today.month && parts.year === today.year) return parts.time;
+  return `${Number(parts.day)} ${t(`monthShort.${parts.month}`)}`;
+}
+
 /** Tarix Bakı vaxtı ilə: "5 okt" və "18:30". */
 function shortBakuDate(value: string, t: (key: string) => string) {
   const parts = bakuDateParts(value);
@@ -100,34 +121,56 @@ function UtilityContent({
   const { user } = useAuth();
   const [upcomingEvents,setUpcomingEvents]=useState<Array<{id:string;title:string;startAt:string;location:string}>>([]);
   const [activeAnnouncements,setActiveAnnouncements]=useState<Array<{id:string;title:string;startsAt:string;expiresAt?:string;source:string}>>([]);
-  const [incomingConnections,setIncomingConnections]=useState<Array<{id:string;name:string}>>([]);
-  const [unreadConversations,setUnreadConversations]=useState<Array<{id:string;peerName:string;unreadCount:number}>>([]);
+  const updates = useUpdates(user?.id);
+  const notifications = updates.data?.notifications ?? [];
+  const unreadNotifications = updates.data?.unreadNotifications ?? 0;
+  const incomingConnections = updates.data?.connections ?? [];
+  const unreadConversations = updates.data?.conversations ?? [];
+  const { openConversation, openClubConversation } = usePlatform();
+  const router = useRouter();
+  const [markingAll, setMarkingAll] = useState(false);
   const [connectionActionId,setConnectionActionId]=useState<string|null>(null);
   const [connectionActionError,setConnectionActionError]=useState("");
   useEffect(()=>{let cancelled=false;void Promise.all([fetch("/api/catalog/events",{cache:"no-store"}),fetch("/api/network",{cache:"no-store"})]).then(async([eventsResponse,networkResponse])=>{const eventsPayload=await eventsResponse.json() as {data?:Array<{id:string;title:string;startAt:string;location:string}>};const networkPayload=await networkResponse.json() as {data?:{announcements?:Array<{id:string;title:string;startsAt:string;expiresAt?:string;source:string}>}};if(!cancelled){setUpcomingEvents((eventsPayload.data??[]).filter((item)=>new Date(item.startAt).getTime()>=Date.now()).slice(0,3));/* Lövhə kimi: müddəti bitmiş elan "son elanlar"da göstərilmir. */setActiveAnnouncements((networkPayload.data?.announcements??[]).filter((item)=>!item.expiresAt||new Date(item.expiresAt).getTime()>Date.now()).slice(0,3));}}).catch(()=>undefined);return()=>{cancelled=true;};},[]);
-  useEffect(() => {
-    if (!user || activeTab !== "updates") return;
-    let cancelled = false;
-    const controller = new AbortController();
-    void Promise.all([
-      fetch("/api/community/users", { cache: "no-store", signal: controller.signal }),
-      fetch("/api/community/connections", { cache: "no-store", signal: controller.signal }),
-      fetch("/api/community/conversations", { cache: "no-store", signal: controller.signal }),
-    ]).then(async ([usersResponse, connectionsResponse, conversationsResponse]) => {
-      const usersPayload = await usersResponse.json() as { data?: Array<{ id: string; name: string }> };
-      const connectionsPayload = await connectionsResponse.json() as { data?: Array<{ id: string; requesterId: string; recipientId: string; status: string }> };
-      const conversationsPayload = await conversationsResponse.json() as { data?: Array<{ id: string; peer: { name: string }; unreadCount: number }> };
-      if (cancelled) return;
-      const names = new Map((usersPayload.data ?? []).map((entry) => [entry.id, entry.name]));
-      setIncomingConnections((connectionsPayload.data ?? [])
-        .filter((entry) => entry.status === "pending" && entry.recipientId === user.id)
-        .map((entry) => ({ id: entry.id, name: names.get(entry.requesterId) ?? "" })));
-      setUnreadConversations((conversationsPayload.data ?? [])
-        .filter((entry) => entry.unreadCount > 0)
-        .map((entry) => ({ id: entry.id, peerName: entry.peer.name, unreadCount: entry.unreadCount })));
-    }).catch(() => undefined);
-    return () => { cancelled = true; controller.abort(); };
-  }, [activeTab, user]);
+  // Panel açılanda təzə vəziyyəti göstər (fonda 60 saniyədə bir də yenilənir).
+  const refreshUpdates = updates.mutate;
+  useEffect(() => { if (user && activeTab === "updates") void refreshUpdates(); }, [activeTab, refreshUpdates, user]);
+
+  async function openNotification(item: NotificationItem) {
+    onNavigate();
+    if (!item.readAt) {
+      void refreshUpdates((current) => current && ({
+        ...current,
+        notifications: current.notifications.map((entry) => entry.id === item.id ? { ...entry, readAt: new Date().toISOString() } : entry),
+        unreadNotifications: Math.max(0, current.unreadNotifications - 1),
+        total: Math.max(0, current.total - 1),
+      }), { revalidate: false });
+      void fetch(`/api/notifications/${encodeURIComponent(item.id)}/read`, { method: "PATCH" }).finally(() => announceUpdates());
+    }
+    router.push(item.url.startsWith("/") ? item.url : "/");
+  }
+
+  async function markAllRead() {
+    if (markingAll) return;
+    setMarkingAll(true);
+    try {
+      const response = await fetch("/api/notifications/read-all", { method: "POST" });
+      if (response.ok) announceUpdates();
+    } finally {
+      setMarkingAll(false);
+    }
+  }
+
+  /** Oxunmamış söhbət əvvəl sadəcə /community-yə aparırdı; indi həmin söhbəti açır. */
+  function openUnreadConversation(conversation: UnreadConversation) {
+    onNavigate();
+    if (conversation.kind === "group") {
+      openClubConversation({ conversationId: conversation.id, clubId: conversation.group.clubId, name: conversation.name, initials: conversation.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join(""), memberCount: conversation.group.memberCount, isAdmin: conversation.group.isAdmin });
+      return;
+    }
+    const peer = conversation.peer;
+    openConversation({ id: peer.id, name: peer.name, initials: peer.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join(""), role: roleLabelKey(peer.role), focus: peer.program, bio: "", city: peer.city, status: "online", accent: "#8fc15f", glow: "rgba(143,193,95,.28)", mutuals: 0, tags: [], openingMessage: "", reply: "", avatarUrl: peer.avatarUrl });
+  }
 
   async function decideConnection(connectionId: string, decision: "accept" | "reject") {
     if (connectionActionId) return;
@@ -143,7 +186,7 @@ function UtilityContent({
         // Mətn yox, açar: backend-in azərbaycanca mesajı EN/RU-da da görünürdü.
         throw new Error(response.status === 401 ? "admin.error.session" : "rail.connectionFailed");
       }
-      setIncomingConnections((current) => current.filter((item) => item.id !== connectionId));
+      void refreshUpdates((current) => current && ({ ...current, connections: current.connections.filter((item) => item.id !== connectionId), total: Math.max(0, current.total - 1) }), { revalidate: false });
       window.dispatchEvent(new CustomEvent("edurate:connections-changed"));
     } catch (error) {
       setConnectionActionError(error instanceof Error && error.message === "admin.error.session" ? error.message : "rail.connectionFailed");
@@ -246,13 +289,22 @@ function UtilityContent({
         <header>
           <Bell size={15} aria-hidden="true" />
           <h3 id={`${idPrefix}-notifications-title`}>{t("rail.forYou")}</h3>
+          {unreadNotifications ? (
+            <button type="button" className="platform-mark-all" onClick={() => void markAllRead()} disabled={markingAll}>
+              <CheckCheck size={13} aria-hidden="true" /> {t("rail.markAllRead")}
+            </button>
+          ) : null}
         </header>
         {!user ? (
           <Link href="/auth" onClick={onNavigate}>
             <span className="platform-update-dot" aria-hidden="true" />
             <span><strong>{t("rail.signInForUpdates")}</strong><small>{t("rail.signInForUpdatesHint")}</small></span>
           </Link>
-        ) : incomingConnections.length || unreadConversations.length ? (
+        ) : updates.error && !updates.data ? (
+          <p className="platform-search-empty" role="alert">{t("rail.updatesFailed")}</p>
+        ) : !updates.data ? (
+          <p className="platform-search-empty" role="status">{t("rail.updatesLoading")}</p>
+        ) : notifications.length || incomingConnections.length || unreadConversations.length ? (
           <>
             {incomingConnections.map((connection) => (
               <article key={connection.id} className="platform-connection-request">
@@ -278,10 +330,17 @@ function UtilityContent({
               </article>
             ))}
             {unreadConversations.map((conversation) => (
-              <Link key={conversation.id} href="/community" onClick={onNavigate}>
-                <span className="platform-update-dot" aria-hidden="true" />
-                <span><strong>{t("rail.newMessage", { name: conversation.peerName })}</strong><small>{t("rail.unread", { count: conversation.unreadCount })}</small></span>
-              </Link>
+              <button key={conversation.id} type="button" className="platform-notification-item is-unread" onClick={() => openUnreadConversation(conversation)}>
+                <span className="platform-notification-icon" aria-hidden="true"><MessageCircle size={14} /></span>
+                <span><strong>{t("rail.newMessage", { name: conversation.name })}</strong><small>{t("rail.unread", { count: conversation.unreadCount })}</small></span>
+              </button>
+            ))}
+            {notifications.map((item) => (
+              <button key={item.id} type="button" className={`platform-notification-item${item.readAt ? "" : " is-unread"}`} onClick={() => void openNotification(item)}>
+                <span className="platform-notification-icon" aria-hidden="true"><Bell size={14} /></span>
+                <span><strong>{notificationText(item, t)}</strong><small>{notificationTime(item.createdAt, t)}</small></span>
+                {item.readAt ? null : <i className="sr-only">{t("rail.unreadLabel")}</i>}
+              </button>
             ))}
           </>
         ) : (

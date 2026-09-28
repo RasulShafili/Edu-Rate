@@ -8,6 +8,8 @@ import {
   updateMentorshipRequest,
 } from "../db/business.js";
 import { ApiError } from "../lib/api-error.js";
+import { findUserById } from "../db/database.js";
+import { notifyUser } from "../db/notifications.js";
 import { authenticate } from "../middleware/authenticate.js";
 
 export const mentorshipRouter = Router();
@@ -42,7 +44,10 @@ mentorshipRouter.post("/", async (request, response) => {
   if (mentor.userId && mentor.userId === request.auth!.userId) {
     throw new ApiError(422, "SELF_MENTORSHIP", "Özünə mentorluq müraciəti göndərə bilməzsən.");
   }
-  response.status(201).json({ data: await createMentorshipRequest(request.auth!.userId, mentor.slug, input.note, mentor.id) });
+  const created = await createMentorshipRequest(request.auth!.userId, mentor.slug, input.note, mentor.id);
+  const student = await findUserById(request.auth!.userId);
+  await notifyUser(mentor.userId, "mentorship_request", { name: student?.name ?? "" }, "/workspace", request.auth!.userId);
+  response.status(201).json({ data: created });
 });
 
 mentorshipRouter.patch("/:requestId", async (request, response) => {
