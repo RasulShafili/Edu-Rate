@@ -4751,3 +4751,54 @@ body {
 @media (max-width: 767px) {
   .kuds-shell .platform-header-icon { display: grid; width: 40px; height: 40px; min-width: 40px; }
 }
+
+/* Tədbirlər: qeydiyyat nişanı, "Qeydiyyatlarım" sayı, yaradanın əməliyyatları. */
+.kuds-shell .event-registered-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  color: var(--ku-dark-green);
+  border-radius: 999px;
+  background: var(--ku-soft-green);
+  font-size: 12px;
+  font-weight: 750;
+}
+.kuds-shell .event-period-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.kuds-shell .event-period-count {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  place-items: center;
+  color: var(--ku-dark-green);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+}
+.kuds-shell .event-period-tabs button:not(.active) .event-period-count { color: #fff; background: var(--ku-green); }
+.kuds-shell .my-submissions__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.kuds-shell .my-submissions__actions button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 11px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .my-submissions__actions button.is-danger { color: #fff; border-color: #b42318; background: #b42318; }
+.kuds-shell .my-submissions__actions button:disabled { opacity: 0.6; cursor: progress; }
+.kuds-shell .my-submissions__feedback { margin: 10px 0 0; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+.kuds-shell .drawer-share-row button.calendar-download { font: inherit; cursor: pointer; }
+.kuds-shell .event-link-feedback { margin: 10px 0 0; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+@media (max-width: 640px) {
+  .kuds-shell .event-period-tabs button { padding: 0 8px; font-size: 12px; }
+}

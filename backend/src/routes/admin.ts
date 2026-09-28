@@ -47,6 +47,7 @@ import { ensureClubConversation, findMessageForReport, listContentReports, updat
 import { createActionToken } from "../db/auth-security.js";
 import { sendPush } from "../db/push.js";
 import { notifyUser } from "../db/notifications.js";
+import { noticeEventCancelled, noticeEventChanged } from "../lib/event-notices.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 
 export const adminRouter = Router();
@@ -317,11 +318,15 @@ adminRouter.patch("/events/:id", async (request, response) => {
   if (patch.status === "Açıq" && current.adminStatus !== "Açıq") {
     await notifyUser(current.createdBy, "event_published", { title: event!.title }, "/events", request.auth!.userId);
   }
+  await noticeEventChanged(current, event!, request.auth!.userId);
   response.json({ data: toAdminEvent(event!, patch.status) });
 });
 
 adminRouter.delete("/events/:id", async (request, response) => {
   const id = z.string().parse(request.params.id);
+  const current = await findEventById(id);
+  if (!current) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
+  await noticeEventCancelled(current, request.auth!.userId);
   if (!(await deleteEvent(id))) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
   await writeAudit(request.auth!.userId, "Tədbir silindi", "event", id);
   response.status(204).send();

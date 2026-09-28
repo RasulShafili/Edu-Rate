@@ -2,6 +2,7 @@
 
 import { CheckCircle2, ShieldCheck, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { BodyPortal } from "./ui/BodyPortal";
 import { useT } from "../i18n/LanguageProvider";
 
 /**
@@ -63,6 +64,7 @@ export function FeedPostDialog({ open, onClose }: Props) {
   }
 
   return (
+    <BodyPortal>
     <div
       className="content-submission-backdrop"
       role="presentation"
@@ -146,5 +148,6 @@ export function FeedPostDialog({ open, onClose }: Props) {
         )}
       </section>
     </div>
+    </BodyPortal>
   );
 }
