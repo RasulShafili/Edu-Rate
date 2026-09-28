@@ -6,12 +6,14 @@ import {
   deleteEvent,
   findEventById,
   listEvents,
+  listEventRegistrantIds,
   listEventsByCreator,
   listMyEventRegistrations,
   registerForEvent,
   updateEvent,
 } from "../db/business.js";
 import { ApiError } from "../lib/api-error.js";
+import { noticeEventCancelled, noticeEventChanged } from "../lib/event-notices.js";
 import { authenticate } from "../middleware/authenticate.js";
 
 export const eventsRouter = Router();
@@ -58,14 +60,27 @@ eventsRouter.get("/registrations/me", authenticate, async (request, response) =>
 // `/:eventId`-dən əvvəl olmalıdır, yoxsa "mine" tədbir id-si kimi tutulur.
 eventsRouter.get("/mine", authenticate, async (request, response) => {
   const events = await listEventsByCreator(request.auth!.userId);
+  // Yaradan öz tədbirini redaktə edə bilsin deyə bütün sahələr və qeydiyyat sayı.
   response.json({
-    data: events.map((event) => ({
+    data: await Promise.all(events.map(async (event) => ({
       id: event.id,
       title: event.title,
+      category: event.category,
+      description: event.description,
+      longDescription: event.longDescription,
+      location: event.location,
+      city: event.city,
+      organizer: event.organizer,
       startAt: event.startAt,
+      endAt: event.endAt,
+      registrationDeadline: event.registrationDeadline,
+      speakers: event.speakers,
+      capacity: event.capacity,
+      registered: (await listEventRegistrantIds(event.id)).length,
+      imageUrl: event.imageUrl,
       status: event.adminStatus ?? "Açıq",
       createdAt: event.createdAt,
-    })),
+    }))),
   });
 });
 
@@ -82,7 +97,9 @@ eventsRouter.post("/", authenticate, async (request, response) => {
   if (!["teacher", "owner_admin", "admin", "assistant_admin"].includes(request.auth!.role)) {
     throw new ApiError(403, "EVENT_CREATE_FORBIDDEN", "Tədbiri yalnız müəllim və ya rəhbərlik yarada bilər.");
   }
-  const input = eventSchema.parse(request.body);
+  // Boş yer sayı qeydiyyatdan hesablanır: əvvəl yaradan onu özü yaza bilirdi
+  // (məs. 50 yerlik tədbir "2 yer qaldı" kimi görünürdü).
+  const input = { ...eventSchema.parse(request.body), availableSpots: undefined };
   const adminStatus=request.auth!.role==="teacher"?"Qaralama":"Açıq";
   response.status(201).json({ data: await createEvent({...input,adminStatus}, request.auth!.userId) });
 });
@@ -91,11 +108,18 @@ eventsRouter.patch("/:eventId", authenticate, async (request, response) => {
   const eventId = z.string().parse(request.params.eventId);
   const current = await findEventById(eventId);
   if (!current) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
-  if (!["owner_admin", "admin", "assistant_admin"].includes(request.auth!.role) && current.createdBy !== request.auth!.userId) {
+  const isLeadership = ["owner_admin", "admin", "assistant_admin"].includes(request.auth!.role);
+  if (!isLeadership && current.createdBy !== request.auth!.userId) {
     throw new ApiError(403, "EVENT_EDIT_FORBIDDEN", "Yalnız yaratdığın tədbiri dəyişə bilərsən.");
   }
   const patch = z.record(z.string(), z.unknown()).parse(request.body);
-  const event = await updateEvent(eventId, eventSchema.parse({ ...current, ...patch }));
+  const input = eventSchema.parse({ ...current, ...patch });
+  // Müəllimin tədbiri rəhbərliyin yoxlamasından sonra dərc olunur. Əvvəl dərc
+  // olunmuş tədbiri müəllim yenidən yoxlamasız dəyişə bilirdi — başlıq və mətn
+  // moderasiyadan yan keçirdi. İndi belə dəyişiklik tədbiri yoxlamaya qaytarır.
+  const adminStatus = !isLeadership && current.adminStatus !== "Qaralama" ? "Qaralama" : undefined;
+  const event = await updateEvent(eventId, { ...input, adminStatus });
+  if (event) await noticeEventChanged(current, event, request.auth!.userId);
   response.json({ data: event });
 });
 
@@ -106,6 +130,7 @@ eventsRouter.delete("/:eventId", authenticate, async (request, response) => {
   if (!["owner_admin", "admin", "assistant_admin"].includes(request.auth!.role) && current.createdBy !== request.auth!.userId) {
     throw new ApiError(403, "EVENT_DELETE_FORBIDDEN", "Yalnız yaratdığın tədbiri silə bilərsən.");
   }
+  await noticeEventCancelled(current, request.auth!.userId);
   await deleteEvent(eventId);
   response.status(204).send();
 });

@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import {
+  appendClubEntry,
   createClub,
   deleteClub,
   findClub,
@@ -10,6 +12,7 @@ import {
   listClubMembers,
   listClubs,
   listMyClubMemberships,
+  removeClubEntry,
   setClubLeader,
   updateClub,
 } from "../db/platform.js";
@@ -171,6 +174,9 @@ clubsRouter.get("/:clubId/members", authenticate, async (request,response)=>{
   const clubId=z.string().parse(request.params.clubId);
   const club=await findClub(clubId);if(!club)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
   const canManage=isLeadershipRole(request.auth!.role)||await isClubLeader(clubId,request.auth!.userId);
+  // Klub səhifəsi ilə eyni qayda: yoxlanışdakı klubu kənar şəxs görmür. Əvvəl
+  // səhifə 404 verirdi, üzv siyahısı isə klubu, statusunu və yaradanı açırdı.
+  if(club.status!=="Aktiv"&&!canManage)throw new ApiError(404,"CLUB_NOT_FOUND","Klub tapılmadı.");
   response.json({data:{members:await listClubMembers(clubId),canManage,canDelete:canDeleteClub(request.auth!.role,club.createdBy,request.auth!.userId),status:club.status}});
 });
 
@@ -192,6 +198,67 @@ clubsRouter.delete("/:clubId/leaders/:userId",authenticate,async(request,respons
   if(!canAssign)throw new ApiError(403,"CLUB_LEADER_REQUIRED","Lideri yalnız klub lideri və ya admin götürə bilər.");
   // Klubu yaradan şəxs daimi liderdir — bunu setClubLeader özü 409 ilə qoruyur.
   response.json({data:await setClubLeader(club.id,userId,false)});
+});
+
+/** Tədbir və tarixçəni yalnız klub lideri və ya platforma rəhbərliyi idarə edir. */
+async function assertClubManager(clubId: string, auth: { role: string; userId: string }) {
+  const club = await findClub(clubId);
+  if (!club) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  if (!isLeadershipRole(auth.role) && !(await isClubLeader(club.id, auth.userId))) {
+    throw new ApiError(403, "CLUB_LEADER_REQUIRED", "Yalnız klub lideri və ya rəhbərlik bunu edə bilər.");
+  }
+  return club;
+}
+
+const clubEventSchema = z.object({
+  title: z.string().trim().min(3).max(140),
+  summary: z.string().trim().max(400).default(""),
+  startAt: z.string().datetime({ offset: true }),
+  place: z.string().trim().min(2).max(180),
+  format: z.enum(["meetup", "workshop", "presentation", "trip", "session"]),
+}).strict();
+
+const clubHistorySchema = z.object({
+  year: z.string().trim().regex(/^(19|20)\d{2}$/),
+  title: z.string().trim().min(3).max(140),
+  description: z.string().trim().max(600).default(""),
+}).strict();
+
+const entryIdSchema = z.string().trim().min(1).max(80);
+
+clubsRouter.post("/:clubId/events", authenticate, async (request, response) => {
+  const club = await assertClubManager(z.string().parse(request.params.clubId), request.auth!);
+  const input = clubEventSchema.parse(request.body);
+  const date = new Date(input.startAt);
+  if (Number.isNaN(date.getTime())) throw new ApiError(422, "VALIDATION_ERROR", "Tarix yanlışdır.");
+  const updated = await appendClubEntry(club.id, "events", {
+    id: randomUUID(),
+    title: input.title,
+    summary: input.summary,
+    date: date.toISOString(),
+    dateLabel: "",
+    timeLabel: "",
+    place: input.place,
+    format: input.format,
+  });
+  response.status(201).json({ data: updated });
+});
+
+clubsRouter.delete("/:clubId/events/:entryId", authenticate, async (request, response) => {
+  const club = await assertClubManager(z.string().parse(request.params.clubId), request.auth!);
+  response.json({ data: await removeClubEntry(club.id, "events", entryIdSchema.parse(request.params.entryId)) });
+});
+
+clubsRouter.post("/:clubId/history", authenticate, async (request, response) => {
+  const club = await assertClubManager(z.string().parse(request.params.clubId), request.auth!);
+  const input = clubHistorySchema.parse(request.body);
+  const updated = await appendClubEntry(club.id, "history", { id: randomUUID(), ...input });
+  response.status(201).json({ data: updated });
+});
+
+clubsRouter.delete("/:clubId/history/:entryId", authenticate, async (request, response) => {
+  const club = await assertClubManager(z.string().parse(request.params.clubId), request.auth!);
+  response.json({ data: await removeClubEntry(club.id, "history", entryIdSchema.parse(request.params.entryId)) });
 });
 
 clubsRouter.post("/:clubId/memberships", authenticate, async (request, response) => {

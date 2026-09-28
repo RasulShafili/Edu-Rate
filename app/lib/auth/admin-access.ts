@@ -34,7 +34,7 @@ export async function resolveAdminAccess(
 
     // Backend admin API-si 2FA-sız rəhbərlik hesabını rədd edir (TWO_FACTOR_REQUIRED);
     // panel boş yüklənmək əvəzinə bunu əvvəlcədən izah edir.
-    if (hasAccess && identity.profile && !identity.profile.twoFactorEnabled && process.env.ADMIN_2FA_REQUIRED !== "false") {
+    if (hasAccess && identity.profile && !identity.profile.twoFactorEnabled && process.env.ADMIN_2FA_REQUIRED === "true") {
       return { status: "two-factor-required" };
     }
 

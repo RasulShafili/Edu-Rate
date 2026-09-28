@@ -8,6 +8,8 @@ process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "edurate-test-secret-with-at-least-32-characters";
 process.env.FRONTEND_URL = "http://localhost:3000";
 process.env.TRUST_PROXY = "true";
+const PROXY_SECRET = "edurate-test-proxy-secret-with-at-least-32-chars";
+process.env.EDURATE_PROXY_SECRET = PROXY_SECRET;
 
 let app: Express;
 let reusableStudentId = "";
@@ -999,10 +1001,19 @@ describe("EduRate API", () => {
     await request(app).patch(`/api/admin/reports/${report.body.data.id}`).set("Authorization",`Bearer ${reusableAdminToken}`).send({status:"resolved",resolutionNote:"Məzmun yoxlanıldı və qərar auditə yazıldı."}).expect(200);
     const history=await request(app).get(`/api/community/conversations/${id}/messages`).set("Authorization",peerAuthorization).expect(200);
     assert.equal(history.body.data[0].id,sent.body.data.id);
+    // Köhnə mesajların səhifələnməsi: `before` kursorundan əvvəlki mesajlar, xronoloji sırada.
+    const second=await request(app).post(`/api/community/conversations/${id}/messages`).set("Authorization",peerAuthorization).send({body:"İkinci mesaj."}).expect(201);
+    const third=await request(app).post(`/api/community/conversations/${id}/messages`).set("Authorization",studentAuthorization).send({body:"Üçüncü mesaj."}).expect(201);
+    const latestPage=await request(app).get(`/api/community/conversations/${id}/messages?limit=2`).set("Authorization",peerAuthorization).expect(200);
+    assert.deepEqual(latestPage.body.data.map((item:{id:string})=>item.id),[second.body.data.id,third.body.data.id]);
+    const olderPage=await request(app).get(`/api/community/conversations/${id}/messages?limit=2&before=${second.body.data.id}`).set("Authorization",peerAuthorization).expect(200);
+    assert.deepEqual(olderPage.body.data.map((item:{id:string})=>item.id),[sent.body.data.id]);
+    await request(app).delete(`/api/community/conversations/${id}/messages/${second.body.data.id}`).set("Authorization",peerAuthorization).expect(204);
+    await request(app).delete(`/api/community/conversations/${id}/messages/${third.body.data.id}`).set("Authorization",studentAuthorization).expect(204);
     await request(app).delete(`/api/community/conversations/${id}/messages/${sent.body.data.id}`).set("Authorization",peerAuthorization).expect(404);
     await request(app).delete(`/api/community/conversations/${id}/messages/${sent.body.data.id}`).set("Authorization",studentAuthorization).expect(204);
     const historyAfterDeletion=await request(app).get(`/api/community/conversations/${id}/messages`).set("Authorization",peerAuthorization).expect(200);
-    assert.equal(historyAfterDeletion.body.data.length,1);
+    assert.equal(historyAfterDeletion.body.data.length,3);
     assert.equal(historyAfterDeletion.body.data[0].body,"Mesaj silindi");
     assert.equal(historyAfterDeletion.body.data[0].deleted,true);
     await request(app).patch(`/api/community/conversations/${id}/read`).set("Authorization",peerAuthorization).send({}).expect(200);
@@ -1074,6 +1085,26 @@ describe("EduRate API", () => {
     await request(app).post(`/api/clubs/${clubId}/memberships`).set("Authorization",member2Authorization).expect(201);
     await request(app).patch(`/api/clubs/${clubId}/leaders/${member2.id}`).set("Authorization",memberAuthorization).expect(200);
     await request(app).delete(`/api/clubs/${clubId}/leaders/${member2.id}`).set("Authorization",memberAuthorization).expect(200);
+    // Tədbir və tarixçə: əvvəl bu sahələrə yazan yol yox idi, tablar həmişə boş qalırdı.
+    const eventInput={title:"Açıq debat axşamı",summary:"Yeni üzvlər üçün tanışlıq.",startAt:"2026-10-20T18:30:00+04:00",place:"Kampus, 204-cü otaq",format:"meetup"};
+    await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",member2Authorization).send(eventInput).expect(403);
+    await request(app).post(`/api/clubs/${clubId}/events`).send(eventInput).expect(401);
+    await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",memberAuthorization).send({...eventInput,format:"party"}).expect(422);
+    await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",memberAuthorization).send({...eventInput,memberCount:9999}).expect(422);
+    const withEvent=await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",memberAuthorization).send(eventInput).expect(201);
+    assert.equal(withEvent.body.data.events.length,1);
+    assert.equal(withEvent.body.data.events[0].date,"2026-10-20T14:30:00.000Z");
+    const eventId=withEvent.body.data.events[0].id as string;
+    const withHistory=await request(app).post(`/api/clubs/${clubId}/history`).set("Authorization",creatorAuthorization).send({year:"2025",title:"Klub yaradıldı",description:"İlk 12 üzv."}).expect(201);
+    assert.equal(withHistory.body.data.history[0].title,"Klub yaradıldı");
+    await request(app).post(`/api/clubs/${clubId}/history`).set("Authorization",creatorAuthorization).send({year:"25",title:"Yanlış il"}).expect(422);
+    const publicView=await request(app).get(`/api/clubs/${clubId}`).expect(200);
+    assert.equal(publicView.body.data.events[0].title,"Açıq debat axşamı");
+    await request(app).delete(`/api/clubs/${clubId}/events/${eventId}`).set("Authorization",member2Authorization).expect(403);
+    const afterDelete=await request(app).delete(`/api/clubs/${clubId}/events/${eventId}`).set("Authorization",memberAuthorization).expect(200);
+    assert.equal(afterDelete.body.data.events.length,0);
+    await request(app).delete(`/api/clubs/${clubId}/events/${eventId}`).set("Authorization",memberAuthorization).expect(404);
+    await request(app).delete(`/api/clubs/${clubId}/history/${withHistory.body.data.history[0].id}`).set("Authorization",creatorAuthorization).expect(200);
     await request(app).delete(`/api/clubs/${clubId}/leaders/${creator.id}`).set("Authorization",creatorAuthorization).expect(409);
     await request(app).delete(`/api/clubs/${clubId}`).set("Authorization",memberAuthorization).expect(403);
     await request(app).delete(`/api/clubs/${clubId}/leaders/${member.id}`).set("Authorization",creatorAuthorization).expect(200);
@@ -1768,5 +1799,235 @@ describe("Giriş təhlükəsizliyi: şifrə siyasəti, hesab limiti, 2FA", () =>
     await request(app).post("/api/auth/2fa/disable").set("Authorization", auth).send({ password: strongPassword, code: recoveryCodes[2] }).expect(200);
     const afterDisable = await request(app).post("/api/auth/login").set("X-Forwarded-For", nextIp()).send({ email: user.email, password: strongPassword }).expect(200);
     assert.ok(afterDisable.body.data.token);
+  });
+});
+
+describe("QA auditi: limitlər, moderasiya və görünürlük", () => {
+  const password = "Kampus-Yolu-2026";
+  let passwordHashPromise: Promise<string> | null = null;
+
+  async function makeUser(email: string, role: "student" | "teacher" | "owner_admin" = "student") {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([import("../src/db/database.js"), import("../src/lib/auth.js")]);
+    passwordHashPromise ??= hashPassword(password);
+    const user = await createUser({ name: "Audit Testi", email, passwordHash: await passwordHashPromise, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", role, status: "Aktiv" });
+    return { user, auth: `Bearer ${createAccessToken(user)}` };
+  }
+
+  it("eyni proxy IP-si arxasındakı fərqli istifadəçiləri ayrıca sayır, saxta IP başlığına inanmır", async () => {
+    const { user } = await makeUser("proxy.login@example.az");
+    // Reqressiya: BFF arxasında bütün istifadəçilər Vercel-in bir IP-si ilə gəlirdi
+    // və 11-ci giriş (düzgün şifrə ilə belə) HAMI üçün 429 alırdı.
+    const vercelIp = "203.0.113.50";
+    for (let index = 1; index <= 12; index += 1) {
+      await request(app).post("/api/auth/login").set("X-Forwarded-For", vercelIp)
+        .set("X-EduRate-Proxy-Secret", PROXY_SECRET).set("X-EduRate-Client-IP", `192.0.2.${index}`)
+        .send({ email: user.email, password }).expect(200);
+    }
+    const sessions = await request(app).get("/api/auth/sessions")
+      .set("Authorization", `Bearer ${(await request(app).post("/api/auth/login").set("X-Forwarded-For", vercelIp)
+        .set("X-EduRate-Proxy-Secret", PROXY_SECRET).set("X-EduRate-Client-IP", "192.0.2.77").set("User-Agent", "Audit Browser")
+        .send({ email: user.email, password }).expect(200)).body.data.token}`)
+      .expect(200);
+    const current = sessions.body.data.find((session: { current: boolean }) => session.current);
+    assert.equal(current.ipAddress, "192.0.2.77");
+    assert.equal(current.userAgent, "Audit Browser");
+
+    // Sirr düz deyilsə başlıq nəzərə alınmır: hamısı bir IP kimi sayılır və limitlənir.
+    const attackerIp = "203.0.113.51";
+    let limited = false;
+    for (let index = 1; index <= 12 && !limited; index += 1) {
+      const attempt = await request(app).post("/api/auth/login").set("X-Forwarded-For", attackerIp)
+        .set("X-EduRate-Proxy-Secret", "x".repeat(PROXY_SECRET.length)).set("X-EduRate-Client-IP", `192.0.2.${100 + index}`)
+        .send({ email: user.email, password });
+      if (attempt.status === 429) {
+        assert.equal(attempt.body.error.code, "RATE_LIMITED");
+        limited = true;
+      }
+    }
+    assert.equal(limited, true);
+  });
+
+  it("daxil olmuş istifadəçinin limitini IP-yə yox, hesaba bağlayır", async () => {
+    // Reqressiya: söhbət bileti limiti `authenticate`-dən əvvəl və IP üzrə idi —
+    // bir dəqiqədə 11-ci istifadəçinin söhbəti qoşulmurdu.
+    const sharedIp = "203.0.113.60";
+    for (let index = 1; index <= 12; index += 1) {
+      const { auth } = await makeUser(`ticket.user${index}@example.az`);
+      await request(app).post("/api/realtime/ticket").set("X-Forwarded-For", sharedIp).set("Authorization", auth).expect(201);
+    }
+  });
+
+  it("müəllim dərc olunmuş tədbiri dəyişəndə tədbir yenidən yoxlamaya düşür", async () => {
+    const { auth: teacherAuth } = await makeUser("audit.teacher@example.az", "teacher");
+    const { auth: ownerAuth } = await makeUser("audit.owner@example.az", "owner_admin");
+    const created = await request(app).post("/api/events").set("Authorization", teacherAuth).send({
+      title: "Audit olimpiadası", category: "Technology", description: "Moderasiya testi üçün tədbir.",
+      longDescription: "Bu tədbir təsdiqdən sonrakı redaktəni yoxlamaq üçün yaradılıb.", location: "Auditoriya 101",
+      city: "Xankəndi", organizer: "Audit Testi", startAt: "2030-11-10T10:00:00+04:00", endAt: "2030-11-10T13:00:00+04:00",
+      registrationDeadline: "2030-11-09T10:00:00+04:00", capacity: 30,
+    }).expect(201);
+    const id = created.body.data.id as string;
+    assert.equal(created.body.data.adminStatus, "Qaralama");
+    await request(app).patch(`/api/admin/events/${id}`).set("Authorization", ownerAuth).send({ status: "Açıq" }).expect(200);
+    await request(app).get(`/api/events/${id}`).expect(200);
+
+    // Reqressiya: əvvəl başlıq dəyişirdi, tədbir isə yoxlamasız "Açıq" qalırdı.
+    const edited = await request(app).patch(`/api/events/${id}`).set("Authorization", teacherAuth).send({ title: "Yoxlanmamış başlıq" }).expect(200);
+    assert.equal(edited.body.data.adminStatus, "Qaralama");
+    await request(app).get(`/api/events/${id}`).expect(404);
+
+    // Rəhbərliyin öz redaktəsi tədbiri dərcdə saxlayır.
+    await request(app).patch(`/api/admin/events/${id}`).set("Authorization", ownerAuth).send({ status: "Açıq" }).expect(200);
+    const byOwner = await request(app).patch(`/api/events/${id}`).set("Authorization", ownerAuth).send({ title: "Rəhbərliyin başlığı" }).expect(200);
+    assert.equal(byOwner.body.data.adminStatus, "Açıq");
+  });
+
+  it("hesab silmə formasında şifrə təxmini limitlənir", async () => {
+    const { user, auth } = await makeUser("audit.delete@example.az");
+    // Reqressiya: əvvəl limitsiz idi — açıq qalmış sessiya ilə şifrə sonsuz sınanırdı.
+    for (let attempt = 1; attempt <= 9; attempt += 1) {
+      await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password: `yanlis-parol-${attempt}` }).expect(401);
+    }
+    const locked = await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password: "yanlis-parol-10" }).expect(429);
+    assert.equal(locked.body.error.code, "ACCOUNT_THROTTLED");
+    await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password }).expect(429);
+    const { findUserById } = await import("../src/db/database.js");
+    assert.ok(await findUserById(user.id));
+  });
+
+  it("yoxlanışdakı klubun üzv siyahısını kənar şəxsə açmır", async () => {
+    const { auth: teacherAuth } = await makeUser("audit.club.teacher@example.az", "teacher");
+    const { auth: studentAuth } = await makeUser("audit.club.student@example.az");
+    const created = await request(app).post("/api/clubs").set("Authorization", teacherAuth)
+      .send({ name: "Audit Klubu", category: "Akademik", tagline: "Audit üçün yaradılmış klub.", about: ["Bu klub avtomatik testdə yaradılıb."], meeting: { cadence: "Həftəlik", day: "Çərşənbə", time: "18:00", place: "B 204" } })
+      .expect(201);
+    const slug = created.body.data.slug as string;
+    // Reqressiya: səhifə 404 verirdi, üzv siyahısı isə klubu və yaradanı açırdı.
+    await request(app).get(`/api/clubs/${slug}/members`).set("Authorization", studentAuth).expect(404);
+    await request(app).get(`/api/clubs/${slug}/members`).set("Authorization", teacherAuth).expect(200);
+  });
+
+  it("profil şəklini oxumaq yükləmə limitinə düşmür", async () => {
+    const { auth } = await makeUser("audit.avatar@example.az");
+    // Reqressiya: hər səhifə açılışı bu sorğunu edir; limit bütün router-də idi və
+    // 21-ci səhifədən sonra profil şəkli 429 ilə itirdi.
+    for (let view = 1; view <= 25; view += 1) {
+      await request(app).get("/api/media/avatar/me").set("Authorization", auth).expect(200);
+    }
+  });
+});
+
+describe("Şəxsi bildirişlər", () => {
+  it("cavab və əlaqə qəbulunda bildiriş yaradır, oxunmuş işarələyir, başqasınınkını qoruyur", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const, role: "student" as const };
+    const asker = await createUser({ ...base, name: "Bildiriş Alan", email: "notify.asker@example.az" });
+    const replier = await createUser({ ...base, name: "Bildiriş Göndərən", email: "notify.replier@example.az" });
+    const askerAuth = `Bearer ${createAccessToken(asker)}`;
+    const replierAuth = `Bearer ${createAccessToken(replier)}`;
+
+    await request(app).get("/api/notifications").expect(401);
+    const question = await request(app).post("/api/questions").set("Authorization", askerAuth)
+      .send({ title: "Yataqxanada internet nə vaxt düzələcək?", topic: "kampus" }).expect(201);
+    const questionId = question.body.data.id as string;
+
+    // Öz sualına cavab bildiriş yaratmır.
+    await request(app).post(`/api/questions/${questionId}/answers`).set("Authorization", askerAuth).send({ body: "Əlavə: ikinci mərtəbədə problem var." }).expect(201);
+    let inbox = await request(app).get("/api/notifications").set("Authorization", askerAuth).expect(200);
+    assert.equal(inbox.body.data.items.length, 0);
+
+    await request(app).post(`/api/questions/${questionId}/answers`).set("Authorization", replierAuth).send({ body: "Bu həftə sonu təmir olunur." }).expect(201);
+    inbox = await request(app).get("/api/notifications").set("Authorization", askerAuth).expect(200);
+    assert.equal(inbox.body.data.unread, 1);
+    const [answered] = inbox.body.data.items;
+    assert.equal(answered.kind, "question_answered");
+    assert.equal(answered.params.title, "Yataqxanada internet nə vaxt düzələcək?");
+    // Suallar anonimdir: bildirişdə cavab yazanın adı yoxdur.
+    assert.equal(JSON.stringify(answered).includes("Bildiriş Göndərən"), false);
+    assert.equal(answered.readAt, null);
+
+    // Başqasının bildirişini oxunmuş etmək olmur.
+    await request(app).patch(`/api/notifications/${answered.id}/read`).set("Authorization", replierAuth).expect(404);
+    await request(app).patch(`/api/notifications/${answered.id}/read`).set("Authorization", askerAuth).expect(200);
+    inbox = await request(app).get("/api/notifications").set("Authorization", askerAuth).expect(200);
+    assert.equal(inbox.body.data.unread, 0);
+    assert.ok(inbox.body.data.items[0].readAt);
+
+    // Əlaqə sorğusu qəbul edilir -> sorğunu göndərən bildiriş alır.
+    const connection = await request(app).post("/api/community/connections").set("Authorization", replierAuth).send({ userId: asker.id }).expect(201);
+    await request(app).patch(`/api/community/connections/${connection.body.data.id}`).set("Authorization", askerAuth).send({}).expect(200);
+    const replierInbox = await request(app).get("/api/notifications").set("Authorization", replierAuth).expect(200);
+    assert.equal(replierInbox.body.data.items[0].kind, "connection_accepted");
+    assert.equal(replierInbox.body.data.items[0].params.name, "Bildiriş Alan");
+
+    const readAll = await request(app).post("/api/notifications/read-all").set("Authorization", replierAuth).expect(200);
+    assert.equal(readAll.body.data.updated, 1);
+    assert.equal((await request(app).get("/api/notifications").set("Authorization", replierAuth).expect(200)).body.data.unread, 0);
+  });
+});
+
+describe("Tədbir qaydaları və iştirakçı bildirişləri", () => {
+  it("boş yer sayını qəbul etmir, başlamış tədbirdən imtinanı bağlayır, iştirakçılara xəbər verir", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+    ]);
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const };
+    const teacher = await createUser({ ...base, name: "Tədbir Müəllimi", email: "events.rules.teacher@example.az", role: "teacher" });
+    const student = await createUser({ ...base, name: "Tədbir İştirakçısı", email: "events.rules.student@example.az", role: "student" });
+    const teacherAuth = `Bearer ${createAccessToken(teacher)}`;
+    const studentAuth = `Bearer ${createAccessToken(student)}`;
+    const adminAuth = `Bearer ${reusableAdminToken}`;
+    const body = {
+      title: "Qaydalar seminarı", category: "Technology", description: "Tələbələr üçün praktik texnologiya seminarı.",
+      longDescription: "Müəllimin təqdim etdiyi seminar praktiki nümunələr, açıq müzakirə və sual-cavab hissəsindən ibarətdir.",
+      location: "Tədris zalı", city: "Xankəndi", organizer: "Tədbir Müəllimi", startAt: "2027-06-10T14:00:00+04:00",
+      endAt: "2027-06-10T16:00:00+04:00", registrationDeadline: "2027-06-09T18:00:00+04:00", speakers: [], capacity: 50,
+    };
+
+    // Yaradan boş yer sayını özü yaza bilmir.
+    const created = await request(app).post("/api/events").set("Authorization", teacherAuth).send({ ...body, availableSpots: 2 }).expect(201);
+    const eventId = created.body.data.id as string;
+    assert.equal(created.body.data.availableSpots, 50);
+    await request(app).patch(`/api/admin/events/${eventId}`).set("Authorization", adminAuth).send({ status: "Açıq" }).expect(200);
+    await request(app).post(`/api/events/${eventId}/registrations`).set("Authorization", studentAuth).expect(201);
+
+    // Yaradan öz tədbirini qeydiyyat sayı ilə görür.
+    const mine = await request(app).get("/api/events/mine").set("Authorization", teacherAuth).expect(200);
+    const own = mine.body.data.find((item: { id: string }) => item.id === eventId);
+    assert.equal(own.registered, 1);
+    assert.equal(own.capacity, 50);
+    assert.equal(own.longDescription, body.longDescription);
+
+    // Yer dəyişir -> iştirakçı bildiriş alır; başqa sahə dəyişəndə yox.
+    await request(app).patch(`/api/events/${eventId}`).set("Authorization", teacherAuth).send({ description: "Yenilənmiş qısa təsvir mətni." }).expect(200);
+    let inbox = await request(app).get("/api/notifications").set("Authorization", studentAuth).expect(200);
+    assert.equal(inbox.body.data.items.length, 0);
+    await request(app).patch(`/api/events/${eventId}`).set("Authorization", teacherAuth).send({ location: "Böyük akt zalı" }).expect(200);
+    inbox = await request(app).get("/api/notifications").set("Authorization", studentAuth).expect(200);
+    assert.equal(inbox.body.data.items[0].kind, "event_changed");
+    assert.equal(inbox.body.data.items[0].params.title, "Qaydalar seminarı");
+
+    // Tədbir başlayıb -> imtina olunmur.
+    await request(app).patch(`/api/events/${eventId}`).set("Authorization", adminAuth)
+      .send({ startAt: "2020-01-10T10:00:00+04:00", endAt: "2020-01-10T12:00:00+04:00", registrationDeadline: "2020-01-09T10:00:00+04:00" }).expect(200);
+    const blocked = await request(app).delete(`/api/events/${eventId}/registrations`).set("Authorization", studentAuth).expect(409);
+    assert.equal(blocked.body.error.code, "EVENT_STARTED");
+
+    // Tədbir silinir -> iştirakçı ləğv bildirişi alır; başqasının tədbirini silmək olmur.
+    const second = await request(app).post("/api/events").set("Authorization", teacherAuth).send({ ...body, title: "Ləğv ediləcək seminar" }).expect(201);
+    const secondId = second.body.data.id as string;
+    await request(app).patch(`/api/admin/events/${secondId}`).set("Authorization", adminAuth).send({ status: "Açıq" }).expect(200);
+    await request(app).post(`/api/events/${secondId}/registrations`).set("Authorization", studentAuth).expect(201);
+    await request(app).delete(`/api/events/${secondId}`).set("Authorization", studentAuth).expect(403);
+    await request(app).delete(`/api/events/${secondId}`).set("Authorization", teacherAuth).expect(204);
+    inbox = await request(app).get("/api/notifications").set("Authorization", studentAuth).expect(200);
+    assert.equal(inbox.body.data.items[0].kind, "event_cancelled");
+    assert.equal(inbox.body.data.items[0].params.title, "Ləğv ediləcək seminar");
   });
 });

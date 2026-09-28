@@ -15,6 +15,7 @@ import Link from "next/link";
 import useSWR from "swr";
 import { useAuth } from "./AuthProvider";
 import { useLanguage } from "../i18n/LanguageProvider";
+import { bakuDateParts, isExpired } from "../lib/date";
 
 /**
  * Ana səhifə — sıx idarə paneli.
@@ -52,6 +53,7 @@ type Announcement = {
   dateLabel?: string;
   source?: string;
   sourceInitials?: string;
+  expiresAt?: string;
 };
 
 type CampusEvent = {
@@ -74,14 +76,18 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 /** "22 May" formatı — tarix seçilmiş dilin lokalında yazılır. */
-function splitDate(value: string | undefined, locale: string) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
+/**
+ * Tədbir vaxtı həmişə Bakı vaxtında: əvvəl brauzerin saat qurşağı işlənirdi və
+ * cihazı UTC-də olan istifadəçi ana səhifədə 17:00, tədbir səhifəsində 21:00
+ * görürdü. Ay adı lüğətdəndir — `Intl` bəzi Chromium qurğularında "M09" verir.
+ */
+function splitDate(value: string | undefined, t: (key: string) => string, locale: string) {
+  if (!value || Number.isNaN(new Date(value).getTime())) return null;
+  const parts = bakuDateParts(value);
   return {
-    day: date.toLocaleDateString(locale, { day: "2-digit" }),
-    month: date.toLocaleDateString(locale, { month: "short" }).toUpperCase(),
-    time: date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }),
+    day: parts.day.padStart(2, "0"),
+    month: t(`monthShort.${parts.month}`).toLocaleUpperCase(locale),
+    time: parts.time,
   };
 }
 
@@ -106,7 +112,10 @@ export function HomeExperience() {
     dedupingInterval: 60_000,
   });
 
-  const announcements = network.data?.announcements ?? [];
+  // Elanlar səhifəsi və bildiriş paneli yalnız aktiv elanları göstərir; ana səhifə
+  // isə vaxtı keçmişləri də "Son elanlar" kimi verirdi (25 avqustda bağlanan
+  // "müraciətlər açıqdır" sentyabrda da görünürdü). Arxiv "Hamısı" keçidindədir.
+  const announcements = (network.data?.announcements ?? []).filter((item) => !item.expiresAt || !isExpired(item.expiresAt));
   const topClubs = [...(clubs.data ?? [])]
     .sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0))
     .slice(0, 4);
@@ -194,7 +203,7 @@ export function HomeExperience() {
             ) : upcoming.length ? (
               <ul className="home-events">
                 {upcoming.map((event) => {
-                  const when = splitDate(event.startAt, locale);
+                  const when = splitDate(event.startAt, t, locale);
                   return (
                     <li key={event.id}>
                       <span className="home-events__date" aria-hidden="true">
@@ -238,7 +247,7 @@ export function HomeExperience() {
                     <div>
                       <h3>{club.name}</h3>
                       <small>
-                        {club.memberCount ?? 0} {t("common.members")}
+                        {t("home.clubMembers", { count: club.memberCount ?? 0 })}
                         {club.category ? ` · ${club.category}` : ""}
                       </small>
                     </div>

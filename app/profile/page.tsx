@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { pageMetadata } from "../i18n/server";
 import { redirect } from "next/navigation";
 import { UserProfileDashboard } from "../components/UserProfileDashboard";
-import { getServerRequestIdentity } from "../lib/auth/request-identity";
+import { SessionWaking } from "../components/SessionWaking";
+import { resolveServerIdentity } from "../lib/auth/request-identity";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ProfilePage() {
-  const identity = await getServerRequestIdentity();
+  const identity = await resolveServerIdentity();
+  if (identity === "unavailable") return <main id="main-content" className="route-page" tabIndex={-1}><SessionWaking /></main>;
   if (!identity) redirect("/auth?returnTo=%2Fprofile");
   return (
     <main id="main-content" className="route-page" tabIndex={-1}>

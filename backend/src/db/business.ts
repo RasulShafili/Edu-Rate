@@ -332,7 +332,7 @@ export async function updateEvent(id: string, input: EventInput): Promise<EventR
 }
 
 export async function deleteEvent(id: string): Promise<boolean> {
-  if (!databasePool) return memoryEvents.delete(id);
+  if (!databasePool) { memoryRegistrations.delete(id); return memoryEvents.delete(id); }
   const result = await databasePool.query("DELETE FROM events WHERE id=$1", [id]);
   return (result.rowCount ?? 0) > 0;
 }
@@ -385,10 +385,21 @@ export async function registerForEvent(eventId: string, userId: string): Promise
   }
 }
 
+/**
+ * Başlamış və ya bitmiş tədbirdən imtina etmək mənasızdır: əvvəl imtina qəbul
+ * olunurdu, boş yer sayı artırdı və iştirak tarixçəsi silinirdi.
+ */
+function assertNotStarted(event: EventRecord) {
+  if (new Date(event.startAt).getTime() <= Date.now()) {
+    throw new ApiError(409, "EVENT_STARTED", "Tədbir artıq başlayıb — qeydiyyatı ləğv etmək olmaz.");
+  }
+}
+
 export async function cancelEventRegistration(eventId: string, userId: string): Promise<EventRecord> {
   if (!databasePool) {
     const event = memoryEvents.get(eventId);
     if (!event) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
+    assertNotStarted(event);
     const registrations = memoryRegistrations.get(eventId);
     if (!registrations?.delete(userId)) throw new ApiError(404, "REGISTRATION_NOT_FOUND", "Aktiv qeydiyyat tapılmadı.");
     const next = { ...event, availableSpots: Math.min(event.capacity, event.availableSpots + 1), updatedAt: now() };
@@ -399,6 +410,9 @@ export async function cancelEventRegistration(eventId: string, userId: string): 
   const client = await databasePool.connect();
   try {
     await client.query("BEGIN");
+    const selected = await client.query("SELECT * FROM events WHERE id=$1 FOR UPDATE", [eventId]);
+    if (!selected.rows[0]) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
+    assertNotStarted(mapEvent(selected.rows[0]));
     const deleted = await client.query("DELETE FROM event_registrations WHERE event_id=$1 AND user_id=$2 RETURNING id", [eventId, userId]);
     if (!deleted.rows[0]) throw new ApiError(404, "REGISTRATION_NOT_FOUND", "Aktiv qeydiyyat tapılmadı.");
     const updated = await client.query("UPDATE events SET available_spots=LEAST(capacity, available_spots+1), updated_at=NOW() WHERE id=$1 RETURNING *", [eventId]);
@@ -410,6 +424,13 @@ export async function cancelEventRegistration(eventId: string, userId: string): 
   } finally {
     client.release();
   }
+}
+
+/** Tədbirə yazılmış istifadəçilər — ləğv və dəyişiklik bildirişi üçün. */
+export async function listEventRegistrantIds(eventId: string): Promise<string[]> {
+  if (!databasePool) return [...(memoryRegistrations.get(eventId) ?? [])];
+  const result = await databasePool.query("SELECT user_id FROM event_registrations WHERE event_id=$1", [eventId]);
+  return result.rows.map((row) => String(row.user_id));
 }
 
 export async function listMyEventRegistrations(userId: string): Promise<EventRecord[]> {

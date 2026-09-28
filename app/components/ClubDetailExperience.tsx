@@ -1,16 +1,19 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { ArrowLeft, CalendarDays, Clock3, Crown, Flag, MapPin, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, CalendarDays, Check, Clock3, Crown, Flag, MapPin, MessageCircle, Plus, Save, Settings2, ShieldAlert, Sparkles, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import type { Club, ClubTabId } from "../data/clubs";
-import { clubTabIds } from "../data/clubs";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type KeyboardEvent } from "react";
+import type { Club, ClubEvent, ClubEventFormat, ClubHistoryMilestone, ClubTabId } from "../data/clubs";
+import { clubEventFormatKey, clubEventFormats, clubTabIds } from "../data/clubs";
+import { bakuDateParts } from "../lib/date";
+import { getInitials } from "../data/user";
 import { MagneticJoinButton } from "./MagneticJoinButton";
 import { SecureImagePicker } from "./SecureImagePicker";
 import { useAuth } from "./AuthProvider";
 import { useT } from "../i18n/LanguageProvider";
 import { ReportDialog } from "./ReportDialog";
+import { usePlatform } from "./PlatformProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -20,6 +23,24 @@ type ClubDetailExperienceProps = {
 
 type ManagedMember={id:string;name:string;role:"leader"|"member";isCreator:boolean;avatarUrl?:string};
 type ClubManagement={members:ManagedMember[];canManage:boolean;canDelete:boolean};
+type EntryList="events"|"history";
+type Connection={id:string;requesterId:string;recipientId:string;status:"pending"|"accepted"|"blocked"};
+type PeerState="self"|"none"|"sent"|"incoming"|"connected"|"blocked";
+type EventDraft={title:string;summary:string;date:string;time:string;place:string;format:ClubEventFormat};
+type HistoryDraft={year:string;title:string;description:string};
+const emptyEventDraft:EventDraft={title:"",summary:"",date:"",time:"18:00",place:"",format:"meetup"};
+const emptyHistoryDraft=():HistoryDraft=>({year:String(new Date().getFullYear()),title:"",description:""});
+
+const subscribeNoop=()=>()=>undefined;
+const currentMinute=()=>Math.floor(Date.now()/60_000)*60_000;
+
+/** Yaxın tədbirlər tarix sırası ilə öndə, keçmişlər (ən yenisi əvvəl) sonda. */
+function orderEvents(events:readonly ClubEvent[],now:number){
+  const time=(event:ClubEvent)=>{const value=Date.parse(event.date);return Number.isNaN(value)?0:value;};
+  const upcoming=events.filter((event)=>time(event)>=now).sort((a,b)=>time(a)-time(b));
+  const past=events.filter((event)=>time(event)<now).sort((a,b)=>time(b)-time(a));
+  return [...upcoming.map((event)=>({event,past:false})),...past.map((event)=>({event,past:true}))];
+}
 
 export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   const { user } = useAuth();
@@ -34,6 +55,23 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   const [memberBusy,setMemberBusy]=useState("");
   const [deleteConfirm,setDeleteConfirm]=useState(false);
   const [deleting,setDeleting]=useState(false);
+  const [events,setEvents]=useState<readonly ClubEvent[]>(club.events);
+  const [history,setHistory]=useState<readonly ClubHistoryMilestone[]>(club.history);
+  const [entryForm,setEntryForm]=useState<EntryList|null>(null);
+  const [eventDraft,setEventDraft]=useState<EventDraft>(emptyEventDraft);
+  const [historyDraft,setHistoryDraft]=useState<HistoryDraft>(emptyHistoryDraft);
+  const [entryBusy,setEntryBusy]=useState("");
+  const [entryConfirm,setEntryConfirm]=useState("");
+  const [entryMessage,setEntryMessage]=useState("");
+  // Üzvlər: kimə klikləndi, əlaqə vəziyyətləri və əməliyyatın nəticəsi.
+  const [selectedMember,setSelectedMember]=useState("");
+  const [connections,setConnections]=useState<Connection[]|null>(null);
+  const [connectionBusy,setConnectionBusy]=useState("");
+  const [connectionMessage,setConnectionMessage]=useState<{id:string;key:string}|null>(null);
+  const { openConversation } = usePlatform();
+  // "Keçib" nişanı üçün cari vaxt yalnız brauzerdə oxunur (serverdə null) ki,
+  // server və brauzer eyni HTML-i versin. Dəqiqəyə yuvarlanır — snapshot sabit qalır.
+  const now=useSyncExternalStore(subscribeNoop,currentMinute,()=>null);
   /**
    * Yoxlanışdakı klub: kataloqda görünmür və üzv qəbul etmir. Səhifə yalnız
    * yaradan, klub liderləri və rəhbərlik üçün açılır, ona görə vəziyyəti açıq
@@ -50,13 +88,6 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
     members: null,
     history: null,
   });
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const visualY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 124]);
-  const visualScale = useTransform(scrollYProgress, [0, 1], [1, reduceMotion ? 1 : 1.08]);
-  const copyY = useTransform(scrollYProgress, [0, 1], [0, reduceMotion ? 0 : 42]);
 
   useEffect(()=>{
     if(!user||!club.id)return;
@@ -99,8 +130,106 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
     finally { setSaving(false); }
   }
 
+  function applyClubLists(payload:{events?:ClubEvent[];history?:ClubHistoryMilestone[]}){
+    if(Array.isArray(payload.events))setEvents(payload.events);
+    if(Array.isArray(payload.history))setHistory(payload.history);
+  }
+
+  async function addEntry(list:EntryList,event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(!club.id)return;
+    // Bakı vaxtı (UTC+4, yay vaxtı yoxdur) — lider tarixi yerli saatla yazır.
+    const body=list==="events"
+      ?{title:eventDraft.title,summary:eventDraft.summary,place:eventDraft.place,format:eventDraft.format,startAt:`${eventDraft.date}T${eventDraft.time}:00+04:00`}
+      :historyDraft;
+    setEntryBusy(`add-${list}`);setEntryMessage("");
+    try{
+      const response=await fetch(`/api/clubs/${encodeURIComponent(club.id)}/${list}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+      const payload=await response.json().catch(()=>null) as {data?:{events?:ClubEvent[];history?:ClubHistoryMilestone[]};error?:{message?:string}}|null;
+      if(!response.ok||!payload?.data)throw new Error(payload?.error?.message||t("club.entryFailed"));
+      applyClubLists(payload.data);
+      if(list==="events")setEventDraft(emptyEventDraft);else setHistoryDraft(emptyHistoryDraft());
+      setEntryForm(null);setEntryMessage(t("club.entryAdded"));
+    }catch(error){setEntryMessage(error instanceof Error?error.message:t("club.entryFailed"));}
+    finally{setEntryBusy("");}
+  }
+
+  async function deleteEntry(list:EntryList,entryId:string){
+    if(!club.id)return;
+    if(entryConfirm!==entryId){setEntryConfirm(entryId);return;}
+    setEntryBusy(entryId);setEntryMessage("");
+    try{
+      const response=await fetch(`/api/clubs/${encodeURIComponent(club.id)}/${list}/${encodeURIComponent(entryId)}`,{method:"DELETE"});
+      const payload=await response.json().catch(()=>null) as {data?:{events?:ClubEvent[];history?:ClubHistoryMilestone[]};error?:{message?:string}}|null;
+      if(!response.ok||!payload?.data)throw new Error(payload?.error?.message||t("club.entryFailed"));
+      applyClubLists(payload.data);setEntryMessage(t("club.entryDeleted"));
+    }catch(error){setEntryMessage(error instanceof Error?error.message:t("club.entryFailed"));}
+    finally{setEntryBusy("");setEntryConfirm("");}
+  }
+
+  function eventDate(event:ClubEvent){
+    if(event.dateLabel)return {date:event.dateLabel,time:event.timeLabel};
+    const value=Date.parse(event.date);
+    if(Number.isNaN(value))return {date:"",time:""};
+    const parts=bakuDateParts(event.date);
+    return {date:`${Number(parts.day)} ${t(`month.${parts.month}`)} ${parts.year}`,time:parts.time};
+  }
+
+  function deleteButton(list:EntryList,entryId:string|undefined,label:string){
+    if(!canManage||!entryId)return null;
+    const confirming=entryConfirm===entryId;
+    return <button type="button" className={`club-entry-delete${confirming?" is-confirming":""}`} disabled={entryBusy===entryId}
+      onClick={()=>void deleteEntry(list,entryId)} onBlur={()=>{if(confirming)setEntryConfirm("");}}
+      aria-label={confirming?t("club.entryDeleteConfirm"):`${t("club.entryDelete")}: ${label}`}>
+      <Trash2 size={14} aria-hidden="true"/>{confirming?<span>{t("club.entryDeleteConfirm")}</span>:null}
+    </button>;
+  }
+
+  // Əlaqə vəziyyəti yalnız "Üzvlər" tabı açılanda yüklənir.
+  useEffect(()=>{
+    if(!user||activeTab!=="members"||connections)return;
+    const controller=new AbortController();
+    fetch("/api/community/connections",{cache:"no-store",signal:controller.signal}).then(async(response)=>{
+      const payload=await response.json().catch(()=>null) as {data?:Connection[]}|null;
+      setConnections(response.ok?payload?.data??[]:[]);
+    }).catch(()=>undefined);
+    return()=>controller.abort();
+  },[activeTab,connections,user]);
+
+  function peerState(memberId:string):PeerState{
+    if(memberId===user?.id)return"self";
+    const link=connections?.find((item)=>item.requesterId===memberId||item.recipientId===memberId);
+    if(!link)return"none";
+    if(link.status==="accepted")return"connected";
+    if(link.status==="blocked")return"blocked";
+    return link.requesterId===user?.id?"sent":"incoming";
+  }
+
+  async function connectWith(member:ManagedMember){
+    const state=peerState(member.id);
+    setConnectionBusy(member.id);setConnectionMessage(null);
+    try{
+      const incoming=state==="incoming"?connections?.find((item)=>item.requesterId===member.id&&item.status==="pending"):undefined;
+      const response=incoming
+        ?await fetch(`/api/community/connections/${encodeURIComponent(incoming.id)}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({})})
+        :await fetch("/api/community/connections",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({userId:member.id})});
+      const payload=await response.json().catch(()=>null) as {data?:Connection;error?:{code?:string}}|null;
+      if(!response.ok||!payload?.data)throw new Error(response.status===401?"admin.error.session":"club.connectFailed");
+      const saved=payload.data;
+      setConnections((current)=>[...(current??[]).filter((item)=>item.id!==saved.id),saved]);
+      setConnectionMessage({id:member.id,key:incoming?"club.connectAccepted":"club.connectSent"});
+      window.dispatchEvent(new CustomEvent("edurate:connections-changed"));
+    }catch(error){setConnectionMessage({id:member.id,key:error instanceof Error?error.message:"club.connectFailed"});}
+    finally{setConnectionBusy("");}
+  }
+
+  function messageMember(member:ManagedMember){
+    openConversation({id:member.id,name:member.name,initials:getInitials(member.name),role:member.role==="leader"?"club.roleLeader":"club.roleMember",focus:editable.name,bio:"",city:"",status:"online",accent:"#8fc15f",glow:"rgba(143,193,95,.28)",mutuals:0,tags:[],openingMessage:"",reply:"",avatarUrl:member.avatarUrl});
+  }
+
   function selectTab(tab: ClubTabId, moveFocus = false) {
     setActiveTab(tab);
+    setEntryForm(null);setEntryMessage("");setEntryConfirm("");
     if (moveFocus) tabRefs.current[tab]?.focus();
   }
 
@@ -130,16 +259,19 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
   return (
     <section className={`club-detail club-tone-${club.tone}`} aria-labelledby="club-detail-title">
       <header ref={heroRef} className="club-detail-hero">
-        <motion.div
+        {/* Sürüşməyə bağlı parallaks (y + scale) çıxarıldı: klubun işarəsi/örtüyü
+            sürüşdürdükcə böyüyüb aşağı sürüşür, hero-nun kənarında kəsilərək
+            formasını dəyişir və başlığın üstünə düşürdü. */}
+        <div
           className={`club-detail-hero__visual${editable.coverUrl ? " has-cover" : ""}`}
-          style={{ y: visualY, scale: visualScale, ...(editable.coverUrl ? { backgroundImage: `url("${editable.coverUrl}")` } : {}) }}
+          style={editable.coverUrl ? { backgroundImage: `url("${editable.coverUrl}")` } : undefined}
           aria-hidden="true"
         >
           <span className="club-detail-hero__orb club-detail-hero__orb--one" />
           <span className="club-detail-hero__orb club-detail-hero__orb--two" />
           <span className="club-detail-hero__mesh" />
           <span className="club-detail-hero__mark"><UsersRound size={44} strokeWidth={1.25} /></span>
-        </motion.div>
+        </div>
 
         <div className="club-detail-hero__topline">
           <Link href="/clubs" className="club-detail-back-link">
@@ -149,7 +281,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
           <ReportDialog target={reportOpen?{entityType:"club",entityId:club.id??club.slug,label:club.name}:null} onClose={()=>setReportOpen(false)}/><div className="club-detail-owner-actions"><span className="club-detail-category">{t(`clubCategory.${editable.category}`)}</span>{canManage?<button type="button" onClick={()=>setSettingsOpen((value)=>!value)}><Settings2 size={15}/>{t(settingsOpen?"club.settingsClose":"club.settingsOpen")}</button>:null}{user&&!canManage?<button type="button" className="club-report" onClick={()=>setReportOpen(true)}><Flag size={14} aria-hidden="true"/>{t("club.report")}</button>:null}</div>
         </div>
 
-        <motion.div className="club-detail-hero__content" style={{ y: copyY }}>
+        <div className="club-detail-hero__content">
           <span className="club-detail-eyebrow">{t("club.network")}</span>
           <h1 id="club-detail-title">{editable.name}</h1>
           <p className="club-detail-tagline">{editable.tagline}</p>
@@ -160,7 +292,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
               {club.stats.map((stat) => (
                 <div key={stat.label}>
                   <dt>{t(stat.label)}</dt>
-                  <dd>{stat.value}</dd>
+                  <dd>{stat.label === "club.statEvents" ? events.length : stat.value}</dd>
                 </div>
               ))}
             </dl>
@@ -173,7 +305,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
               <MagneticJoinButton clubId={club.slug} clubName={editable.name} />
             )}
           </div>
-        </motion.div>
+        </div>
       </header>
 
       <div className="club-detail-body">
@@ -192,7 +324,7 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
             {club.id?<div className="club-owner-cover"><span>{t("clubs.cover")}</span><SecureImagePicker kind="club" ownerId={club.id} currentUrl={editable.coverUrl} onChange={(asset)=>setEditable((current)=>({...current,coverUrl:asset?.secureUrl}))}/></div>:null}
             <div className="club-owner-fields">
               <label><span>{t("clubs.fieldName")}</span><input value={editable.name} onChange={(e)=>setEditable({...editable,name:e.target.value})} minLength={3} maxLength={140} required/></label>
-              <label><span>{t("clubs.fieldCategory")}</span><select value={editable.category} onChange={(e)=>setEditable({...editable,category:e.target.value as Club["category"]})}>{(["Texnologiya","Akademik","Yaradıcılıq","Sosial təsir","Mədəniyyət"] as const).map((item)=><option key={item} value={item}>{t(`clubCategory.${item}`)}</option>)}</select></label>
+              <label><span>{t("clubs.fieldCategory")}</span><select value={editable.category} onChange={(e)=>setEditable({...editable,category:e.target.value as Club["category"]})}>{(["Texnologiya","Akademik","Yaradıcılıq","Sosial təsir","Mədəniyyət","İdman"] as const).map((item)=><option key={item} value={item}>{t(`clubCategory.${item}`)}</option>)}</select></label>
               <label className="is-wide"><span>{t("clubs.fieldTagline")}</span><input value={editable.tagline} onChange={(e)=>setEditable({...editable,tagline:e.target.value})} minLength={5} maxLength={220} required/></label>
               <label className="is-wide"><span>{t("club.fieldDescription")}</span><textarea value={editable.description} onChange={(e)=>setEditable({...editable,description:e.target.value})} minLength={10} maxLength={800} rows={3} required/></label>
               <label className="is-wide"><span>{t("clubs.fieldAbout")}</span><textarea value={editable.about.join("\n")} onChange={(e)=>setEditable({...editable,about:e.target.value.split(/\n/).filter(Boolean)})} minLength={10} maxLength={3000} rows={4} required/></label>
@@ -288,22 +420,45 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                   <div><span className="club-panel-kicker">{t("club.eventsKicker")}</span><h2>{t("club.eventsTitle")}</h2></div>
                   <p>{t("club.eventsBody")}</p>
                 </div>
-                <ol className="club-event-list">
-                  {club.events.map((event) => (
-                    <li key={event.id} className="club-event-item">
-                      <time dateTime={event.date} className="club-event-date">
-                        <strong>{event.dateLabel}</strong><span>{event.timeLabel}</span>
-                      </time>
-                      <div className="club-event-copy">
-                        <span>{event.format}</span>
-                        <h3>{event.title}</h3>
-                        <p>{event.summary}</p>
+                {canManage ? (
+                  entryForm === "events" ? (
+                    <form className="club-entry-form" onSubmit={(event) => void addEntry("events", event)}>
+                      <h3>{t("club.eventFormTitle")}</h3>
+                      <div className="club-owner-fields">
+                        <label className="is-wide"><span>{t("club.eventFieldTitle")}</span><input value={eventDraft.title} onChange={(e) => setEventDraft({ ...eventDraft, title: e.target.value })} minLength={3} maxLength={140} required /></label>
+                        <label><span>{t("club.eventFieldDate")}</span><input type="date" value={eventDraft.date} onChange={(e) => setEventDraft({ ...eventDraft, date: e.target.value })} required /></label>
+                        <label><span>{t("club.eventFieldTime")}</span><input type="time" value={eventDraft.time} onChange={(e) => setEventDraft({ ...eventDraft, time: e.target.value })} required /></label>
+                        <label><span>{t("club.eventFieldPlace")}</span><input value={eventDraft.place} onChange={(e) => setEventDraft({ ...eventDraft, place: e.target.value })} minLength={2} maxLength={180} required /></label>
+                        <label><span>{t("club.eventFieldFormat")}</span><select value={eventDraft.format} onChange={(e) => setEventDraft({ ...eventDraft, format: e.target.value as ClubEventFormat })}>{clubEventFormats.map((format) => <option key={format} value={format}>{t(`club.format.${format}`)}</option>)}</select></label>
+                        <label className="is-wide"><span>{t("club.eventFieldSummary")}</span><textarea value={eventDraft.summary} onChange={(e) => setEventDraft({ ...eventDraft, summary: e.target.value })} maxLength={400} rows={2} /></label>
                       </div>
-                      <span className="club-event-place"><MapPin size={14} aria-hidden="true" /> {event.place}</span>
-                    </li>
-                  ))}
+                      <footer><button type="button" onClick={() => setEntryForm(null)}>{t("club.entryCancel")}</button><button type="submit" disabled={entryBusy === "add-events"}><Plus size={15} aria-hidden="true" />{t("club.entrySave")}</button></footer>
+                    </form>
+                  ) : (
+                    <button type="button" className="club-entry-add" onClick={() => { setEntryForm("events"); setEntryMessage(""); }}><Plus size={15} aria-hidden="true" />{t("club.eventAdd")}</button>
+                  )
+                ) : null}
+                {entryMessage && activeTab === "events" ? <p className="club-entry-status" role="status">{entryMessage}</p> : null}
+                <ol className="club-event-list">
+                  {orderEvents(events, now ?? 0).map(({ event, past }) => {
+                    const when = eventDate(event);
+                    return (
+                      <li key={event.id} className={`club-event-item${now !== null && past ? " is-past" : ""}`}>
+                        <time dateTime={event.date} className="club-event-date">
+                          <strong>{when.date}</strong><span>{when.time}</span>
+                        </time>
+                        <div className="club-event-copy">
+                          <span>{t(`club.format.${clubEventFormatKey(event.format)}`)}{now !== null && past ? <em className="club-event-past">{t("club.eventPast")}</em> : null}</span>
+                          <h3>{event.title}</h3>
+                          {event.summary ? <p>{event.summary}</p> : null}
+                        </div>
+                        <span className="club-event-place"><MapPin size={14} aria-hidden="true" /> {event.place}</span>
+                        {deleteButton("events", event.id, event.title)}
+                      </li>
+                    );
+                  })}
                 </ol>
-                {club.events.length === 0 && (
+                {events.length === 0 && (
                   <div className="club-tab-empty">
                     <CalendarDays size={22} aria-hidden="true" />
                     <div><h3>{t("club.eventsEmptyTitle")}</h3><p>{t("club.eventsEmptyBody")}</p></div>
@@ -316,20 +471,56 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
               <div className="club-members-section">
                 <div className="club-panel-heading">
                   <div><span className="club-panel-kicker">{t("club.membersKicker")}</span><h2>{t("club.membersTitle")}</h2></div>
-                  <p><UsersRound size={15} aria-hidden="true" /> {t("club.membersPrivacy")}</p>
+                  <p><UsersRound size={15} aria-hidden="true" /> {t("club.membersHint", { count: management?.members.length ?? 0 })}</p>
                 </div>
-                <ul className="club-member-grid">
-                  {club.members.map((member) => (
-                    <li key={member.id} className="club-member-card">
-                      <span className="club-member-avatar" aria-hidden="true">{member.initials}</span>
-                      <div><h3>{member.role}</h3><p>{member.focus}</p></div>
-                    </li>
-                  ))}
-                </ul>
-                {club.members.length === 0 && (
+                {/* Real üzvlər ad-soyadı ilə; üzvə klikləyəndə əlaqə sorğusu göndərmək
+                    və ya (əlaqədədirsə) mesaj yazmaq olur. Siyahı yalnız daxil olmuş
+                    istifadəçiyə açıqdır (backend). */}
+                {management?.members.length ? (
+                  <ul className="club-people-grid">
+                    {[...management.members].sort((a, b) => Number(b.isCreator) - Number(a.isCreator) || Number(b.role === "leader") - Number(a.role === "leader") || a.name.localeCompare(b.name, "az")).map((member) => {
+                      const state = peerState(member.id);
+                      const open = selectedMember === member.id;
+                      const message = connectionMessage?.id === member.id ? connectionMessage.key : "";
+                      return (
+                        <li key={member.id} className={`club-person${open ? " is-open" : ""}`}>
+                          <button type="button" className="club-person__main" aria-expanded={open} onClick={() => setSelectedMember(open ? "" : member.id)}>
+                            <span className={`club-person__avatar${member.avatarUrl ? " has-image" : ""}`} style={member.avatarUrl ? { backgroundImage: `url("${member.avatarUrl}")` } : undefined} aria-hidden="true">{member.avatarUrl ? null : getInitials(member.name)}</span>
+                            <span className="club-person__text">
+                              <strong>{member.name}</strong>
+                              <small>{member.isCreator || member.role === "leader" ? <Crown size={12} aria-hidden="true" /> : null}{t(member.isCreator ? "club.roleCreator" : member.role === "leader" ? "club.roleLeader" : "club.roleMember")}{state === "self" ? ` · ${t("club.you")}` : ""}</small>
+                            </span>
+                          </button>
+                          {open && state !== "self" ? (
+                            <div className="club-person__actions">
+                              {state === "connected" ? (
+                                <button type="button" onClick={() => messageMember(member)}><MessageCircle size={14} aria-hidden="true" /> {t("club.messageMember")}</button>
+                              ) : state === "sent" ? (
+                                <span className="club-person__state"><Check size={14} aria-hidden="true" /> {t("club.requestSent")}</span>
+                              ) : state === "blocked" ? (
+                                <span className="club-person__state">{t("club.connectUnavailable")}</span>
+                              ) : (
+                                <button type="button" className="is-primary" disabled={connectionBusy === member.id || !connections} onClick={() => void connectWith(member)}>
+                                  <UserPlus size={14} aria-hidden="true" /> {t(state === "incoming" ? "club.acceptRequest" : "club.sendRequest")}
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
+                          {message ? <p className="club-person__message" role="status">{t(message)}</p> : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : user && !management ? (
+                  <p className="club-members-loading" role="status">{t("club.membersLoading")}</p>
+                ) : (
                   <div className="club-tab-empty">
                     <UsersRound size={22} aria-hidden="true" />
-                    <div><h3>{t("club.membersEmptyTitle")}</h3><p>{t("club.membersEmptyBody")}</p></div>
+                    {user ? (
+                      <div><h3>{t("club.membersEmptyTitle")}</h3><p>{t("club.membersEmptyBody")}</p></div>
+                    ) : (
+                      <div><h3>{t("club.membersSignInTitle")}</h3><p>{t("club.membersSignInBody")}</p></div>
+                    )}
                   </div>
                 )}
               </div>
@@ -341,16 +532,33 @@ export function ClubDetailExperience({ club }: ClubDetailExperienceProps) {
                   <div><span className="club-panel-kicker">{t("club.historyKicker")}</span><h2>{t("club.historyTitle")}</h2></div>
                   <p>{t("club.historyBody")}</p>
                 </div>
+                {canManage ? (
+                  entryForm === "history" ? (
+                    <form className="club-entry-form" onSubmit={(event) => void addEntry("history", event)}>
+                      <h3>{t("club.historyFormTitle")}</h3>
+                      <div className="club-owner-fields">
+                        <label><span>{t("club.historyFieldYear")}</span><input inputMode="numeric" pattern="(19|20)[0-9]{2}" maxLength={4} value={historyDraft.year} onChange={(e) => setHistoryDraft({ ...historyDraft, year: e.target.value.replace(/\D/g, "") })} required /></label>
+                        <label><span>{t("club.historyFieldTitle")}</span><input value={historyDraft.title} onChange={(e) => setHistoryDraft({ ...historyDraft, title: e.target.value })} minLength={3} maxLength={140} required /></label>
+                        <label className="is-wide"><span>{t("club.historyFieldDescription")}</span><textarea value={historyDraft.description} onChange={(e) => setHistoryDraft({ ...historyDraft, description: e.target.value })} maxLength={600} rows={2} /></label>
+                      </div>
+                      <footer><button type="button" onClick={() => setEntryForm(null)}>{t("club.entryCancel")}</button><button type="submit" disabled={entryBusy === "add-history"}><Plus size={15} aria-hidden="true" />{t("club.entrySave")}</button></footer>
+                    </form>
+                  ) : (
+                    <button type="button" className="club-entry-add" onClick={() => { setEntryForm("history"); setEntryMessage(""); }}><Plus size={15} aria-hidden="true" />{t("club.historyAdd")}</button>
+                  )
+                ) : null}
+                {entryMessage && activeTab === "history" ? <p className="club-entry-status" role="status">{entryMessage}</p> : null}
                 <ol className="club-history-list">
-                  {club.history.map((milestone) => (
-                    <li key={`${milestone.year}-${milestone.title}`}>
+                  {[...history].sort((a, b) => Number(b.year) - Number(a.year)).map((milestone) => (
+                    <li key={milestone.id ?? `${milestone.year}-${milestone.title}`}>
                       <time dateTime={milestone.year}>{milestone.year}</time>
                       <span className="club-history-dot" aria-hidden="true" />
-                      <div><h3>{milestone.title}</h3><p>{milestone.description}</p></div>
+                      <div><h3>{milestone.title}</h3>{milestone.description ? <p>{milestone.description}</p> : null}</div>
+                      {deleteButton("history", milestone.id, milestone.title)}
                     </li>
                   ))}
                 </ol>
-                {club.history.length === 0 && (
+                {history.length === 0 && (
                   <div className="club-tab-empty">
                     <Clock3 size={22} aria-hidden="true" />
                     <div><h3>{t("club.historyEmptyTitle")}</h3><p>{t("club.historyEmptyBody")}</p></div>

@@ -24,6 +24,7 @@ import { timetableRouter } from "./routes/timetable.js";
 import { pushRouter } from "./routes/push.js";
 import { questionsRouter } from "./routes/questions.js";
 import { trailRouter } from "./routes/trail.js";
+import { notificationsRouter } from "./routes/notifications.js";
 import { authenticate, requirePrimaryAdmin } from "./middleware/authenticate.js";
 
 export function createApp() {
@@ -85,6 +86,7 @@ export function createApp() {
   app.use("/api/community", communityRouter);
   app.use("/api/media", mediaRouter);
   app.use("/api/realtime", realtimeRouter);
+  app.use("/api/notifications", notificationsRouter);
   app.use("/api/timetable", timetableRouter);
   app.use("/api/push", pushRouter);
   app.use("/api/questions", questionsRouter);

@@ -342,7 +342,7 @@ export function TeacherEvaluation() {
       >
         <SlidersHorizontal size={16} aria-hidden="true" />
         <span>{t("teachers.filters")}</span>
-        <small>{displayedTeachers.length} nəticə</small>
+        <small>{t("teachers.resultCount", { count: displayedTeachers.length })}</small>
       </button>
       <div
         id="teacher-directory-filters"
@@ -357,8 +357,8 @@ export function TeacherEvaluation() {
           <span>{t("teachers.language")}</span>
           <select value={languageFilter} onChange={(event) => setLanguageFilter(event.target.value)}>
             <option value="all">{t("teachers.allLanguages")}</option>
-            <option value="Azərbaycan dili">Azərbaycan dili</option>
-            <option value="İngilis dili">İngilis dili</option>
+            <option value="Azərbaycan dili">{t("teachers.languageAz")}</option>
+            <option value="İngilis dili">{t("teachers.languageEn")}</option>
           </select>
         </label>
         <label>
@@ -565,7 +565,7 @@ export function TeacherEvaluation() {
           <span className="teachers-kicker">{t("teachers.resultsEyebrow")}</span>
           <h2>{t("teachers.resultsTitle")}</h2>
         </div>
-        <p><Star size={14} fill="currentColor" /> {formatInteger(allReviews.length)} dərc edilmiş qiymətləndirmə</p>
+        <p><Star size={14} fill="currentColor" /> {t("teachers.publishedCount", { count: formatInteger(allReviews.length) })}</p>
       </div>
 
       <div className="reviews-masonry" aria-label={t("teachers.resultsLabel")}>
@@ -573,7 +573,7 @@ export function TeacherEvaluation() {
       </div>
       {reviewLimit < allReviews.length && (
         <button type="button" className="reviews-load-more" onClick={() => setReviewLimit((current) => current + 6)}>
-          Daha çox nəticə göstər
+          {t("teachers.showMore")}
         </button>
       )}
     </section>

@@ -4,7 +4,7 @@ import { PlatformProvider } from "./components/PlatformProvider";
 import { PlatformShell } from "./components/PlatformShell";
 import { createIdentityProfile } from "./data/user";
 import { cookies } from "next/headers";
-import { getServerRequestIdentity } from "./lib/auth/request-identity";
+import { resolveServerIdentity } from "./lib/auth/request-identity";
 import { languageCookieName, normalizeLanguage } from "./i18n/config";
 import { LanguageProvider } from "./i18n/LanguageProvider";
 import { getServerLanguage, getServerT } from "./i18n/server";
@@ -75,7 +75,11 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   // Dil serverde oxunur ki, <html lang> ve ilk render dogru dilde olsun.
   const language = normalizeLanguage(cookieStore.get(languageCookieName)?.value);
-  const requestIdentity = await getServerRequestIdentity();
+  // Backend yatıbsa sessiya "bilinmir": istifadəçini çıxmış göstərmirik, brauzer
+  // sessiyanı özü bərpa edir (AuthProvider). Əvvəl 16 saniyə gözlənilirdi.
+  const resolvedIdentity = await resolveServerIdentity();
+  const sessionPending = resolvedIdentity === "unavailable";
+  const requestIdentity = sessionPending ? null : resolvedIdentity;
   // Server bütün istifadəçini artıq alıb: əvvəl ondan yalnız ad, e-poçt və rol
   // götürülürdü, qalan sahələr yer tutucu idi — profil hər açılışda əvvəlcə
   // "məlumat əlavə edilməyib" göstərir, sonra brauzerdə dəyişirdi.
@@ -92,6 +96,7 @@ export default async function RootLayout({
         <LanguageProvider initialLanguage={language}>
         <AuthProvider
           initialUser={initialUser}
+          initialSessionPending={sessionPending}
         >
           <PlatformProvider>
             <PlatformShell>{children}</PlatformShell>

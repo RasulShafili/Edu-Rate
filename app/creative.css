@@ -390,9 +390,16 @@
 .message-peer .message-actions { left: 100%; margin-left: 6px; }
 .message-row:hover .message-actions,
 .message-row.actions-open .message-actions { opacity: 1; pointer-events: auto; }
-/* Toxunma cihazlarında (hover yoxdur) əməliyyat düymələri həmişə əlçatan olsun */
+/* Toxunma cihazlarında (hover yoxdur): mesaja toxunanda açılır (.is-revealed) və
+   qabarcığın üstündə durur. Əvvəl hər mesajda həmişə açıq idi və qarşı tərəfin
+   düymələri ekranın sağından kənara çıxırdı. */
 @media (hover: none) {
-  .message-bubble .message-actions { opacity: 1; pointer-events: auto; }
+  /* Reaksiya paneli açılanda (.actions-open) eyni yerə düşür — onda düymələr gizlənir. */
+  .message-row.is-revealed:not(.actions-open) .message-actions { opacity: 1; pointer-events: auto; }
+  .message-row.actions-open .message-actions { opacity: 0; pointer-events: none; }
+  .message-bubble .message-actions { top: auto; bottom: calc(100% + 6px); z-index: 4; transform: none; }
+  .message-own .message-actions { right: 0; margin-right: 0; }
+  .message-peer .message-actions { left: 0; margin-left: 0; }
 }
 .message-actions button {
   display: grid;
@@ -480,7 +487,9 @@
 .chat-status-typing { color: var(--peer-accent); font-weight: 600; }
 
 /* Composer — cavab/redaktə preview + emoji seçici */
-.chat-composer { display: flex; flex-direction: column; gap: 7px; }
+/* `align-items: stretch` — globals.css-dəki köhnə grid modelindən `align-items: end` qalırdı:
+   sütun flex-də bu, yazı sətrini məzmun eninə sıxıb sağa itələyirdi (yarısı boş qalırdı). */
+.chat-composer { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
 .composer-context {
   display: flex;
   align-items: center;

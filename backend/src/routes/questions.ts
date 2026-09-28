@@ -12,13 +12,17 @@ import {
   toggleVote,
 } from "../db/questions.js";
 import { ApiError } from "../lib/api-error.js";
+import { notifyUser } from "../db/notifications.js";
+import { userOrIpKey } from "../lib/client-key.js";
 import { authenticate, optionalAuthenticate } from "../middleware/authenticate.js";
 
 export const questionsRouter = Router();
 
+// `authenticate`-dən sonra işləyir, ona görə limit hər hesab üçün ayrıdır.
 const writeLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 15,
+  keyGenerator: userOrIpKey,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { code: "RATE_LIMITED", message: "Qısa müddətdə çox sayda paylaşım edildi." } },
@@ -50,7 +54,8 @@ questionsRouter.post("/:id/answers", authenticate, writeLimiter, async (request,
   const { body } = z.object({ body: z.string().trim().min(2).max(1200) }).strict().parse(request.body);
   const answer = await createAnswer(id, request.auth!.userId, body);
   if (!answer) throw new ApiError(404, "QUESTION_NOT_FOUND", "Sual tapılmadı.");
-  response.status(201).json({ data: answer });
+  await notifyUser(answer.questionAuthorId, "question_answered", { title: answer.questionTitle }, "/questions", request.auth!.userId);
+  response.status(201).json({ data: { id: answer.id } });
 });
 
 questionsRouter.post("/:id/vote", authenticate, async (request, response) => {

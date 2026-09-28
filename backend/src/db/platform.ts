@@ -22,7 +22,7 @@ export type ClubRecord = {
   focusTags: string[];
   events: Array<{ id: string; title: string; summary: string; date: string; dateLabel: string; timeLabel: string; place: string; format: string }>;
   members: Array<{ id: string; initials: string; role: string; focus: string }>;
-  history: Array<{ year: string; title: string; description: string }>;
+  history: Array<{ id?: string; year: string; title: string; description: string }>;
   memberCount: number;
   eventCount: number;
   createdBy: string | null;
@@ -409,6 +409,62 @@ export async function setClubLeader(clubId: string, userId: string, leader: bool
     WHERE conversation_participants.conversation_id=conversations.id AND conversations.club_id=$1 AND conversation_participants.user_id=$2`,[club.id,userId,leader?"admin":"member"]);
   const user=await findUserById(userId);if(!user)throw new ApiError(404,"USER_NOT_FOUND","İstifadəçi tapılmadı.");
   return {id:user.id,name:user.name,role:leader?"leader":"member",isCreator:club.createdBy===user.id,avatarUrl:(await getMedia("avatar",user.id))?.secureUrl};
+}
+
+/**
+ * Klub liderinin idarə etdiyi siyahılar (klubun öz tədbirləri və tarixçəsi).
+ * Əvvəl bu sahələrə yazan heç bir yol yox idi: "Tədbirlər" və "Tarixçə" tabları
+ * hər klubda həmişə boş qalırdı. Qeydlər atomik əlavə/silinir — iki lider eyni
+ * anda yazanda biri o birinin dəyişikliyini əzmir.
+ */
+export type ClubListName = "events" | "history";
+const CLUB_LIST_LIMITS: Record<ClubListName, number> = { events: 40, history: 30 };
+
+export async function appendClubEntry(clubId: string, list: ClubListName, entry: { id: string } & Record<string, unknown>): Promise<ClubRecord> {
+  const club = await findClub(clubId);
+  if (!club) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  const limitReached = () => new ApiError(409, "CLUB_LIST_FULL", list === "events" ? "Klubda ən çox 40 tədbir saxlanıla bilər. Köhnələri sil." : "Tarixçədə ən çox 30 qeyd saxlanıla bilər.");
+  if (!databasePool) {
+    const stored = memoryClubs.get(club.slug);
+    if (!stored) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+    const current = stored[list] as unknown[];
+    if (current.length >= CLUB_LIST_LIMITS[list]) throw limitReached();
+    memoryClubs.set(club.slug, { ...stored, [list]: [...current, entry], updatedAt: now() });
+  } else {
+    // Sütun adı yalnız sabit siyahıdan gəlir (istifadəçi mətni deyil).
+    const column = list === "events" ? "events" : "history";
+    const result = await databasePool.query(
+      `UPDATE clubs SET ${column} = ${column} || jsonb_build_array($2::jsonb), updated_at = NOW()
+       WHERE id = $1 AND jsonb_array_length(${column}) < $3 RETURNING id`,
+      [club.id, JSON.stringify(entry), CLUB_LIST_LIMITS[list]],
+    );
+    if (!result.rowCount) throw limitReached();
+  }
+  return (await findClub(club.id))!;
+}
+
+export async function removeClubEntry(clubId: string, list: ClubListName, entryId: string): Promise<ClubRecord> {
+  const club = await findClub(clubId);
+  if (!club) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  const missing = () => new ApiError(404, "CLUB_ENTRY_NOT_FOUND", "Qeyd tapılmadı.");
+  if (!databasePool) {
+    const stored = memoryClubs.get(club.slug);
+    const current = (stored?.[list] ?? []) as Array<{ id?: string }>;
+    if (!stored || !current.some((item) => item.id === entryId)) throw missing();
+    memoryClubs.set(club.slug, { ...stored, [list]: current.filter((item) => item.id !== entryId), updatedAt: now() });
+  } else {
+    const column = list === "events" ? "events" : "history";
+    const result = await databasePool.query(
+      `UPDATE clubs SET ${column} = COALESCE(
+         (SELECT jsonb_agg(item ORDER BY position) FROM jsonb_array_elements(${column}) WITH ORDINALITY AS entries(item, position)
+          WHERE item->>'id' IS DISTINCT FROM $2), '[]'::jsonb), updated_at = NOW()
+       WHERE id = $1 AND EXISTS (SELECT 1 FROM jsonb_array_elements(${column}) AS existing(item) WHERE existing.item->>'id' = $2)
+       RETURNING id`,
+      [club.id, entryId],
+    );
+    if (!result.rowCount) throw missing();
+  }
+  return (await findClub(club.id))!;
 }
 
 export async function listMyClubMemberships(userId: string): Promise<ClubRecord[]> {

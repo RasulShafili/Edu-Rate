@@ -229,6 +229,32 @@ export const openApiDocument = {
       patch: { tags: ["Clubs"], summary: "Klub üzvünü əlavə lider təyin et", security: [{ bearerAuth: [] }], responses: { "200": { description: "Lider təyin edildi" }, "403": { description: "Yaradıcı və ya əsas admin icazəsi tələb olunur" }, "404": { description: "Klub və ya üzv tapılmadı" } } },
       delete: { tags: ["Clubs"], summary: "Əlavə liderin səlahiyyətini götür", security: [{ bearerAuth: [] }], responses: { "200": { description: "Liderlik götürüldü" }, "409": { description: "Klub yaradıcısının liderliyi götürülə bilməz" } } },
     },
+    "/api/notifications": {
+      get: { tags: ["Notifications"], summary: "Şəxsi bildirişlər və oxunmamış say", security: [{ bearerAuth: [] }], parameters: [{ name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100 } }], responses: { "200": { description: "{ items, unread }" }, "401": { description: "Giriş tələb olunur" } } },
+    },
+    "/api/notifications/read-all": {
+      post: { tags: ["Notifications"], summary: "Bütün bildirişləri oxunmuş et", security: [{ bearerAuth: [] }], responses: { "200": { description: "Yenilənən say" } } },
+    },
+    "/api/notifications/{id}/read": {
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+      patch: { tags: ["Notifications"], summary: "Bildirişi oxunmuş et", security: [{ bearerAuth: [] }], responses: { "200": { description: "Oxundu" }, "404": { description: "Bildiriş tapılmadı" } } },
+    },
+    "/api/clubs/{clubId}/events": {
+      parameters: [{ name: "clubId", in: "path", required: true, schema: { type: "string" } }],
+      post: { tags: ["Clubs"], summary: "Kluba tədbir əlavə et (klub lideri və ya rəhbərlik)", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["title", "startAt", "place", "format"], properties: { title: { type: "string" }, summary: { type: "string" }, startAt: { type: "string", format: "date-time" }, place: { type: "string" }, format: { type: "string", enum: ["meetup", "workshop", "presentation", "trip", "session"] } } } } } }, responses: { "201": { description: "Yenilənmiş klub" }, "403": { description: "Klub lideri tələb olunur" }, "409": { description: "Tədbir limiti dolub" } } },
+    },
+    "/api/clubs/{clubId}/events/{entryId}": {
+      parameters: [{ name: "clubId", in: "path", required: true, schema: { type: "string" } }, { name: "entryId", in: "path", required: true, schema: { type: "string" } }],
+      delete: { tags: ["Clubs"], summary: "Klub tədbirini sil", security: [{ bearerAuth: [] }], responses: { "200": { description: "Yenilənmiş klub" }, "403": { description: "Klub lideri tələb olunur" }, "404": { description: "Tədbir tapılmadı" } } },
+    },
+    "/api/clubs/{clubId}/history": {
+      parameters: [{ name: "clubId", in: "path", required: true, schema: { type: "string" } }],
+      post: { tags: ["Clubs"], summary: "Klub tarixçəsinə qeyd əlavə et", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["year", "title"], properties: { year: { type: "string", pattern: "^(19|20)\\d{2}$" }, title: { type: "string" }, description: { type: "string" } } } } } }, responses: { "201": { description: "Yenilənmiş klub" }, "403": { description: "Klub lideri tələb olunur" }, "409": { description: "Tarixçə limiti dolub" } } },
+    },
+    "/api/clubs/{clubId}/history/{entryId}": {
+      parameters: [{ name: "clubId", in: "path", required: true, schema: { type: "string" } }, { name: "entryId", in: "path", required: true, schema: { type: "string" } }],
+      delete: { tags: ["Clubs"], summary: "Tarixçə qeydini sil", security: [{ bearerAuth: [] }], responses: { "200": { description: "Yenilənmiş klub" }, "403": { description: "Klub lideri tələb olunur" }, "404": { description: "Qeyd tapılmadı" } } },
+    },
     "/api/mentors": {
       get: {
         tags: ["Catalog"],

@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useT } from "../i18n/LanguageProvider";
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -20,6 +21,7 @@ const DISMISS_KEY = "edurate:install-dismissed";
  * çıxmır.
  */
 export function PwaLayer() {
+  const t = useT();
   const reduceMotion = Boolean(useReducedMotion());
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
@@ -75,18 +77,18 @@ export function PwaLayer() {
         <motion.div
           className="install-banner"
           role="dialog"
-          aria-label="EduRate-i telefonuna əlavə et"
+          aria-label={t("pwa.installTitle")}
           initial={reduceMotion ? false : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
         >
           <span className="install-banner__icon" aria-hidden="true"><Download size={18} /></span>
           <div>
-            <strong>EduRate-i telefonuna əlavə et</strong>
-            <small>Ana ekrandan bir toxunuşla aç — cədvəlin və elanlar əl altında olsun.</small>
+            <strong>{t("pwa.installTitle")}</strong>
+            <small>{t("pwa.installBody")}</small>
           </div>
-          <button type="button" className="install-banner__cta" onClick={() => void install()}>Əlavə et</button>
-          <button type="button" className="install-banner__close" onClick={dismiss} aria-label="Bağla">
+          <button type="button" className="install-banner__cta" onClick={() => void install()}>{t("pwa.install")}</button>
+          <button type="button" className="install-banner__close" onClick={dismiss} aria-label={t("pwa.dismiss")}>
             <X size={16} />
           </button>
         </motion.div>

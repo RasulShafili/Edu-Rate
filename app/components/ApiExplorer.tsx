@@ -1,7 +1,6 @@
 "use client";
 
 import { Braces, CheckCircle2, Copy, ExternalLink, Play, RefreshCw, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 const endpointGroups = [
@@ -66,9 +65,11 @@ export function ApiExplorer() {
           frontend inteqrasiyası burada açıq şəkildə göstərilir.
         </p>
         <div className="api-explorer-actions">
-          <Link href="/api/openapi.json" target="_blank" className="kuds-primary-button">
+          {/* `<Link>` deyil: Next onu səhifə sayıb RSC prefetch edirdi, API marşrutu
+              RSC qaytarmadığı üçün sorğu asılı qalır və səhifə yüklənməni bitirmirdi. */}
+          <a href="/api/openapi.json" target="_blank" rel="noopener noreferrer" className="kuds-primary-button">
             JSON sənədini aç <ExternalLink size={16} aria-hidden="true" />
-          </Link>
+          </a>
           <button type="button" className="api-secondary-button" onClick={() => void copySpecUrl()}>
             <Copy size={16} aria-hidden="true" /> {copied ? "Kopyalandı" : "Sənəd URL-ni kopyala"}
           </button>

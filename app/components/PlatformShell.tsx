@@ -177,7 +177,7 @@ export function PlatformShell({ children }: PlatformShellProps) {
         onClick={toggleNavigation}
         aria-expanded={navigationOpen}
         aria-controls="platform-mobile-navigation"
-        aria-label={navigationOpen ? "Naviqasiyanı bağla" : "Naviqasiyanı aç"}
+        aria-label={t(navigationOpen ? "shell.navClose" : "shell.navOpen")}
       >
         <Menu size={21} />
       </button>
@@ -189,7 +189,7 @@ export function PlatformShell({ children }: PlatformShellProps) {
         onClick={() => toggleTools("search")}
         aria-expanded={toolsOpen}
         aria-controls="platform-mobile-utility-sheet"
-        aria-label={toolsOpen ? "Səhifə alətlərini bağla" : "Səhifə alətlərini aç"}
+        aria-label={t(toolsOpen ? "shell.toolsClose" : "shell.toolsOpen")}
       >
         <SlidersHorizontal size={20} />
       </button>

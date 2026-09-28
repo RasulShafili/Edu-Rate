@@ -161,7 +161,7 @@ export async function listConversations(userId: string): Promise<Conversation[]>
     return items;
   }
   const result = await databasePool.query(`SELECT c.id,c.updated_at,u.id peer_id,u.name,u.role,u.faculty,u.program,u.city,media_assets.secure_url avatar_url,(me.muted_until>NOW()) muted,
-    COALESCE((SELECT body FROM messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1),'') last_message,
+    COALESCE((SELECT CASE WHEN deleted_at IS NOT NULL THEN 'Mesaj silindi' ELSE body END FROM messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1),'') last_message,
     (SELECT COUNT(*)::int FROM messages m WHERE m.conversation_id=c.id AND m.sender_id<>$1 AND m.created_at>COALESCE(me.last_read_at,'epoch')) unread_count
     FROM conversations c JOIN conversation_participants me ON me.conversation_id=c.id AND me.user_id=$1
     JOIN conversation_participants other ON other.conversation_id=c.id AND other.user_id<>$1 JOIN users u ON u.id=other.user_id
@@ -211,7 +211,7 @@ export async function listClubConversations(userId: string): Promise<ClubConvers
   const result = await databasePool.query(`SELECT c.id,c.updated_at,clubs.id club_id,clubs.slug,clubs.name,
     (SELECT COUNT(*)::int FROM conversation_participants WHERE conversation_id=c.id) member_count,
     (me.role='admin') is_admin,(me.muted_until>NOW()) muted,
-    COALESCE((SELECT body FROM messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1),'') last_message,
+    COALESCE((SELECT CASE WHEN deleted_at IS NOT NULL THEN 'Mesaj silindi' ELSE body END FROM messages WHERE conversation_id=c.id ORDER BY created_at DESC,id DESC LIMIT 1),'') last_message,
     (SELECT COUNT(*)::int FROM messages m WHERE m.conversation_id=c.id AND m.sender_id<>$1 AND m.created_at>COALESCE(me.last_read_at,'epoch')) unread_count
     FROM conversations c JOIN conversation_participants me ON me.conversation_id=c.id AND me.user_id=$1
     JOIN clubs ON clubs.id=c.club_id WHERE c.kind='club' AND clubs.status='Aktiv' ORDER BY c.updated_at DESC`, [userId]);
@@ -227,7 +227,10 @@ export async function listMessages(conversationId: string, userId: string, befor
     const byId = new Map(stored.map((message) => [message.id, message]));
     const peerId = conversation?.kind === "direct" ? conversation.participants.find((id) => id !== userId) : undefined;
     const peerReadAt = peerId ? conversation?.lastReadAt?.get(peerId) : undefined;
-    return Promise.all(stored.slice(-limit).map(async (message) => {
+    // `before` kursoru (köhnə mesajları yükləmək) SQL rejimindəki kimi işləməlidir.
+    const cursorIndex = before ? stored.findIndex((message) => message.id === before) : stored.length;
+    const page = cursorIndex < 0 ? [] : stored.slice(0, cursorIndex).slice(-limit);
+    return Promise.all(page.map(async (message) => {
       const sender = users.find((user) => user.id === message.senderId);
       const senderName = sender?.name ?? message.senderName;
       return {

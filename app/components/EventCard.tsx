@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, MapPin } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, MapPin } from "lucide-react";
 import { type CSSProperties } from "react";
 import type { Event } from "../data/events";
 import { useLanguage } from "../i18n/LanguageProvider";
@@ -11,9 +11,11 @@ type EventCardProps = {
   event: Event;
   index: number;
   onSelect: (event: Event) => void;
+  /** İstifadəçi bu tədbirə yazılıbsa kartda görünsün (əvvəl yalnız drawer bilirdi). */
+  registered?: boolean;
 };
 
-export function EventCard({ event, index, onSelect }: EventCardProps) {
+export function EventCard({ event, index, onSelect, registered = false }: EventCardProps) {
   const { language, t } = useLanguage();
   const reduceMotion = useReducedMotion();
   const temporalStatus = getTemporalStatus(event.startAt, event.endAt);
@@ -70,6 +72,9 @@ export function EventCard({ event, index, onSelect }: EventCardProps) {
               </span>
             </div>
             <p>{event.description}</p>
+            {registered ? (
+              <span className="event-registered-badge"><CheckCircle2 size={13} aria-hidden="true" /> {t("events.card.registered")}</span>
+            ) : null}
             <span className={`event-registration-status${registrationOpen ? " is-open" : " is-closed"}`}>
               {registrationOpen
                 ? t("events.spotsLeft", { count: event.availableSpots })

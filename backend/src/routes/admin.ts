@@ -46,6 +46,8 @@ import { decideMentorApplication, listMentorApplications } from "../db/mentor-ap
 import { ensureClubConversation, findMessageForReport, listContentReports, updateContentReport } from "../db/messaging.js";
 import { createActionToken } from "../db/auth-security.js";
 import { sendPush } from "../db/push.js";
+import { notifyUser } from "../db/notifications.js";
+import { noticeEventCancelled, noticeEventChanged } from "../lib/event-notices.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 
 export const adminRouter = Router();
@@ -255,8 +257,13 @@ adminRouter.post("/clubs", async (request, response) => {
 });
 
 adminRouter.patch("/clubs/:id", async (request, response) => {
-  const club = await updateClub(z.string().parse(request.params.id), clubSchema.partial().parse(request.body));
+  const clubId = z.string().parse(request.params.id);
+  const before = await findClub(clubId);
+  const club = await updateClub(clubId, clubSchema.partial().parse(request.body));
   if (!club) throw new ApiError(404, "CLUB_NOT_FOUND", "Klub tapılmadı.");
+  if (before && before.status !== "Aktiv" && club.status === "Aktiv") {
+    await notifyUser(club.createdBy, "club_approved", { name: club.name }, `/clubs/${club.slug}`, request.auth!.userId);
+  }
   await writeAudit(request.auth!.userId, "Klub yeniləndi", "club", club.id);
   response.json({ data: toAdminClub(club) });
 });
@@ -308,11 +315,18 @@ adminRouter.patch("/events/:id", async (request, response) => {
     adminStatus: patch.status ?? current.adminStatus,
   });
   await writeAudit(request.auth!.userId, "Tədbir yeniləndi", "event", id, patch.status ? { status: patch.status } : {});
+  if (patch.status === "Açıq" && current.adminStatus !== "Açıq") {
+    await notifyUser(current.createdBy, "event_published", { title: event!.title }, "/events", request.auth!.userId);
+  }
+  await noticeEventChanged(current, event!, request.auth!.userId);
   response.json({ data: toAdminEvent(event!, patch.status) });
 });
 
 adminRouter.delete("/events/:id", async (request, response) => {
   const id = z.string().parse(request.params.id);
+  const current = await findEventById(id);
+  if (!current) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
+  await noticeEventCancelled(current, request.auth!.userId);
   if (!(await deleteEvent(id))) throw new ApiError(404, "EVENT_NOT_FOUND", "Tədbir tapılmadı.");
   await writeAudit(request.auth!.userId, "Tədbir silindi", "event", id);
   response.status(204).send();
@@ -374,6 +388,7 @@ adminRouter.patch("/support-tickets/:id",async(request,response)=>{
   const ticket=await updateSupportTicketStatus(id,status);
   if(!ticket)throw new ApiError(404,"TICKET_NOT_FOUND","Dəstək müraciəti tapılmadı.");
   await writeAudit(request.auth!.userId,"Dəstək müraciətinin statusu dəyişdirildi","support_ticket",id,{status});
+  await notifyUser(ticket.userId,"support_updated",{reference:ticket.reference,status},"/support",request.auth!.userId);
   response.json({data:ticket});
 });
 

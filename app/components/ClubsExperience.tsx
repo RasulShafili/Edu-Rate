@@ -1,10 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Clock3, ImagePlus, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { Clock3, ImagePlus, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { Club } from "../data/clubs";
 import { uploadSecureImage } from "../lib/media-upload";
 import { useAuth } from "./AuthProvider";
@@ -23,6 +23,19 @@ export function ClubsExperience({ clubs, failed=false, pendingClubs=[] }: ClubsE
   const router = useRouter();
   const t = useT();
   const { user } = useAuth();
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("");
+  // Yalnız kataloqda həqiqətən olan kateqoriyalar — boş nəticə verən çip göstərmirik.
+  const categories = useMemo(() => [...new Set(clubs.map((club) => club.category))], [clubs]);
+  const visibleClubs = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("az");
+    return clubs.filter((club) => {
+      if (category && club.category !== category) return false;
+      if (!needle) return true;
+      return [club.name, club.shortName, club.tagline, club.description, t(`clubCategory.${club.category}`), ...club.focusTags]
+        .some((value) => value?.toLocaleLowerCase("az").includes(needle));
+    });
+  }, [category, clubs, query, t]);
   const [createOpen, setCreateOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -154,11 +167,37 @@ export function ClubsExperience({ clubs, failed=false, pendingClubs=[] }: ClubsE
 
         {failed ? <div className="clubs-catalog-state" role="alert"><strong>{t("clubs.loadFailedTitle")}</strong><p>{t("clubs.loadFailedBody")}</p></div>
         : clubs.length===0 ? <div className="clubs-catalog-state"><strong>{t("clubs.emptyTitle")}</strong><p>{t("clubs.emptyBody")}</p></div>
-        : <div className="clubs-directory-grid">
-          {clubs.map((club, index) => (
-            <ClubCard key={club.slug} club={club} index={index} />
-          ))}
-        </div>}
+        : <>
+          <div className="clubs-filter" role="search">
+            <label className="clubs-filter__search">
+              <Search size={16} aria-hidden="true" />
+              <span className="sr-only">{t("clubs.searchLabel")}</span>
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("clubs.searchPlaceholder")} maxLength={80} />
+            </label>
+            {categories.length > 1 ? (
+              <div className="clubs-filter__chips" role="group" aria-label={t("clubs.filterLabel")}>
+                <button type="button" aria-pressed={category === ""} onClick={() => setCategory("")}>{t("clubs.filterAll")}</button>
+                {categories.map((item) => (
+                  <button key={item} type="button" aria-pressed={category === item} onClick={() => setCategory(category === item ? "" : item)}>{t(`clubCategory.${item}`)}</button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <p className="sr-only" role="status">{t("clubs.filterCount", { count: visibleClubs.length })}</p>
+          {visibleClubs.length === 0 ? (
+            <div className="clubs-catalog-state">
+              <strong>{t("clubs.filterEmptyTitle")}</strong>
+              <p>{t("clubs.filterEmptyBody")}</p>
+              <button type="button" className="clubs-filter__reset" onClick={() => { setQuery(""); setCategory(""); }}>{t("clubs.filterReset")}</button>
+            </div>
+          ) : (
+            <div className="clubs-directory-grid">
+              {visibleClubs.map((club, index) => (
+                <ClubCard key={club.slug} club={club} index={index} />
+              ))}
+            </div>
+          )}
+        </>}
       </section>
 
       <AnimatePresence>

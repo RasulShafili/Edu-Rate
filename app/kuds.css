@@ -16,7 +16,7 @@
   --kuds-surface: #ffffff;
   --kuds-border: #e2e8f0;
   --kuds-text: #1e293b;
-  --kuds-muted: #64748b;
+  --kuds-muted: #566476; /* əvvəl #64748b: açıq tonlu fonlarda 3.8–4.3:1 idi */
   --kuds-success: #10b981;
   --kuds-warning: #f59e0b;
   --kuds-danger: #ef4444;
@@ -2121,20 +2121,48 @@ body {
 .message-day::after { background: #dce5e2 !important; }
 .kuds-shell .message-sender-name,
 .message-sender-name { color: var(--ku-dark-green) !important; }
-.kuds-shell .message-peer p,
-.message-peer p {
+/* Görünən qabarcıq .message-bubble-dır (creative.css), <p> yalnız mətndir. Əvvəl
+   açıq tema rəngləri <p>-yə verilirdi: qarşı tərəfin qabarcığı tünd temanın
+   şəffaf fonunda qalırdı, mətnin arxasında isə marker kimi zolaq görünürdü;
+   saat, sitat və əməliyyat düymələri ağ fonda ağ idi. */
+.kuds-shell .message-list .message-bubble > p,
+.message-list .message-bubble > p {
+  color: inherit !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+/* WhatsApp üslubu: qabarcıqlarda yalnız yüngül kölgə (neon parıltı əvəzinə). */
+.kuds-shell .message-peer .message-bubble,
+.message-peer .message-bubble {
   color: #1c302c !important;
   border-color: #dbe4e0 !important;
   background: #ffffff !important;
-}
-.kuds-shell .message-own p,
-.message-own p { color: #10221e !important; background: #c9f36a !important; }
-/* WhatsApp üslubu: qabarcıqlarda yalnız yüngül kölgə (neon parıltı əvəzinə).
-   Kənar quyruq götürüldü — qısa mətndə üçbucaq yazının üstünə çıxırdı. */
-.kuds-shell .message-own p, .message-own p,
-.kuds-shell .message-peer p, .message-peer p {
   box-shadow: 0 1px 1.5px rgba(16, 52, 45, 0.13) !important;
 }
+.kuds-shell .message-own .message-bubble,
+.message-own .message-bubble {
+  color: #10221e !important;
+  border-color: transparent !important;
+  background: #c9f36a !important;
+  box-shadow: 0 1px 1.5px rgba(16, 52, 45, 0.13) !important;
+}
+.message-peer .message-meta { color: #62746f !important; }
+.message-own .message-meta { color: rgba(16, 34, 30, 0.7) !important; }
+.message-peer .message-quote { background: #eef3f1 !important; }
+.message-own .message-quote { background: rgba(16, 36, 29, 0.1) !important; }
+.message-quote span { color: var(--ku-dark-green) !important; }
+.message-quote small { color: #4b5f5a !important; opacity: 1 !important; }
+.message-actions button {
+  color: #41574f !important;
+  border-color: #dbe4e0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(16, 52, 45, 0.12) !important;
+}
+.message-actions button:hover { color: #ffffff !important; background: var(--ku-green) !important; }
+/* Tünd temanın dekorativ serif şrifti (Georgia) yalnız avatarlarda qalmışdı. */
+.message-avatar,
+.chat-person-avatar { font-family: inherit !important; font-weight: 700; }
 .kuds-shell .message-row > div > span,
 .message-row > div > span { color: #70817d !important; }
 .kuds-shell .typing-bubble,
@@ -2154,6 +2182,34 @@ body {
 .chat-composer textarea::placeholder { color: #788985 !important; opacity: 1; }
 .kuds-shell .chat-composer textarea:focus,
 .chat-composer textarea:focus { border-color: var(--ku-green) !important; background: #fff !important; }
+/* Composer hissələri tünd temada qalmışdı: emoji düyməsi, cavab önizləməsi və
+   emoji paneli ağ fonda ağımtıl idi. */
+.composer-emoji-trigger {
+  color: #41574f !important;
+  border-color: #dbe4e0 !important;
+  background: #f5f8f7 !important;
+}
+.composer-emoji-trigger:hover,
+.composer-emoji-trigger[aria-expanded="true"] { color: var(--ku-green) !important; background: #eaf2ef !important; }
+.composer-emoji-panel {
+  border-color: #dbe4e0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 40px rgba(16, 52, 45, 0.16) !important;
+}
+.composer-emoji-panel button:hover { background: #eef3f1 !important; }
+.composer-context { background: #f1f5f3 !important; }
+.composer-context-body span { color: var(--ku-dark-green) !important; }
+.composer-context-body small { color: #4b5f5a !important; }
+.composer-context > button { color: #41574f !important; background: #e4ece9 !important; }
+.chat-composer .composer-hint { color: #62746f !important; font-size: 10px !important; }
+.message-bubble .reaction-bar {
+  border-color: #dbe4e0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(16, 52, 45, 0.16) !important;
+}
+.reaction-bar button:hover { background: #eef3f1 !important; }
+.message-reactions button { color: #1c302c !important; border-color: #dbe4e0 !important; background: #ffffff !important; }
+.message-reactions button.mine { border-color: var(--ku-green) !important; background: #eaf4ef !important; }
 .kuds-shell .composer-hint,
 .composer-hint { color: #71827e !important; }
 
@@ -2234,7 +2290,7 @@ body {
   .chat-contact-picker { position: fixed; inset: 70px 8px 8px; border: 1px solid var(--kuds-border); border-radius: 14px; box-shadow: 0 18px 50px rgb(20 54 47 / 18%); }
   .chat-contact-picker > header div { display: grid; }
   .chat-center-tabs { grid-template-columns: 1fr; }
-  .chat-center-tabs button { min-height: 30px; font-size: 8px; }
+  .chat-center-tabs button { min-height: 30px; font-size: 11px; }
   .chat-center-list > button { grid-template-columns: 34px minmax(0, 1fr); padding: 7px; }
   .chat-center-list > button > b,
   .chat-center-list > button > svg { display: none; }
@@ -3592,6 +3648,10 @@ body {
   .chat-center[data-view="list"] .chat-center-main { display: none !important; }
   .chat-center[data-view="thread"] .chat-center-sidebar { display: none !important; }
   .chat-center-sidebar { border-right: 0 !important; }
+  /* Tam ekran siyahıda tablar yan-yana: planşetin dar sütun qaydası (1 sütun, 8px)
+     burada ikinci tabı adi mətn kimi göstərirdi. */
+  .chat-center-tabs { grid-template-columns: 1fr 1fr !important; }
+  .chat-center-tabs button { min-height: 36px !important; font-size: 12px !important; }
 
   /* Söhbətdən geri (siyahıya) — köhnə X-i əvəz edir */
   .chat-back {
@@ -3610,7 +3670,13 @@ body {
   }
   .chat-back:active { background: rgba(20, 42, 38, 0.08); }
   .chat-center-main .chat-center-close { display: none !important; }
-  .chat-center-main .chat-header { padding-right: 12px !important; }
+  /* Bağla düyməsi burada gizlidir: ⋮ ən sağa keçir və ona yer saxlanılır. Əvvəl
+     yer 12px-ə endirilirdi, "space-between" isə həmsöhbəti sağa itələyirdi — ⋮ adın
+     üstünə düşürdü. */
+  .chat-center-main .chat-header { justify-content: flex-start !important; gap: 6px; padding-right: 56px !important; }
+  .chat-center-main .chat-person, .chat-center-main .chat-person > div { min-width: 0; }
+  .chat-center-main .chat-person h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-center-main .chat-more { right: 12px !important; }
 
   /* Siyahı görünüşündə çatı bağla */
   .chat-sidebar-close {
@@ -4287,3 +4353,544 @@ body {
 /* Giriş: 2FA mərhələsindəki mətn düymələri */
 .kuds-shell .auth-link-button { padding: 0; border: 0; background: none; cursor: pointer; text-align: left; min-height: 44px; }
 .kuds-shell .auth-two-factor .auth-form-footer { display: grid; gap: 4px; }
+
+/* ============================================================
+   Kontrast təmiri (sentyabr 2026 auditi)
+   globals.css köhnə TÜND temanın yarımşəffaf açıq mətn rənglərini
+   (rgba(243,241,233,…), rgba(244,243,237,…)) saxlayır. Bu fayl valideyn
+   elementin rəngini dəyişəndə, öz rəngi olan uşaq element onu irs almırdı:
+   aşağıdakılar ağ fonda ağ (kontrast ≈ 1:1) və ya 2–3:1 idi. Hər biri
+   brauzerdə piksel səviyyəsində ölçülüb.
+   ============================================================ */
+.kuds-shell .profile-empty-card p,
+.profile-empty-card p { color: #4b5f5a !important; }
+.kuds-shell .profile-empty-mark,
+.profile-empty-mark { color: #ffffff !important; }
+.kuds-shell .teacher-rating-empty p,
+.teacher-rating-empty p { color: #5b6f6a !important; font-size: 12px !important; }
+.kuds-shell .reviews-heading > p,
+.reviews-heading > p { color: #4b5f5a !important; font-size: 12px !important; }
+.kuds-shell .drawer-topline > span,
+.drawer-topline > span { color: #5b6f6a !important; font-size: 10px !important; }
+.kuds-shell .platform-search-empty,
+.platform-search-empty { color: #5b6f6a !important; border-color: #d7e1de !important; font-size: 12px !important; }
+.kuds-shell .platform-utility-panel-header button,
+.platform-utility-panel-header button { color: #41574f !important; }
+.kuds-shell .week-day__empty,
+.week-day__empty { color: #5f716d !important; }
+.kuds-shell .today-panel__head small,
+.today-panel__head small { color: rgb(238 250 241 / 92%) !important; }
+.kuds-shell .auth-legal-links,
+.auth-legal-links { color: #5f716d !important; font-size: 10.5px !important; }
+
+/* 8–9px mətnlər köhnə temanın qalığıdır: hərflərin nazik xətti ekranda tam
+   rəng almır və oxunmur. Tapılanlar ən azı 10px-ə qaldırılır. */
+.kuds-shell :is(.teacher-card-rating small, .peer-location, .message-day, .chat-composer .composer-hint, .event-date small, .mentor-label, .faq-number, .chat-settings > span),
+:is(.teacher-card-rating small, .peer-location, .message-day, .chat-composer .composer-hint, .event-date small, .mentor-label, .faq-number, .chat-settings > span) { font-size: 10px !important; }
+.kuds-shell :is(.peer-location, .teacher-card-rating small, .message-day),
+:is(.peer-location, .teacher-card-rating small, .message-day) { color: #5f716d !important; }
+
+/* Açıq temada dekorativ serif dəyişəni Georgia/Times-a düşür (bu faylın başı).
+   Başlıq sitatlarında bu redaksiya üslubudur, amma inisiallarda və rəqəmlərdə
+   Poppins dizaynı içində sınıq şrift kimi görünürdü. */
+.kuds-shell :is(.club-detail-stats dd, .peer-avatar > span, .mentor-avatar > span, .event-date span, .rating-value, .ticket-progress-head strong),
+:is(.club-detail-stats dd, .peer-avatar > span, .mentor-avatar > span, .event-date span, .rating-value, .ticket-progress-head strong) { font-family: inherit !important; font-weight: 700; }
+.kuds-shell .club-detail-stats dt,
+.club-detail-stats dt { font-size: 10px !important; }
+
+/* Klub qoşulma bloku: status sətri ayrıca sətirdə, amma köhnə `text-align:right`
+   onu düymədən qoparıb səhifənin ortasına atırdı; iki düymənin mətni 10px və
+   16px idi. */
+.kuds-shell .club-detail .club-join-action__status { text-align: left !important; }
+.kuds-shell .club-detail .magnetic-join-button__content,
+.kuds-shell .club-detail .club-group-shortcut { font-size: 13px !important; font-weight: 700 !important; }
+.kuds-shell :is(.admin-data-table__header th, .admin-overview__heading time, .profile-facts dt),
+:is(.admin-data-table__header th, .admin-overview__heading time, .profile-facts dt) { color: #526660 !important; font-size: 11px !important; }
+
+/* Sonsuz animasiyalar (layihə qaydası: yoxdur). Söhbət düyməsi hər səhifədə
+   dayanmadan döyünürdü, avatarların "orbit" halqaları dayanmadan fırlanırdı —
+   diqqəti yayındırır və zəif telefonlarda prosessoru boş yerə yükləyir.
+   Nəbz 3 dəfə oynayıb sönür; halqalar yerində qalır. */
+.kuds-shell .launcher-pulse,
+.launcher-pulse { animation-iteration-count: 3 !important; animation-fill-mode: forwards !important; }
+:is(.mentor-avatar, .club-member-avatar, .admin-account-chip > span, .feed-card-avatar)::before,
+.announcement-card footer > span:first-child::before,
+.teacher-avatar-orbit { animation: none !important; }
+
+/* Layout sıçrayışı: məlumat brauzerdə yüklənir; ilk kadrda məzmun qısa olduğu üçün
+   footer ekranın ortasında görünür, sonra ~1600px aşağı sıçrayırdı (CLS /feed-də
+   0.18). Məzmun sahəsi ən azı ekran hündürlüyündə olanda footer kadrdan kənarda
+   başlayır və sıçrayış görünmür. */
+.kuds-shell .route-frame { min-height: calc(100dvh - 72px); }
+
+/* Mobildə örtüksüz klubun dekorativ vizualı (125vw) ekrana sığmırdı: işarə sağ
+   kənarda yarıya qədər kəsilir, başlığın arxasına düşürdü; məzmun isə örtük
+   kartı üçün ayrılmış 170–265px boşluqdan sonra başlayırdı. İndi örtük yoxdursa
+   klubun işarəsi başlıq sətrinin altında tam görünən profil şəkli olur.
+   Örtük şəkli olan klublar üçün yuxarıdakı `.has-cover` qaydaları qalır. */
+@media (max-width: 767px) {
+  .kuds-shell .club-detail .club-detail-hero:not(:has(.club-detail-hero__visual.has-cover)) .club-detail-hero__content { margin-top: 0; }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) {
+    position: relative; inset: auto; z-index: 1; order: 1;
+    width: 88px; height: 88px; aspect-ratio: 1; opacity: 1;
+  }
+  .kuds-shell .club-detail .club-detail-hero__topline { order: 0; }
+  .kuds-shell .club-detail .club-detail-hero__content { order: 2; }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) :is(.club-detail-hero__orb, .club-detail-hero__mesh) { display: none; }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) .club-detail-hero__mark {
+    position: static; width: 100%; height: 100%; border-radius: 28px;
+  }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) .club-detail-hero__mark svg { width: 38px; height: 38px; }
+}
+
+/* Klub tədbirləri və tarixçəsi: liderin əlavə/silmə nəzarətləri. */
+.kuds-shell .club-entry-add {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0 16px;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ku-green);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.kuds-shell .club-entry-add:hover { background: var(--ku-dark-green); }
+.kuds-shell .club-entry-form {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 22px;
+  padding: 22px;
+  border: 1px solid var(--kuds-border);
+  border-radius: 16px;
+  background: var(--kuds-surface);
+  box-shadow: var(--kuds-shadow-sm);
+}
+.kuds-shell .club-entry-form h3 { margin: 0; color: var(--kuds-text); font-size: 18px; }
+.kuds-shell .club-entry-form footer { display: flex; justify-content: flex-end; gap: 10px; }
+.kuds-shell .club-entry-form footer button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  color: var(--kuds-text);
+  border: 1px solid var(--kuds-border);
+  border-radius: 9px;
+  background: var(--kuds-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .club-entry-form footer button[type="submit"] { color: #fff; border-color: transparent; background: var(--ku-green); }
+.kuds-shell .club-entry-form footer button:disabled { opacity: 0.6; cursor: progress; }
+.kuds-shell .club-entry-status { margin: 0 0 16px; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+.kuds-shell .club-event-item,
+.kuds-shell .club-history-list li { position: relative; }
+.kuds-shell .club-entry-delete {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  min-width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  color: var(--kuds-muted);
+  border: 1px solid var(--kuds-border);
+  border-radius: 9px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.kuds-shell .club-entry-delete:hover,
+.kuds-shell .club-entry-delete.is-confirming { color: #fff; border-color: #b42318; background: #b42318; }
+.kuds-shell .club-event-item.is-past { opacity: 0.72; }
+.kuds-shell .club-event-past {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  color: var(--kuds-muted);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 750;
+}
+@media (max-width: 640px) {
+  .kuds-shell .club-entry-add { width: 100%; justify-content: center; }
+  .kuds-shell .club-entry-form { padding: 16px; }
+  .kuds-shell .club-entry-form footer button { flex: 1; justify-content: center; }
+}
+
+/* Klublar kataloqu: axtarış və kateqoriya filtri. */
+.kuds-shell .clubs-filter { display: grid; gap: 12px; margin: 0 0 20px; }
+/* Sahənin çərçivəsini ümumi input qaydası verir (kuds.css, !important) —
+   əvvəl qabın öz çərçivəsi də vardı və içəridə ikinci çərçivə görünürdü. */
+.kuds-shell .clubs-filter__search { position: relative; display: block; max-width: 520px; }
+.kuds-shell .clubs-filter__search svg { position: absolute; top: 50%; left: 15px; color: var(--kuds-muted); transform: translateY(-50%); pointer-events: none; }
+.kuds-shell .clubs-filter__search input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px 0 42px;
+  color: var(--kuds-text);
+  outline: 0;
+  font: inherit;
+  font-size: 14px;
+}
+.kuds-shell .clubs-filter__search input::placeholder { color: var(--kuds-muted); }
+.kuds-shell .clubs-filter__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.kuds-shell .clubs-filter__chips button,
+.kuds-shell .clubs-filter__reset {
+  min-height: 36px;
+  padding: 0 14px;
+  color: var(--kuds-text);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .clubs-filter__chips button[aria-pressed="true"] { color: #fff; border-color: var(--ku-green); background: var(--ku-green); }
+.kuds-shell .clubs-filter__reset { margin-top: 12px; }
+@media (max-width: 640px) {
+  .kuds-shell .clubs-filter__search { max-width: none; }
+  .kuds-shell .clubs-filter__chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .kuds-shell .clubs-filter__chips button { flex: none; }
+}
+
+/* Tədbir kartında saat, məkan və format 7–8px idi — oxunmurdu. */
+.kuds-shell .club-event-date span,
+.kuds-shell .club-event-place { font-size: 13px; }
+.kuds-shell .club-event-copy p,
+.kuds-shell .club-history-list p { font-size: 14px; line-height: 1.6; }
+.kuds-shell .club-event-copy > span { display: inline-flex; align-items: center; font-size: 10px; }
+.kuds-shell .club-event-date strong { font-size: 25px; line-height: 1.15; }
+.kuds-shell .club-event-item:has(.club-entry-delete) .club-event-place { padding-right: 28px; }
+@media (max-width: 640px) {
+  .kuds-shell .club-event-item:has(.club-entry-delete) .club-event-date { padding-right: 44px; }
+  .kuds-shell .club-event-item:has(.club-entry-delete) .club-event-place { padding-right: 0; }
+}
+.kuds-shell .club-history-list li:has(.club-entry-delete) > div { padding-right: 44px; }
+
+/* Yazışma: axtarış, köhnə mesajlar, silmə təsdiqi və oxunaqlı siyahı. */
+.chat-search { position: relative; display: block; margin: 8px 10px 0; }
+.chat-search svg { position: absolute; top: 50%; left: 11px; color: #70817d; transform: translateY(-50%); pointer-events: none; }
+.chat-search input { width: 100%; min-height: 38px; padding: 0 10px 0 34px; color: #142a26; outline: 0; font: inherit; font-size: 13px; }
+.chat-search input::placeholder { color: #70817d; }
+.chat-load-older {
+  display: block;
+  margin: 4px auto 12px;
+  padding: 7px 14px;
+  color: var(--ku-dark-green);
+  border: 1px solid #d3dfdb;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.chat-load-older:disabled { opacity: 0.6; cursor: progress; }
+.message-actions button.is-confirming {
+  display: inline-flex !important;
+  width: auto !important;
+  gap: 4px;
+  padding: 0 9px;
+  color: #fff !important;
+  border-color: #b42318 !important;
+  border-radius: 999px !important;
+  background: #b42318 !important;
+  font-size: 11px;
+  font-weight: 750;
+  align-items: center;
+}
+.chat-center-tabs button { font-size: 12px; }
+.chat-center-list > button strong,
+.chat-contact-picker > div > button strong { font-size: 13px; }
+.chat-center-list > button small,
+.chat-contact-picker > div > button small { font-size: 12px; }
+.chat-center-list > button > b { min-width: 20px; height: 20px; font-size: 11px; }
+.chat-center-list > p,
+.chat-contact-picker > div > p { font-size: 12px; }
+.chat-contact-picker > header small { font-size: 11px; }
+/* Planşet (769–899px): panel dock düyməsinə (right: 20px) nisbətən yerləşirdi,
+   eni isə 100vw − 16px idi — sol kənardan kənara çıxırdı. */
+@media (min-width: 769px) and (max-width: 899px) {
+  .kuds-shell .chat-panel.chat-center,
+  .chat-panel.chat-center { position: fixed !important; inset: 8px !important; width: auto !important; height: auto !important; }
+  /* Söhbət siyahısı: 118px-lik dar sütunda adlar və axtarış kəsilirdi. */
+  .kuds-shell .chat-center,
+  .chat-center { grid-template-columns: 220px minmax(0, 1fr) !important; }
+  .chat-center-sidebar > header div { display: grid !important; flex: 1; min-width: 0; }
+  .chat-center-tabs { grid-template-columns: 1fr 1fr !important; }
+  .chat-center-list > button { grid-template-columns: 34px minmax(0, 1fr) auto !important; }
+  .chat-center-list > button > span:nth-child(2) { display: grid !important; }
+  .chat-center-list > button > b { display: grid !important; }
+}
+/* 768–1080px: "Səhifə alətləri" düyməsi köhnə tünd stildə qalıb başlıqdakı
+   istifadəçi adının üstünə düşürdü. Açıq mövzuya uyğunlaşdırılıb, başlığa yer ayrılıb. */
+@media (min-width: 768px) and (max-width: 1080px) {
+  .kuds-shell .platform-mobile-tools-trigger {
+    top: 14px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    color: var(--ku-dark-green);
+    border: 1px solid var(--kuds-border);
+    border-radius: 12px;
+    background: var(--kuds-surface);
+    box-shadow: var(--kuds-shadow-xs);
+    backdrop-filter: none;
+  }
+  .kuds-shell .platform-header { padding-right: 76px; }
+}
+
+/* Bildirişlər: zəngdə say, paneldə oxunmuş/oxunmamış siyahı. */
+.kuds-shell .platform-header-icon i {
+  top: 4px;
+  right: 3px;
+  display: grid;
+  width: auto;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  place-items: center;
+  color: #fff;
+  border: 2px solid var(--kuds-surface);
+  border-radius: 999px;
+  background: #c2410c;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+.kuds-shell .platform-update-group header { display: flex; align-items: center; gap: 8px; }
+.kuds-shell .platform-mark-all {
+  display: inline-flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .platform-mark-all:disabled { opacity: 0.6; cursor: progress; }
+.kuds-shell .platform-notification-item {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 56px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  color: var(--kuds-text);
+  text-align: left;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.kuds-shell .platform-notification-item:hover,
+.kuds-shell .platform-notification-item:focus-visible { outline: none; background: var(--ku-soft-green); }
+.kuds-shell .platform-notification-item.is-unread { background: rgb(211 232 191 / 32%); }
+.kuds-shell .platform-notification-item.is-unread::after {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ku-green);
+  content: "";
+}
+.kuds-shell .platform-notification-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--ku-dark-green);
+  border-radius: 9px;
+  background: var(--ku-soft-green);
+}
+.kuds-shell .platform-notification-item strong { display: block; padding-right: 14px; font-size: 13px; font-weight: 650; line-height: 1.4; }
+.kuds-shell .platform-notification-item small { display: block; margin-top: 3px; color: var(--kuds-muted); font-size: 12px; }
+.kuds-shell .platform-notification-item:not(.is-unread) strong { font-weight: 500; }
+/* Panel mətnləri 8–10px idi (köhnə tünd tema). */
+.kuds-shell .platform-search-results strong,
+.kuds-shell .platform-shortcut-list strong,
+.kuds-shell .platform-update-group a strong,
+.kuds-shell .platform-connection-request strong { font-size: 13px; }
+.kuds-shell .platform-search-results small,
+.kuds-shell .platform-shortcut-list small,
+.kuds-shell .platform-update-group a small,
+.kuds-shell .platform-connection-request small,
+.kuds-shell .platform-update-group .platform-search-empty { font-size: 12px; }
+/* Telefonda zəng gizli idi, "Səhifə alətləri" düyməsi də — bildirişlərə heç bir
+   yol yox idi. Zəng axtarışın yanında qalır və mobil vərəqi açır. */
+@media (max-width: 767px) {
+  .kuds-shell .platform-header-icon { display: grid; width: 40px; height: 40px; min-width: 40px; }
+}
+
+/* Tədbirlər: qeydiyyat nişanı, "Qeydiyyatlarım" sayı, yaradanın əməliyyatları. */
+.kuds-shell .event-registered-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  color: var(--ku-dark-green);
+  border-radius: 999px;
+  background: var(--ku-soft-green);
+  font-size: 12px;
+  font-weight: 750;
+}
+.kuds-shell .event-period-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.kuds-shell .event-period-count {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  place-items: center;
+  color: var(--ku-dark-green);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+}
+.kuds-shell .event-period-tabs button:not(.active) .event-period-count { color: #fff; background: var(--ku-green); }
+.kuds-shell .my-submissions__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.kuds-shell .my-submissions__actions button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 11px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .my-submissions__actions button.is-danger { color: #fff; border-color: #b42318; background: #b42318; }
+.kuds-shell .my-submissions__actions button:disabled { opacity: 0.6; cursor: progress; }
+.kuds-shell .my-submissions__feedback { margin: 10px 0 0; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+.kuds-shell .drawer-share-row button.calendar-download { font: inherit; cursor: pointer; }
+.kuds-shell .event-link-feedback { margin: 10px 0 0; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+@media (max-width: 640px) {
+  .kuds-shell .event-period-tabs button { padding: 0 8px; font-size: 12px; }
+}
+
+/* Klub hero-su: örtük şəkli masaüstündə hero-nun yarısını (519×813px) tuturdu —
+   boş-boşuna böyük yer. İndi sağ üstdə yığcam kvadrat kartdır. */
+@media (min-width: 981px) {
+  .kuds-shell .club-detail .club-detail-hero:has(.club-detail-hero__visual.has-cover) { min-height: 0; }
+  .kuds-shell .club-detail .club-detail-hero__visual.has-cover {
+    top: 84px;
+    right: clamp(28px, 4vw, 60px);
+    bottom: auto;
+    width: min(30%, 320px);
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgb(37 82 72 / 12%);
+    border-radius: 24px;
+    box-shadow: 0 26px 60px -34px rgb(25 67 58 / 55%);
+  }
+  .kuds-shell .club-detail .club-detail-hero__visual.has-cover::after { display: none; }
+  .kuds-shell .club-detail .club-detail-hero:has(.club-detail-hero__visual.has-cover) .club-detail-hero__content {
+    width: calc(100% - min(30%, 320px) - 60px);
+    max-width: 720px;
+  }
+}
+
+/* Klub üzvləri: ad-soyad, rol, klikləyəndə əlaqə sorğusu. */
+.kuds-shell .club-people-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-items: start; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.kuds-shell .club-person {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--kuds-border);
+  border-radius: 16px;
+  background: var(--kuds-surface);
+  box-shadow: var(--kuds-shadow-sm);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.kuds-shell .club-person.is-open,
+.kuds-shell .club-person:hover { border-color: rgb(68 118 108 / 45%); }
+.kuds-shell .club-person__main {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  color: var(--kuds-text);
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.kuds-shell .club-person__avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  color: #fff;
+  border-radius: 50%;
+  background: var(--ku-green);
+  background-position: center;
+  background-size: cover;
+  font-size: 15px;
+  font-weight: 750;
+}
+.kuds-shell .club-person__text { display: grid; min-width: 0; gap: 3px; }
+.kuds-shell .club-person__text strong { overflow: hidden; font-size: 15px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.kuds-shell .club-person__text small { display: inline-flex; align-items: center; gap: 5px; color: var(--kuds-muted); font-size: 12px; }
+.kuds-shell .club-person__text small svg { color: #9b7835; }
+.kuds-shell .club-person__actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; border-top: 1px solid var(--kuds-border); }
+.kuds-shell .club-person__actions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  color: var(--ku-dark-green);
+  border: 1px solid var(--kuds-border);
+  border-radius: 10px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .club-person__actions button.is-primary { color: #fff; border-color: transparent; background: var(--ku-green); }
+.kuds-shell .club-person__actions button:disabled { opacity: .6; cursor: progress; }
+.kuds-shell .club-person__state { display: inline-flex; align-items: center; gap: 6px; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+.kuds-shell .club-person__message { margin: 0; color: var(--ku-dark-green); font-size: 12px; font-weight: 650; }
+@media (max-width: 640px) {
+  .kuds-shell .club-people-grid { grid-template-columns: 1fr; }
+  .kuds-shell .club-person__actions button { flex: 1; justify-content: center; }
+}

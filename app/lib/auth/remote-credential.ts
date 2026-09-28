@@ -3,7 +3,9 @@ import {
   getInitials,
   type UserProfile,
 } from "../../data/user";
+import { headers as incomingHeaders } from "next/headers";
 import { ApiHttpError } from "../api/http";
+import { getClientIdentifier } from "../api/rate-limit";
 import { readCookieValue } from "./cookies";
 import { authSessionCookieSecurity, authSessionMaxAgeSeconds } from "./session-policy";
 
@@ -58,19 +60,23 @@ export async function requestRemoteApi<T>(
     method?: "GET" | "POST" | "PATCH" | "DELETE";
     body?: unknown;
     token?: string;
+    /** Standartı əvəz edir: səhifəni bloklayan yoxlamalar üçün qısa gözləmə. */
+    timeoutMs?: number;
+    attempts?: number;
   } = {},
 ): Promise<T> {
   const headers = new Headers({ Accept: "application/json" });
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
   if (options.token) headers.set("Authorization", `Bearer ${options.token}`);
+  await forwardClientContext(headers);
 
   const method=options.method??"GET";
-  const attempts=method==="GET"?2:1;
+  const attempts=options.attempts??(method==="GET"?2:1);
   // Oxuma sorğuları tez uğursuz olmalıdır ki, backend "yuxuda" olanda (Render
   // pulsuz plan soyuq start ~30-60s) sayt 65 saniyə donmasın — bunun əvəzinə
   // nümunə məlumatla dərhal açılır. Yazma sorğuları (giriş/qeydiyyat) bir qədər
   // daha uzun gözləyir, çünki onların uğuru vacibdir.
-  const timeoutMs=method==="GET"?8_000:22_000;
+  const timeoutMs=options.timeoutMs??(method==="GET"?8_000:22_000);
   let response:Response|null=null;
   for(let attempt=0;attempt<attempts;attempt+=1){
     try{
@@ -113,8 +119,8 @@ export async function requestRemoteApi<T>(
   return payload.data;
 }
 
-export async function getRemoteSession(token: string) {
-  return requestRemoteApi<{ user: RemoteApiUser }>("/api/auth/session", { token });
+export async function getRemoteSession(token: string, options: { timeoutMs?: number; attempts?: number } = {}) {
+  return requestRemoteApi<{ user: RemoteApiUser }>("/api/auth/session", { token, ...options });
 }
 
 /**
@@ -182,6 +188,30 @@ function getRemoteApiBaseUrl() {
     return url.origin;
   } catch {
     throw new ApiHttpError(500, "INVALID_API_CONFIG", "Backend API ünvanı düzgün qurulmayıb.");
+  }
+}
+
+/**
+ * Backend istifadəçini yalnız bu BFF vasitəsilə görür. Bunsuz hər sorğu
+ * Vercel-in IP-si və "node" brauzeri kimi gəlirdi: IP limitləri bütün sayt
+ * üçün ortaq idi (11-ci giriş hamını bloklayırdı), "Aktiv sessiyalar" isə
+ * bütün cihazları eyni göstərirdi. IP yalnız ortaq sirlə birlikdə göndərilir —
+ * backend başqa heç kimin yazdığı IP-yə inanmır.
+ */
+async function forwardClientContext(target: Headers) {
+  let incoming: Headers;
+  try {
+    incoming = await incomingHeaders();
+  } catch {
+    return; // Sorğu kontekstindən kənar (məs. build) — ötürüləcək müştəri yoxdur.
+  }
+  const userAgent = incoming.get("user-agent");
+  if (userAgent) target.set("User-Agent", userAgent.slice(0, 300));
+  const secret = process.env.EDURATE_PROXY_SECRET?.trim();
+  const clientIp = getClientIdentifier({ headers: incoming });
+  if (secret && clientIp !== "unknown") {
+    target.set("X-EduRate-Proxy-Secret", secret);
+    target.set("X-EduRate-Client-IP", clientIp);
   }
 }
 

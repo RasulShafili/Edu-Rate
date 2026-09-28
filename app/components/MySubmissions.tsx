@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock3, RefreshCw } from "lucide-react";
+import type { ReactNode } from "react";
 import { useT } from "../i18n/LanguageProvider";
 
 /** "Mənimkilər" sorğusu; uğursuzluq SWR xətası kimi bloka çatır. */
@@ -27,6 +28,10 @@ type MySubmissionsProps = {
   /** SWR xətası; `fetchMine` statusu mesaj kimi atır. */
   error: unknown;
   onRetry: () => void;
+  /** Hər sətir üçün əlavə əməliyyatlar (məs. redaktə / sil). */
+  renderActions?: (item: SubmissionItem) => ReactNode;
+  /** Siyahının altında göstərilən vəziyyət mesajı. */
+  status?: string;
 };
 
 /**
@@ -34,7 +39,7 @@ type MySubmissionsProps = {
  * "yoxlanışa göndərildi" deyirdi, sonra isə təsdiqlənib-təsdiqlənmədiyini
  * göstərən heç bir yer yox idi — ictimai siyahılar yalnız dərc olunanı qaytarır.
  */
-export function MySubmissions({ headingId, title, body, items, error, onRetry }: MySubmissionsProps) {
+export function MySubmissions({ headingId, title, body, items, error, onRetry, renderActions, status }: MySubmissionsProps) {
   const t = useT();
   if (!error && items.length === 0) return null;
   // Vaxtı bitmiş sessiya "yüklənmədi" deyil — istifadəçi yenidən daxil olmalıdır.
@@ -60,10 +65,12 @@ export function MySubmissions({ headingId, title, body, items, error, onRetry }:
                 <small>{item.meta}</small>
               </div>
               <span className={`my-submissions__status is-${item.tone}`}>{item.statusLabel}</span>
+              {renderActions ? <div className="my-submissions__actions">{renderActions(item)}</div> : null}
             </li>
           ))}
         </ul>
       )}
+      {status ? <p className="my-submissions__feedback" role="status">{status}</p> : null}
     </section>
   );
 }

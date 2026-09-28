@@ -862,3 +862,121 @@ fərqli yerdə idi.
 - Git Bash-da `sed -i` CRLF faylı LF-ə çevirir (bu repoda `autocrlf` onu
   commit-də normallaşdırır, amma iş kopyası dəyişir). Çoxsətirli dəyişiklik
   üçün yenə Write/Edit və ya EOL-u saxlayan Python skripti.
+
+## 20. Bulud (Linux) mühitində tam audit — sentyabr 2026
+
+### Lokal Postgres VAR — SQL qolunu sına
+§8 və §9 "lokalda Postgres yoxdur" deyir; bu, Windows maşını üçün doğrudur.
+Claude Code bulud konteynerində `pg_ctlcluster 16 main start` işləyir. Baza
+yaradıb `backend/.env`-də `DATABASE_URL` qoy — server 27 miqrasiyanı təmiz
+bazada icra edir və `SEED_DEMO_DATA=true` ilə məlumat yaranır. Rol hesablarını
+`createUser` + `createAccessToken` + `registerSessionToken` ilə skriptdən yarat
+(`.mts` faylı, `npx tsx --env-file=.env`) — giriş limitini xərcləmir.
+Backend testlərini isə CI kimi `DATABASE_URL= npm test` ilə işlət: `dotenv`
+lokal `.env`-i oxuyur və testlər səssizcə Postgres-ə yazar.
+
+### Limitləri BFF ÜZƏRİNDƏN sına, birbaşa backend-ə yox
+Backend-in IP limitləri birbaşa `curl`-da düzgün görünürdü. BFF-dən keçəndə
+isə hamı bir IP idi: 11-ci istifadəçi düzgün şifrə ilə 429 alırdı (canlıda
+Vercel IP-si). Sınaq: BFF-ə fərqli `x-real-ip` ilə 12 **uğurlu** giriş.
+Həmçinin `mediaRouter.use(limiter)` kimi router səviyyəli limit oxuma
+sorğularını da tutur — hər səhifədə çağırılan `GET /avatar/me` 20 səhifədən
+sonra 429 verirdi. Limit görəndə soruş: bu sorğu hər səhifə açılışında gedirmi?
+
+### Köhnə server yeni kodu gizlədir (iki dəfə yanlış "düzəliş işləmir")
+`kill $(npx-in PID-i)` yalnız bükücünü öldürür, `node` uşaq prosesi portda
+qalır; yeni server `EADDRINUSE` ilə düşür, testlər isə KÖHNƏ kodu yoxlayır.
+`next start` də eynidir (`next-server` adlı proses). `pkill -f "tsx src/server.ts"`
+isə öz shell-ini də öldürür (əmr sətri uyğun gəlir). Qayda: serveri
+`node --import tsx src/server.ts` ilə birbaşa başlat, PID-i fayla yaz, hər
+yenidən başlatmadan sonra logda "işləyir"/"Ready" sətrini və
+`ps aux | grep next-server`-də başlama vaxtını yoxla.
+
+### Brauzer saat qurşağını həmişə açıq ver
+Playwright kontekstində `timezoneId` verilməyəndə konteynerin UTC-si işləyir.
+Bir yoxlamada ana səhifə 17:00, başqasında 21:00 göstərdi — hansının "səhv"
+olduğunu mənbə məlumatla (`…+04:00`) və üç qurşaqda (UTC, New York, Bakı)
+yoxlamadan demə. Brauzer qurşağından asılı hər tarix `bakuDateParts`-a keçməlidir.
+
+### `<Link>` yalnız səhifələr üçündür
+`<Link href="/api/...">` Next tərəfindən RSC kimi prefetch olunur və sorğu asılı
+qalır — `/api-docs` heç vaxt "yüklənib" olmurdu. API/fayl ünvanına `<a>`.
+
+### Hər səhifə × rol × ekran × dil — skriptlə
+Kuki inyeksiyası (`edurate_api_token` httpOnly, `edurate_lang`) ilə Playwright
+skripti 26 marşrutu 4 rol, 2 ekran, 3 dildə gəzir: konsol xətası, ≥500 cavab,
+`scrollWidth > clientWidth`, `undefined/NaN/Invalid Date` və xam i18n açarı
+axtarır. Parol brauzerə yazılmır (§15). Lüğət boşluğunu isə səhifədə yox,
+proqramla tap: `dictionaries.az` açarlarını `en`/`ru` ilə müqayisə et; qalan
+tərcüməsiz mətn komponentə birbaşa yazılmış sətirdir (`grep` az hərfləri).
+
+## 21. Vizual audit — piksellə ölç, animasiyanı açıq saxla
+
+### Kontrastı pikseldən ölç, DOM-dan yox
+DOM üsulu (§3) qradiyent fonu, `::before` və qardaş elementlə çəkilən fonu
+(aktiv tabın hərəkət edən "pill"-i) görmür: yarıdan çoxu yanlış həyəcan idi.
+İşləyən üsul: elementin ekran görüntüsünü iki dəfə çək — biri normal, biri
+`color: transparent !important` ilə. Fərqlənən piksellər hərfdir; güclü
+fərqli 25%-in medianı real mətn/fon rəngini verir. Əvvəl `elementFromPoint`
+ilə elementin üstünü başqa şeyin örtmədiyini yoxla — çərəz banneri
+(`localStorage["edurate-cookie-consent"]="declined"`) aşağı-soldakı hər şeyi
+"görünməz" göstərirdi. 8–10px mətndə ölçülən rəng CSS-dən açıq çıxır (nazik
+xətt tam rəng almır) — orada problem ölçüdür, rəng yox.
+
+### `reducedMotion: "reduce"` animasiya xətalarını gizlədir
+Bütün vizual skanları azaldılmış hərəkətlə apardım — sonsuz animasiyalar,
+CLS və ilişən giriş animasiyaları görünmədi. Animasiya auditi AYRICA,
+hərəkət açıq: `document.getAnimations()` (iterations === Infinity),
+`PerformanceObserver("layout-shift")`, bölmə-bölmə sürüşdürüb opacity zənciri.
+"Görünməz" çıxanları təsnif et: hover ilə açılan (`.peer-actions`, toxunma
+ekranında `@media (hover:none)` açır), karuselin ekrandan kənar slaydı
+(x > innerWidth), scroll-progress zolağı (`MotionLayer`) — üçü də xəta deyil.
+
+### Açıq panelləri skan et
+Ən pis xətalar yalnız klikdən sonra görünürdü: söhbət qabarcıqları (açıq
+tema rəngi `<p>`-də, creative.css isə qabarcığı `.message-bubble`-a
+köçürmüşdü), bildiriş panelinin boş vəziyyəti, müəllim çekmecəsi. Skan
+siyahısına söhbət (siyahı/mövzu/emoji/menyu/qrup), zəng paneli, klub tabları,
+FAQ, çekmecələr daxil olsun. Eyni `aria-controls` paylaşan düymələrdə (axtarış
+və zəng) birincisini klikləmə — ikonla seç.
+
+### Hunk-la bölmək + `stash --keep-index` faylı pozdu
+`git diff -U0` hunk-larını `git apply --cached --unidiff-zero` ilə stage
+edib `git stash --keep-index` → `stash pop` etdim: pop indekslə iş nüsxəsini
+"auto-merge" etdi — `PlatformHeader.tsx`-in sonuna sətirlər düşdü, lüğətdə
+7 açar ikiləşdi (tsc tutdu). Qayda: commit-i bütöv fayllarla böl; bölmək
+mütləqdirsə stash etmə — bölünmüş vəziyyəti `git worktree`-də yoxla. Hər
+halda sonra `npx tsc --noEmit` və lüğətdə açar təkrarı yoxlaması.
+
+### Yatmış backend-i simulyasiya et
+`kill -STOP <backend node pid>` — bağlantı qəbul olunur, cavab gəlmir
+(Render soyuq başlanğıcı kimi). Sonra `kill -CONT`. Bununla tapıldı: layout
+2×8s gözləyib daxil olmuş istifadəçini /auth-a atırdı.
+
+## 22. Bölmə sessiyalarından (Klublar → Tədbirlər, sentyabr 2026)
+
+### Konteyner yenidən başlayanda hər şey düşür
+Bulud konteyneri sessiya ortasında yenidən başlaya bilir: Postgres, backend və
+`next start` dayanır, `ECONNREFUSED 127.0.0.1:5432` görünür. Hər bölmənin
+əvvəlində: `pg_ctlcluster 16 main start` → backend (`node --import tsx
+src/server.ts`, PID-i fayla) → `/api/health`-də `migrationVersion` →
+`next start`. Köhnə PID faylına güvənmə — `ps` ilə yoxla.
+
+### `position: fixed` dialoq keçid animasiyasının içində tələyə düşür
+`RouteTransition` (framer-motion `transform`) daxilində `fixed` element
+viewport-a yox, həmin qata bağlanır: dialoq məzmunun mərkəzində açılır, sol
+menyu (z-index 80) isə z-index 10030-luq dialoqun ÜSTÜNDƏ görünür. Səbəb
+z-index deyil, stacking context-dir. Modal həmişə `ui/BodyPortal`-dan keçsin;
+yoxlama: dialoqun mərkəzi `innerWidth/2`-yə bərabərdirmi və
+`elementFromPoint(label)` dialoqun içindədirmi.
+
+### Yeni funksiya telefonda əlçatandırmı?
+Bildiriş paneli kompüterdə mükəmməl işləyirdi — telefonda isə zəng də,
+"Səhifə alətləri" də CSS ilə gizli idi, yəni funksiyaya yol yox idi. Hər yeni
+giriş nöqtəsini 375px-də **klikləyərək** sına, yalnız "overflow yoxdur" ilə
+kifayətlənmə.
+
+### Test skriptinin sabit mətni təkrar işlədəndə yalan verir
+"Canlı mesaj" mətnini `=== 1` ilə yoxladım; əvvəlki qaçışlardan eyni mətn
+bazada qaldığı üçün 2 tapdı və "canlı çatdırılma işləmir" göründü. Hər
+qaçışda unikal teq (`Date.now()`) işlət, ya da sayı əvvəl/sonra müqayisə et.

@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, CalendarDays, Check, Clock3, MapPin, Sparkles, X, CalendarPlus, Share2} from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Clock3, Link2, MapPin, Sparkles, X, CalendarPlus, Share2} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -18,6 +18,7 @@ const REGISTRATION_ERRORS: Record<string, string> = {
   EVENT_NOT_PUBLISHED: "events.error.notPublished",
   EVENT_NOT_FOUND: "events.error.notFound",
   REGISTRATION_NOT_FOUND: "events.error.registrationNotFound",
+  EVENT_STARTED: "events.error.started",
 };
 
 function registrationErrorKey(status: number, code: string | undefined, fallback: string) {
@@ -37,58 +38,35 @@ class RegistrationError extends Error {
 type EventDrawerProps = {
   event: Event | null;
   onClose: () => void;
+  /** Qeydiyyat vəziyyəti səhifədə saxlanır ki, kart və "Qeydiyyatlarım" da yenilənsin. */
+  registered: boolean;
+  registrationLoading: boolean;
+  registrationLoadError: string;
+  onRegistrationChange: (eventId: string, registered: boolean, availableSpots?: number) => void;
 };
 
-export function EventDrawer({ event, onClose }: EventDrawerProps) {
+export function EventDrawer({ event, onClose, registered, registrationLoading, registrationLoadError, onRegistrationChange }: EventDrawerProps) {
   const t = useT();
   const { user } = useAuth();
-  const userId = user?.id;
-  const [registeredEventIds, setRegisteredEventIds] = useState<Set<string>>(() => new Set());
-  const [availableSpotsByEvent, setAvailableSpotsByEvent] = useState<Record<string, number>>({});
-  const [loadedRegistrationUserId, setLoadedRegistrationUserId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [registrationError, setRegistrationError] = useState("");
+  // Mesajlar tədbirə bağlıdır: başqa tədbir açılanda köhnə mesaj görünmür.
+  const [linkFeedback, setLinkFeedbackFor] = useState<{ id: string; key: string } | null>(null);
+  const setLinkFeedback = (key: string) => setLinkFeedbackFor(key && event ? { id: event.id, key } : null);
+  const [registrationErrorFor, setRegistrationErrorFor] = useState<{ id: string; key: string } | null>(null);
+  const registrationError = registrationErrorFor && event && registrationErrorFor.id === event.id ? registrationErrorFor.key : "";
+  const setRegistrationError = (key: string) => setRegistrationErrorFor(key && event ? { id: event.id, key } : null);
   const [registrationFeedback, setRegistrationFeedback] = useState("");
   const closeRef = useRef<HTMLButtonElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const reduceMotion = useReducedMotion();
-  const availableSpots = event ? availableSpotsByEvent[event.id] ?? event.availableSpots : 0;
+  const availableSpots = event ? event.availableSpots : 0;
   const registrationOpen = event
     ? getDeadlineStatus(event.registrationDeadline) === "open" && availableSpots > 0 && getTemporalStatus(event.startAt, event.endAt) !== "finished"
     : false;
-  const isRegistered = event ? registeredEventIds.has(event.id) : false;
-  const isRegistrationStateLoading = Boolean(userId && loadedRegistrationUserId !== userId);
+  const isRegistered = registered;
+  const isRegistrationStateLoading = Boolean(user && registrationLoading);
   const startParts = event ? bakuDateParts(event.startAt) : null;
   const startDate = startParts ? `${startParts.day} ${t(`month.${startParts.month}`)} ${startParts.year}` : "";
-
-  useEffect(() => {
-    if (!userId) return;
-
-    const controller = new AbortController();
-
-    void fetch("/api/events/registrations", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => null) as {
-          data?: Array<{ id: string; availableSpots: number }>;
-          error?: { code?: string };
-        } | null;
-        if (!response.ok || !payload) throw new RegistrationError(registrationErrorKey(response.status, payload?.error?.code, "events.error.registrationsLoad"));
-        const registrations = payload.data ?? [];
-        setRegisteredEventIds(new Set(registrations.map((item) => item.id)));
-        setAvailableSpotsByEvent(Object.fromEntries(registrations.map((item) => [item.id, item.availableSpots])));
-        setLoadedRegistrationUserId(userId);
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setRegistrationError(error instanceof RegistrationError ? error.key : "events.error.registrationsLoad");
-        setLoadedRegistrationUserId(userId);
-      });
-
-    return () => controller.abort();
-  }, [userId]);
 
   async function toggleRegistration() {
     if (!event || isSubmitting) return;
@@ -104,24 +82,33 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
         error?: { code?: string };
       } | null;
       if (!response.ok) throw new RegistrationError(registrationErrorKey(response.status, payload?.error?.code, "events.error.register"));
-      setRegisteredEventIds((current) => {
-        const next = new Set(current);
-        if (isRegistered) next.delete(event.id);
-        else next.add(event.id);
-        return next;
-      });
-      const updatedEvent = payload?.data?.event;
-      if (updatedEvent) {
-        setAvailableSpotsByEvent((current) => ({
-          ...current,
-          [updatedEvent.id]: updatedEvent.availableSpots,
-        }));
-      }
+      onRegistrationChange(event.id, !isRegistered, payload?.data?.event?.availableSpots);
       setRegistrationFeedback(isRegistered ? "events.drawer.withdrawn" : "events.drawer.registered");
     } catch (error) {
       setRegistrationError(error instanceof RegistrationError ? error.key : "events.error.register");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  /**
+   * Tədbirə birbaşa link. Əvvəl "Paylaş" yalnız şəkil verirdi və konkret
+   * tədbiri açan ünvan yox idi — dosta göndərilən link siyahıya aparırdı.
+   */
+  async function shareLink() {
+    if (!event) return;
+    const url = `${window.location.origin}/events?event=${encodeURIComponent(event.id)}`;
+    setLinkFeedback("");
+    try {
+      if (typeof navigator.share === "function" && window.matchMedia("(hover: none)").matches) {
+        await navigator.share({ title: event.title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setLinkFeedback("events.drawer.linkCopied");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setLinkFeedback("events.drawer.linkFailed");
     }
   }
 
@@ -259,6 +246,9 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
                 )}
               </div>
               <div className="drawer-share-row">
+                <button type="button" className="calendar-download" onClick={() => void shareLink()}>
+                  <Link2 size={15} aria-hidden="true" /> {t("events.drawer.copyLink")}
+                </button>
                 <a
                   className="calendar-download"
                   href={`/api/events/${encodeURIComponent(event.id)}/calendar`}
@@ -275,7 +265,8 @@ export function EventDrawer({ event, onClose }: EventDrawerProps) {
                   <Share2 size={15} aria-hidden="true" /> {t("events.drawer.share")}
                 </a>
               </div>
-              {registrationError && <p className="event-registration-error" role="alert">{t(registrationError)}</p>}
+              {linkFeedback && linkFeedback.id === event.id ? <p className="event-link-feedback" role="status">{t(linkFeedback.key)}</p> : null}
+              {(registrationError || registrationLoadError) && <p className="event-registration-error" role="alert">{t(registrationError || registrationLoadError)}</p>}
               <span className="sr-only" aria-live="polite">{registrationFeedback ? t(registrationFeedback) : ""}</span>
             </div>
           </motion.aside>
