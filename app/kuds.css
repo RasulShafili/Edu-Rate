@@ -4418,3 +4418,165 @@ body {
    0.18). Məzmun sahəsi ən azı ekran hündürlüyündə olanda footer kadrdan kənarda
    başlayır və sıçrayış görünmür. */
 .kuds-shell .route-frame { min-height: calc(100dvh - 72px); }
+
+/* Mobildə örtüksüz klubun dekorativ vizualı (125vw) ekrana sığmırdı: işarə sağ
+   kənarda yarıya qədər kəsilir, başlığın arxasına düşürdü; məzmun isə örtük
+   kartı üçün ayrılmış 170–265px boşluqdan sonra başlayırdı. İndi örtük yoxdursa
+   klubun işarəsi başlıq sətrinin altında tam görünən profil şəkli olur.
+   Örtük şəkli olan klublar üçün yuxarıdakı `.has-cover` qaydaları qalır. */
+@media (max-width: 767px) {
+  .kuds-shell .club-detail .club-detail-hero:not(:has(.club-detail-hero__visual.has-cover)) .club-detail-hero__content { margin-top: 0; }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) {
+    position: relative; inset: auto; z-index: 1; order: 1;
+    width: 88px; height: 88px; aspect-ratio: 1; opacity: 1;
+  }
+  .kuds-shell .club-detail .club-detail-hero__topline { order: 0; }
+  .kuds-shell .club-detail .club-detail-hero__content { order: 2; }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) :is(.club-detail-hero__orb, .club-detail-hero__mesh) { display: none; }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) .club-detail-hero__mark {
+    position: static; width: 100%; height: 100%; border-radius: 28px;
+  }
+  .kuds-shell .club-detail .club-detail-hero__visual:not(.has-cover) .club-detail-hero__mark svg { width: 38px; height: 38px; }
+}
+
+/* Klub tədbirləri və tarixçəsi: liderin əlavə/silmə nəzarətləri. */
+.kuds-shell .club-entry-add {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0 16px;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ku-green);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.kuds-shell .club-entry-add:hover { background: var(--ku-dark-green); }
+.kuds-shell .club-entry-form {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 22px;
+  padding: 22px;
+  border: 1px solid var(--kuds-border);
+  border-radius: 16px;
+  background: var(--kuds-surface);
+  box-shadow: var(--kuds-shadow-sm);
+}
+.kuds-shell .club-entry-form h3 { margin: 0; color: var(--kuds-text); font-size: 18px; }
+.kuds-shell .club-entry-form footer { display: flex; justify-content: flex-end; gap: 10px; }
+.kuds-shell .club-entry-form footer button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  color: var(--kuds-text);
+  border: 1px solid var(--kuds-border);
+  border-radius: 9px;
+  background: var(--kuds-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .club-entry-form footer button[type="submit"] { color: #fff; border-color: transparent; background: var(--ku-green); }
+.kuds-shell .club-entry-form footer button:disabled { opacity: 0.6; cursor: progress; }
+.kuds-shell .club-entry-status { margin: 0 0 16px; color: var(--ku-dark-green); font-size: 13px; font-weight: 650; }
+.kuds-shell .club-event-item,
+.kuds-shell .club-history-list li { position: relative; }
+.kuds-shell .club-entry-delete {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  min-width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  color: var(--kuds-muted);
+  border: 1px solid var(--kuds-border);
+  border-radius: 9px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.kuds-shell .club-entry-delete:hover,
+.kuds-shell .club-entry-delete.is-confirming { color: #fff; border-color: #b42318; background: #b42318; }
+.kuds-shell .club-event-item.is-past { opacity: 0.72; }
+.kuds-shell .club-event-past {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  color: var(--kuds-muted);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 750;
+}
+@media (max-width: 640px) {
+  .kuds-shell .club-entry-add { width: 100%; justify-content: center; }
+  .kuds-shell .club-entry-form { padding: 16px; }
+  .kuds-shell .club-entry-form footer button { flex: 1; justify-content: center; }
+}
+
+/* Klublar kataloqu: axtarış və kateqoriya filtri. */
+.kuds-shell .clubs-filter { display: grid; gap: 12px; margin: 0 0 20px; }
+/* Sahənin çərçivəsini ümumi input qaydası verir (kuds.css, !important) —
+   əvvəl qabın öz çərçivəsi də vardı və içəridə ikinci çərçivə görünürdü. */
+.kuds-shell .clubs-filter__search { position: relative; display: block; max-width: 520px; }
+.kuds-shell .clubs-filter__search svg { position: absolute; top: 50%; left: 15px; color: var(--kuds-muted); transform: translateY(-50%); pointer-events: none; }
+.kuds-shell .clubs-filter__search input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px 0 42px;
+  color: var(--kuds-text);
+  outline: 0;
+  font: inherit;
+  font-size: 14px;
+}
+.kuds-shell .clubs-filter__search input::placeholder { color: var(--kuds-muted); }
+.kuds-shell .clubs-filter__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.kuds-shell .clubs-filter__chips button,
+.kuds-shell .clubs-filter__reset {
+  min-height: 36px;
+  padding: 0 14px;
+  color: var(--kuds-text);
+  border: 1px solid var(--kuds-border);
+  border-radius: 999px;
+  background: var(--kuds-surface);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kuds-shell .clubs-filter__chips button[aria-pressed="true"] { color: #fff; border-color: var(--ku-green); background: var(--ku-green); }
+.kuds-shell .clubs-filter__reset { margin-top: 12px; }
+@media (max-width: 640px) {
+  .kuds-shell .clubs-filter__search { max-width: none; }
+  .kuds-shell .clubs-filter__chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .kuds-shell .clubs-filter__chips button { flex: none; }
+}
+
+/* Tədbir kartında saat, məkan və format 7–8px idi — oxunmurdu. */
+.kuds-shell .club-event-date span,
+.kuds-shell .club-event-place { font-size: 13px; }
+.kuds-shell .club-event-copy p,
+.kuds-shell .club-history-list p { font-size: 14px; line-height: 1.6; }
+.kuds-shell .club-event-copy > span { display: inline-flex; align-items: center; font-size: 10px; }
+.kuds-shell .club-event-date strong { font-size: 25px; line-height: 1.15; }
+.kuds-shell .club-event-item:has(.club-entry-delete) .club-event-place { padding-right: 28px; }
+@media (max-width: 640px) {
+  .kuds-shell .club-event-item:has(.club-entry-delete) .club-event-date { padding-right: 44px; }
+  .kuds-shell .club-event-item:has(.club-entry-delete) .club-event-place { padding-right: 0; }
+}
+.kuds-shell .club-history-list li:has(.club-entry-delete) > div { padding-right: 44px; }

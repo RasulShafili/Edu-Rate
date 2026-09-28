@@ -38,8 +38,18 @@ export type ClubEvent = {
   dateLabel: string;
   timeLabel: string;
   place: string;
-  format: "Açıq görüş" | "Emalatxana" | "Təqdimat" | "Səfər" | "Sessiya";
+  /** Yeni qeydlər dildən asılı olmayan açarla saxlanılır; köhnə nümunələr Azərbaycanca ad daşıyır. */
+  format: ClubEventFormat | "Açıq görüş" | "Emalatxana" | "Təqdimat" | "Səfər" | "Sessiya";
 };
+
+export const clubEventFormats = ["meetup", "workshop", "presentation", "trip", "session"] as const;
+export type ClubEventFormat = (typeof clubEventFormats)[number];
+const legacyEventFormats: Record<string, ClubEventFormat> = {
+  "Açıq görüş": "meetup", Emalatxana: "workshop", "Təqdimat": "presentation", "Səfər": "trip", Sessiya: "session",
+};
+export function clubEventFormatKey(format: ClubEvent["format"]): ClubEventFormat {
+  return (clubEventFormats as readonly string[]).includes(format) ? format as ClubEventFormat : legacyEventFormats[format] ?? "session";
+}
 
 export type ClubMember = {
   id: string;
@@ -49,6 +59,8 @@ export type ClubMember = {
 };
 
 export type ClubHistoryMilestone = {
+  /** API-dən gələn qeydlərdə var; silmə üçün lazımdır. */
+  id?: string;
   year: string;
   title: string;
   description: string;

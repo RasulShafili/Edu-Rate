@@ -1076,6 +1076,26 @@ describe("EduRate API", () => {
     await request(app).post(`/api/clubs/${clubId}/memberships`).set("Authorization",member2Authorization).expect(201);
     await request(app).patch(`/api/clubs/${clubId}/leaders/${member2.id}`).set("Authorization",memberAuthorization).expect(200);
     await request(app).delete(`/api/clubs/${clubId}/leaders/${member2.id}`).set("Authorization",memberAuthorization).expect(200);
+    // Tədbir və tarixçə: əvvəl bu sahələrə yazan yol yox idi, tablar həmişə boş qalırdı.
+    const eventInput={title:"Açıq debat axşamı",summary:"Yeni üzvlər üçün tanışlıq.",startAt:"2026-10-20T18:30:00+04:00",place:"Kampus, 204-cü otaq",format:"meetup"};
+    await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",member2Authorization).send(eventInput).expect(403);
+    await request(app).post(`/api/clubs/${clubId}/events`).send(eventInput).expect(401);
+    await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",memberAuthorization).send({...eventInput,format:"party"}).expect(422);
+    await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",memberAuthorization).send({...eventInput,memberCount:9999}).expect(422);
+    const withEvent=await request(app).post(`/api/clubs/${clubId}/events`).set("Authorization",memberAuthorization).send(eventInput).expect(201);
+    assert.equal(withEvent.body.data.events.length,1);
+    assert.equal(withEvent.body.data.events[0].date,"2026-10-20T14:30:00.000Z");
+    const eventId=withEvent.body.data.events[0].id as string;
+    const withHistory=await request(app).post(`/api/clubs/${clubId}/history`).set("Authorization",creatorAuthorization).send({year:"2025",title:"Klub yaradıldı",description:"İlk 12 üzv."}).expect(201);
+    assert.equal(withHistory.body.data.history[0].title,"Klub yaradıldı");
+    await request(app).post(`/api/clubs/${clubId}/history`).set("Authorization",creatorAuthorization).send({year:"25",title:"Yanlış il"}).expect(422);
+    const publicView=await request(app).get(`/api/clubs/${clubId}`).expect(200);
+    assert.equal(publicView.body.data.events[0].title,"Açıq debat axşamı");
+    await request(app).delete(`/api/clubs/${clubId}/events/${eventId}`).set("Authorization",member2Authorization).expect(403);
+    const afterDelete=await request(app).delete(`/api/clubs/${clubId}/events/${eventId}`).set("Authorization",memberAuthorization).expect(200);
+    assert.equal(afterDelete.body.data.events.length,0);
+    await request(app).delete(`/api/clubs/${clubId}/events/${eventId}`).set("Authorization",memberAuthorization).expect(404);
+    await request(app).delete(`/api/clubs/${clubId}/history/${withHistory.body.data.history[0].id}`).set("Authorization",creatorAuthorization).expect(200);
     await request(app).delete(`/api/clubs/${clubId}/leaders/${creator.id}`).set("Authorization",creatorAuthorization).expect(409);
     await request(app).delete(`/api/clubs/${clubId}`).set("Authorization",memberAuthorization).expect(403);
     await request(app).delete(`/api/clubs/${clubId}/leaders/${member.id}`).set("Authorization",creatorAuthorization).expect(200);
