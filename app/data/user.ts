@@ -22,6 +22,8 @@ export type UserProfile = {
   accessRole?: "student" | "mentor" | "teacher" | "admin" | "assistant_admin" | "owner_admin";
   /** İki mərhələli giriş aktivdirmi (server `/session` cavabından). */
   twoFactorEnabled?: boolean;
+  /** İstifadəçinin qəbul etdiyi hüquqi sənədlər versiyası (null — heç qəbul etməyib). */
+  legalVersion?: string | null;
   university: string;
   faculty: string;
   program: string;

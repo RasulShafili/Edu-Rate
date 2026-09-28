@@ -10,8 +10,14 @@ import {
   markEmailVerified,
   updatePassword,
   deleteUser,
+  recordLegalAcceptance,
   type UserRecord,
 } from "../db/database.js";
+import { buildAccountExport } from "../db/account-export.js";
+import { deleteNotificationsForUser } from "../db/notifications.js";
+import { removeAllSubscriptions } from "../db/push.js";
+import { LEGAL_VERSION } from "../lib/legal.js";
+import { removeUserAvatar } from "./media.js";
 import {
   ACADEMIC_UNIVERSITY,
   isAcademicFaculty,
@@ -62,7 +68,7 @@ import {
 } from "../lib/totp.js";
 import { accountActionUrl, EmailDeliveryError, sendAccountEmail } from "../lib/email.js";
 import { env } from "../config/env.js";
-import { clientIp, clientIpKey } from "../lib/client-key.js";
+import { clientIp, clientIpKey, userOrIpKey } from "../lib/client-key.js";
 
 export const authRouter = Router();
 
@@ -299,8 +305,8 @@ authRouter.post("/signup", signupLimiter, async (request, response) => {
     // E-poçt təsdiqi pilot üçün söndürülüb: hesab dərhal təsdiqlənir ki,
     // tələbə qeydiyyatdan sonra avtomatik daxil olsun (token qaytarılır).
     emailVerifiedAt: new Date().toISOString(),
-    termsVersion: "2026-08-15",
-    privacyVersion: "2026-08-15",
+    termsVersion: LEGAL_VERSION,
+    privacyVersion: LEGAL_VERSION,
   });
   if (user.status !== "Aktiv") {
     const emailDelivered = user.emailVerifiedAt ? true : await trySendVerification(user);
@@ -578,7 +584,28 @@ authRouter.delete("/account", authenticate, async (request, response) => {
   // mentor kataloqda REAL ADI ilə qalırdı və tələbələr ona müraciət göndərə bilirdi.
   await deactivateProfessionalProfilesForUser(user.id);
   if (!(await deleteUser(user.id))) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
+  // Məxfilik siyasətinə uyğun: cihaz abunələri, bildirişlər və profil şəkli
+  // dərhal silinir; rəy və mesajlar "Silinmiş istifadəçi" adı ilə qalır.
+  await Promise.all([removeAllSubscriptions(user.id), deleteNotificationsForUser(user.id), removeUserAvatar(user.id)]);
   response.status(204).send();
+});
+
+/** Yenilənmiş İstifadə şərtləri və Məxfilik siyasətinin qəbulu. */
+authRouter.post("/legal-consent", authenticate, async (request, response) => {
+  z.object({ accepted: z.literal(true), version: z.literal(LEGAL_VERSION) }).strict().parse(request.body);
+  const user = await recordLegalAcceptance(request.auth!.userId, LEGAL_VERSION);
+  if (!user) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
+  response.json({ data: { user: await publicUserWithSecurity(user) } });
+});
+
+// İxrac ağır sorğudur: saatda 3 dəfə kifayətdir.
+const exportLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 3, keyGenerator: userOrIpKey, standardHeaders: true, legacyHeaders: false });
+/** "Məlumatlarımı yüklə": istifadəçinin öz fərdi məlumatlarının JSON surəti. */
+authRouter.get("/account/export", authenticate, exportLimiter, async (request, response) => {
+  const user = await findUserById(request.auth!.userId);
+  if (!user) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
+  response.setHeader("Cache-Control", "no-store");
+  response.json({ data: await buildAccountExport(user) });
 });
 
 authRouter.get("/sessions",authenticate,async(request,response)=>response.json({data:await listSessions(request.auth!.userId,request.auth!.sessionId)}));

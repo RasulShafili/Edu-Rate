@@ -2108,3 +2108,49 @@ describe("Elan şərhləri", () => {
     assert.equal(refreshed.body.data.find((item: { id: string }) => item.id === announcementId).commentCount, 1);
   });
 });
+
+describe("Hüquqi: yenidən razılıq, məlumat ixracı, silmə", () => {
+  it("yeni versiyanın qəbulunu qeyd edir, yalnız öz məlumatını ixrac edir, silinəndə bildirişləri təmizləyir", async () => {
+    const [{ createUser }, { createAccessToken, hashPassword }, { LEGAL_VERSION }, { notifyUser, listNotifications }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+      import("../src/lib/legal.js"),
+      import("../src/db/notifications.js"),
+    ]);
+    const passwordHash = await hashPassword("Kampus-Yolu-2026");
+    const base = { passwordHash, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const, role: "student" as const };
+    const owner = await createUser({ ...base, name: "İxrac Sahibi", email: "export.owner@example.az", termsVersion: "2026-08-15", privacyVersion: "2026-08-15" });
+    const other = await createUser({ ...base, name: "Kənar Şəxs", email: "export.other@example.az" });
+    const auth = `Bearer ${createAccessToken(owner)}`;
+
+    // Yenidən razılıq: köhnə versiya → yalnız cari versiya qəbul olunur.
+    await request(app).post("/api/auth/legal-consent").send({ accepted: true, version: LEGAL_VERSION }).expect(401);
+    await request(app).post("/api/auth/legal-consent").set("Authorization", auth).send({ accepted: true, version: "2020-01-01" }).expect(422);
+    await request(app).post("/api/auth/legal-consent").set("Authorization", auth).send({ accepted: false, version: LEGAL_VERSION }).expect(422);
+    const accepted = await request(app).post("/api/auth/legal-consent").set("Authorization", auth).send({ accepted: true, version: LEGAL_VERSION }).expect(200);
+    assert.equal(accepted.body.data.user.termsVersion, LEGAL_VERSION);
+    assert.equal(accepted.body.data.user.privacyVersion, LEGAL_VERSION);
+    assert.ok(accepted.body.data.user.legalAcceptedAt);
+    assert.equal("passwordHash" in accepted.body.data.user, false);
+
+    // İxrac: yalnız öz məlumatı, şifrə heşi yoxdur, başqasının məlumatı yoxdur.
+    await notifyUser(owner.id, "club_approved", { name: "Test klubu" }, "/clubs", other.id);
+    await request(app).get("/api/auth/account/export").expect(401);
+    const exported = await request(app).get("/api/auth/account/export").set("Authorization", auth).expect(200);
+    assert.equal(exported.headers["cache-control"], "no-store");
+    assert.equal(exported.body.data.format, "edurate-account-export");
+    assert.equal(exported.body.data.profile.email, "export.owner@example.az");
+    assert.equal(exported.body.data.data.notifications.length, 1);
+    const raw = JSON.stringify(exported.body.data);
+    assert.equal(raw.includes("passwordHash"), false);
+    assert.equal(raw.includes("export.other@example.az"), false);
+    assert.equal(raw.includes(other.id), false);
+    await request(app).get("/api/auth/account/export").set("Authorization", auth).expect(200);
+    await request(app).get("/api/auth/account/export").set("Authorization", auth).expect(200);
+    await request(app).get("/api/auth/account/export").set("Authorization", auth).expect(429);
+
+    // Hesab silinəndə bildirişlər də gedir.
+    await request(app).delete("/api/auth/account").set("Authorization", auth).send({ password: "Kampus-Yolu-2026" }).expect(204);
+    assert.equal((await listNotifications(owner.id)).items.length, 0);
+  });
+});

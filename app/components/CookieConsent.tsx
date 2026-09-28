@@ -17,6 +17,7 @@ import { useT } from "../i18n/LanguageProvider";
  */
 
 const STORAGE_KEY = "edurate-cookie-consent";
+const OPEN_EVENT = "edurate:open-cookie-settings";
 type Consent = "accepted" | "declined";
 
 function readConsent(): Consent | null {
@@ -27,6 +28,11 @@ function readConsent(): Consent | null {
     // Şəxsi rejimdə localStorage bağlı ola bilər — banner sadəcə göstərilmir.
     return null;
   }
+}
+
+/** Razılığı geri götürmək qəbul etmək qədər asan olsun: footer və Ayarlardan banner yenidən açılır. */
+export function openCookieSettings() {
+  window.dispatchEvent(new Event(OPEN_EVENT));
 }
 
 export function CookieConsent() {
@@ -40,7 +46,12 @@ export function CookieConsent() {
       setConsent(readConsent());
       setReady(true);
     }, 0);
-    return () => window.clearTimeout(timer);
+    const reopen = () => setConsent(null);
+    window.addEventListener(OPEN_EVENT, reopen);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(OPEN_EVENT, reopen);
+    };
   }, []);
 
   function choose(value: Consent) {
@@ -65,7 +76,7 @@ export function CookieConsent() {
             <strong id="cookie-consent-title">{t("cookie.title")}</strong>
             <p>
               {t("cookie.body")}{" "}
-              <Link href="/privacy">{t("cookie.more")}</Link>
+              <Link href="/cookies">{t("cookie.more")}</Link>
             </p>
           </div>
           <div className="cookie-consent__actions">

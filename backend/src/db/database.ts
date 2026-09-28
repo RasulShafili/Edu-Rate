@@ -336,6 +336,22 @@ export async function deleteUser(id: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+/** İstifadəçi hüquqi sənədlərin yeni versiyasını qəbul edir (yenidən razılıq). */
+export async function recordLegalAcceptance(id: string, version: string): Promise<UserRecord | null> {
+  if (!databasePool) {
+    const current = [...memoryUsers.values()].find((user) => user.id === id && !user.deletedAt);
+    if (!current) return null;
+    Object.assign(current, { termsVersion: version, privacyVersion: version, legalAcceptedAt: new Date().toISOString() });
+    return current;
+  }
+  const result = await databasePool.query(
+    `UPDATE users SET terms_version=$2, privacy_version=$2, legal_accepted_at=NOW(), updated_at=NOW()
+     WHERE id=$1 AND deleted_at IS NULL RETURNING *`,
+    [id, version],
+  );
+  return result.rows[0] ? mapUser(result.rows[0]) : null;
+}
+
 export async function countOwnerAdmins(): Promise<number> {
   if (!databasePool) {
     return [...memoryUsers.values()].filter((user) => user.role === "owner_admin" && user.status === "Aktiv" && !user.deletedAt).length;

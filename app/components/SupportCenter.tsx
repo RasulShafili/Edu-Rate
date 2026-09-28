@@ -35,6 +35,7 @@ const TOPICS = [
   { value: "Tədbirlər və qeydiyyat", key: "support.topic.events" },
   { value: "İcma və söhbət", key: "support.topic.community" },
   { value: "Hesab dəstəyi", key: "support.topic.account" },
+  { value: "Məxfilik və fərdi məlumatlar", key: "support.topic.privacy", slug: "privacy" },
   { value: "Digər məsələ", key: "support.topic.other" },
 ] as const;
 
@@ -103,6 +104,18 @@ export function SupportCenter() {
       setHistoryErrorKey("support.historyFailed");
       setHistoryState("error");
     }
+  }, []);
+
+  // Footer və Məxfilik siyasətindəki `?topic=privacy` linki mövzunu əvvəlcədən seçir.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("topic");
+    const topic = TOPICS.find((item) => "slug" in item && item.slug === slug);
+    if (!topic) return;
+    const timer = window.setTimeout(() => {
+      setFields((current) => (current.topic ? current : { ...current, topic: topic.value }));
+      document.getElementById("ticket-topic")?.scrollIntoView({ block: "center" });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   // Tarixçə istifadəçiyə bağlıdır: sessiya sonradan bərpa olunanda da yenidən

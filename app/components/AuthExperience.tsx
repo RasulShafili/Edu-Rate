@@ -67,6 +67,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
   const [showPassword, setShowPassword] = useState(false);
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyName | "">("");
   const [selectedProgram, setSelectedProgram] = useState("");
+  // Razılıq qutusu işarələnməyənə qədər qeydiyyat düyməsi aktiv olmur.
+  const [legalChecked, setLegalChecked] = useState(false);
   const [accountType, setAccountType] = useState<AccountType>("student");
   const [pendingTeacherEmail, setPendingTeacherEmail] = useState("");
   const [pendingTeacherDelivery, setPendingTeacherDelivery] = useState(false);
@@ -551,11 +553,13 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                           type="checkbox"
                           name="legalAccepted"
                           value="true"
+                          checked={legalChecked}
+                          onChange={(event) => setLegalChecked(event.target.checked)}
                           aria-invalid={Boolean(errors.legalAccepted)}
                           aria-describedby={errors.legalAccepted ? `${formId}-legalAccepted-error` : undefined}
                           required
                         />
-                        <span>{t("auth.legal.prefix")}<a href="/terms" target="_blank">{t("auth.legal.terms")}</a>{t("auth.legal.and")}<a href="/privacy" target="_blank">{t("auth.legal.privacy")}</a>{t("auth.legal.suffix")}</span>
+                        <span>{t("auth.legal.prefix")}<a href="/privacy" target="_blank" rel="noopener">{t("auth.legal.privacy")}</a>{t("auth.legal.comma")}<a href="/terms" target="_blank" rel="noopener">{t("auth.legal.terms")}</a>{t("auth.legal.and")}<a href="/community-guidelines" target="_blank" rel="noopener">{t("auth.legal.guidelines")}</a>{t("auth.legal.suffix")}</span>
                       </label>
                       {errors.legalAccepted && (
                         <span id={`${formId}-legalAccepted-error`} className="auth-field-error auth-legal-error">
@@ -567,7 +571,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                   <button
                     type="submit"
                     className="auth-submit"
-                    disabled={submitting || !credentialAuthAvailable}
+                    disabled={submitting || !credentialAuthAvailable || (mode === "register" && !legalChecked)}
+                    title={mode === "register" && !legalChecked ? t("auth.error.legal") : undefined}
                   >
                     <span>
                       {submitting

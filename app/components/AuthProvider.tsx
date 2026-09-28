@@ -41,6 +41,8 @@ type AuthContextValue = {
   register: (input: RegisterInput) => Promise<RegisterResult>;
   signOut: () => Promise<void>;
   updateProfile: (input: ProfileUpdateInput) => Promise<UserProfile>;
+  /** Server yenilənmiş istifadəçi qaytaranda (məs. hüquqi razılıqdan sonra). */
+  replaceUser: (next: UserProfile) => void;
 };
 
 type AuthProviderProps = PropsWithChildren<{
@@ -165,6 +167,7 @@ export function AuthProvider({
     register,
     signOut,
     updateProfile,
+    replaceUser: setUser,
   }), [adminRole, completeTwoFactor, credentialAuthAvailable, register, sessionPending, signIn, signOut, signOutHref, status, updateProfile, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
