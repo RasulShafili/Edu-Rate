@@ -9,7 +9,7 @@ EduRate universitet həyatı üçün hazırlanmış Azərbaycan dilli, müstəqi
 - tədbirlər, elanlar, klublar, mentorluq və müəllim qiymətləndirməsi;
 - şəxsi və klub söhbətləri, bloklama, səssizə alma və şikayət;
 - dəstək biletləri və ictimai məxfilik sorğusu;
-- admin CRUD, rəy və məzmun moderasiyası, audit qeydləri;
+- admin CRUD, rəy və məzmun moderasiyası, audit qeydləri.
 - loading, empty, error və responsive vəziyyətlər.
 
 Müəllim rəyləri şəxsin özü haqqında deyil, izahın aydınlığı, fənn biliyi, obyektivlik, ünsiyyət və dəstək meyarları üzrə verilir. Mesajlaşma end-to-end şifrələnmiş xidmət kimi təqdim edilmir.
