@@ -952,3 +952,31 @@ halda sonra `npx tsc --noEmit` və lüğətdə açar təkrarı yoxlaması.
 `kill -STOP <backend node pid>` — bağlantı qəbul olunur, cavab gəlmir
 (Render soyuq başlanğıcı kimi). Sonra `kill -CONT`. Bununla tapıldı: layout
 2×8s gözləyib daxil olmuş istifadəçini /auth-a atırdı.
+
+## 22. Bölmə sessiyalarından (Klublar → Tədbirlər, sentyabr 2026)
+
+### Konteyner yenidən başlayanda hər şey düşür
+Bulud konteyneri sessiya ortasında yenidən başlaya bilir: Postgres, backend və
+`next start` dayanır, `ECONNREFUSED 127.0.0.1:5432` görünür. Hər bölmənin
+əvvəlində: `pg_ctlcluster 16 main start` → backend (`node --import tsx
+src/server.ts`, PID-i fayla) → `/api/health`-də `migrationVersion` →
+`next start`. Köhnə PID faylına güvənmə — `ps` ilə yoxla.
+
+### `position: fixed` dialoq keçid animasiyasının içində tələyə düşür
+`RouteTransition` (framer-motion `transform`) daxilində `fixed` element
+viewport-a yox, həmin qata bağlanır: dialoq məzmunun mərkəzində açılır, sol
+menyu (z-index 80) isə z-index 10030-luq dialoqun ÜSTÜNDƏ görünür. Səbəb
+z-index deyil, stacking context-dir. Modal həmişə `ui/BodyPortal`-dan keçsin;
+yoxlama: dialoqun mərkəzi `innerWidth/2`-yə bərabərdirmi və
+`elementFromPoint(label)` dialoqun içindədirmi.
+
+### Yeni funksiya telefonda əlçatandırmı?
+Bildiriş paneli kompüterdə mükəmməl işləyirdi — telefonda isə zəng də,
+"Səhifə alətləri" də CSS ilə gizli idi, yəni funksiyaya yol yox idi. Hər yeni
+giriş nöqtəsini 375px-də **klikləyərək** sına, yalnız "overflow yoxdur" ilə
+kifayətlənmə.
+
+### Test skriptinin sabit mətni təkrar işlədəndə yalan verir
+"Canlı mesaj" mətnini `=== 1` ilə yoxladım; əvvəlki qaçışlardan eyni mətn
+bazada qaldığı üçün 2 tapdı və "canlı çatdırılma işləmir" göründü. Hər
+qaçışda unikal teq (`Date.now()`) işlət, ya da sayı əvvəl/sonra müqayisə et.
