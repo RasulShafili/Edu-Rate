@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 import type {
@@ -278,14 +278,10 @@ function useAdminResource<T>(
     }
   }, [loader]);
 
-  useEffect(
-    () => () => {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
-    },
-    [],
-  );
-
+  // Unmount-da sorğunu ləğv ETMİRİK: SWR eyni açar üçün 5 saniyə eyni vədi təkrar istifadə
+  // edir. Əvvəl komponent yenidən mount olanda (marşrut keçidi, React dev rejimi) ləğv
+  // olunmuş vəd paylaşılır, cədvəl "Məlumat alınmadı" göstərirdi. Yalnız yeni sorğu köhnəsini
+  // əvəz edəndə ləğv edirik (fetcher-in başında).
   const { data, error, isLoading, isValidating, mutate } = useSWR<T, unknown>(
     key,
     fetcher,
@@ -712,7 +708,8 @@ function formatEventDetail(startAt: string, place: string): string {
 }
 
 function isRetryableError(error: unknown): boolean {
-  if (isAbortError(error)) return false;
+  // Ləğv olunmuş (əvəzlənmiş) sorğu xəta deyil — təkrar cəhd edilir.
+  if (isAbortError(error)) return true;
   if (!(error instanceof ApiError)) return true;
   return error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500;
 }

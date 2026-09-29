@@ -132,9 +132,16 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
       return response.ok && payload?.data ? payload.data : null;
     }
     const matchesActive = (conversationId: string) => openRef.current && conversationId === activeIdRef.current;
-    void (async () => {
+    async function start() {
       const first = await fetchTicket().catch(() => null);
-      if (cancelled || !first) return;
+      if (cancelled) return;
+      if (!first) {
+        // Backend yatıb (soyuq başlanğıc), şəbəkə qırılıb və ya bilet limiti dolub:
+        // əvvəl burada `return` idi və canlı yeniləmə səhifə yenilənənə qədər ölürdü.
+        failures += 1;
+        retryTimer = window.setTimeout(() => void start(), Math.min(60_000, 5_000 * 2 ** Math.min(failures - 1, 4)));
+        return;
+      }
       let pending: string | null = first.ticket;
       socket = io(first.socketUrl, {
         path: "/socket.io",
@@ -187,7 +194,8 @@ export function ChatDock({ peer, group, open, onOpenChange }: Props) {
         if (typingClear.current) window.clearTimeout(typingClear.current);
         if (payload.active) typingClear.current = window.setTimeout(() => setTyping(false), 5_000);
       });
-    })();
+    }
+    void start();
     return () => {
       cancelled = true;
       window.clearTimeout(retryTimer);

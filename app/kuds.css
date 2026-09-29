@@ -5042,3 +5042,31 @@ body {
   .kuds-shell .auth-email-code__digits { gap: 6px; }
   .kuds-shell .auth-email-code__digits input { height: 50px; font-size: 22px; border-radius: 11px; }
 }
+
+/* Qiymətləndirmə meyarı: izah mətni ilə 1–5 şkalası yan-yana yalnız yer çatanda.
+   Əvvəl iki sütun sabit idi: panel 388px olanda şkala 316px tutur, izah 26px-ə
+   sıxılıb hər sözü ayrı sətirdə çıxırdı və düymənin altında kəsilirdi. */
+.kuds-shell .criteria-row__body { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.kuds-shell .criteria-row__hint { flex: 1 1 200px; min-width: 0; }
+.kuds-shell .criteria-row__scale { flex: 0 1 auto; max-width: 100%; }
+@media (max-width: 640px) {
+  .kuds-shell .criteria-row__scale { flex: 1 1 100%; }
+  /* Üç qat iç-içə doldurma sətri 195px-ə salırdı; 5 düymə (5×44px) çıxıb gedirdi. */
+  .kuds-shell .teacher-rating-panel { padding: 14px !important; }
+  .kuds-shell .criteria-rating-shell { padding: 14px 12px 16px; }
+  .kuds-shell .criteria-row__options { flex: 1 1 auto; min-width: 0; }
+  .kuds-shell .criteria-dot { flex: 1 1 0; min-width: 0; width: auto; max-width: 44px; aspect-ratio: 1; height: auto; }
+}
+
+/* Rəy göndərildi örtüyü: köhnə tünd temadan qalan şəffaf fon və serif şrift
+   işıqlı temada formanı örtmürdü, yazı düymələrin üstünə düşürdü. */
+.kuds-shell .review-confirmation { color: var(--kuds-text, #1e293b); border: 1px solid var(--kuds-border, #dbe5e1); background: rgba(255, 255, 255, .97); box-shadow: 0 24px 60px -24px rgba(22, 66, 60, .35); }
+.kuds-shell .review-confirmation > i { color: #fff; background: var(--ku-green, #44766c); box-shadow: 0 0 30px rgba(68, 118, 108, .35); }
+.kuds-shell .review-confirmation > strong { color: var(--ku-dark-green, #16423c); font-family: inherit; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.kuds-shell .review-confirmation > span { max-width: 320px; color: var(--kuds-muted, #566476); font-size: 14px; line-height: 1.55; }
+
+/* İctimai rəy kartı: meyar adları köhnə tünd temadan qalma (demək olar ağ, 9px) rənglə
+   ağ fonda görünmürdü — yalnız "5/5" rəqəmləri qalırdı. */
+.kuds-shell .review-criteria > div { padding: 9px 11px; border: 1px solid var(--kuds-border, #dbe5e1); background: rgba(237, 244, 241, .55); }
+.kuds-shell .review-criteria dt { color: var(--kuds-muted, #566476); font-size: 12px; }
+.kuds-shell .review-criteria dd { font-size: 12px; }
