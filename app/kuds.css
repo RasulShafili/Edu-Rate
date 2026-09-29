@@ -5087,3 +5087,9 @@ body {
 @media (max-width: 767px) {
   .kuds-shell .mentor-request-panel { align-items: stretch; }
 }
+
+/* Sual və dərs formlarının düymə sırası: üslubu yox idi, "Ləğv et" göndər düyməsindən hündür çıxırdı. */
+.kuds-shell .schedule-form__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.kuds-shell .schedule-form__actions .kuds-primary-button { min-height: 44px; margin: 0 !important; }
+.kuds-shell .schedule-form__actions button:not(.kuds-primary-button) { min-height: 44px; padding: 0 18px; color: var(--ku-dark-green, #16423c); border: 1px solid rgba(22, 66, 60, .25); border-radius: 11px; background: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.kuds-shell .schedule-form__actions button:not(.kuds-primary-button):hover { background: #edf4f1; }

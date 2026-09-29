@@ -90,8 +90,9 @@ npm run build
 
 ## Hüquqi və əməliyyat qeydləri
 
-- Məxfilik və istifadə şərtləri production yayımdan əvvəl Azərbaycan hüquqşünası tərəfindən təsdiqlənməlidir.
-- Operatorun hüquqi adı və rəsmi əlaqə məlumatı təsdiqlənmədən layihə geniş ictimai production xidməti kimi təqdim edilməməlidir.
+- Məxfilik siyasəti, İstifadə şərtləri, Kuki siyasəti və İcma qaydaları (`app/legal/`) Azərbaycan qanunvericiliyinə uyğun hazırlanıb, lakin production yayımdan əvvəl Azərbaycan hüquqşünası tərəfindən təsdiqlənməlidir.
+- Operator: Rəsul Şəfili (fərdi layihə), əlaqə: edurate111@gmail.com. Geniş ictimai production xidməti kimi təqdim etməzdən əvvəl bunun rəsmi təşkilat qərarı ilə təsdiqlənməsi lazımdır.
+- Giriş və qeydiyyat e-poçt koduyla təsdiqlənir: poçt xidməti (Brevo/Resend) istənilən alıcıya çatdırmalıdır (təsdiqlənmiş göndərən/domen). Problem olarsa `EMAIL_LOGIN_CODE=false` müvəqqəti həll yoludur.
 - Redis əsaslı paylanmış rate-limit/realtime token store və admin MFA production genişlənməsindən əvvəl tamamlanmalıdır.
 - Məlumat bazası backup, secret rotasiyası, insident cavabı və moderasiya məsul şəxsləri təşkilati qaydada təyin edilməlidir.
 
