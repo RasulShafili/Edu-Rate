@@ -2270,4 +2270,61 @@ describe("E-poçtla 6 rəqəmli giriş və qeydiyyat kodu", () => {
       resetLoginCodeCounters();
     }
   });
+
+  it("təsdiqlənməmiş hesabı yenidən qeydiyyatda təhvil alır; təsdiqlənmiş hesaba toxunmur", async () => {
+    const [{ findUserByEmail }, { loginCodeSettings, resetLoginCodeCounters }, { devOutbox }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/login-code.js"),
+      import("../src/lib/email.js"),
+    ]);
+    loginCodeSettings.enabled = true;
+    resetLoginCodeCounters();
+    try {
+      const email = `claim.${Date.now()}@example.az`;
+      const body = (name: string, password: string, accountType = "student") => ({
+        name, email, password, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", accountType, legalAccepted: true,
+      });
+      const signup = (payload: object, ip: string) => request(app).post("/api/auth/signup").set("X-Forwarded-For", ip).send(payload);
+      const codeOf = () => [...devOutbox].reverse().find((item) => item.to === email)!.subject.match(/(\d{6})$/)![1];
+
+      // 1) Kimsə (və ya sahibi özü) qeydiyyatı başlayıb kodu daxil etmir.
+      const first = await signup(body("Tutucu Adı", "Kampus-Yolu-2026"), "203.0.113.201").expect(201);
+      const firstUser = await findUserByEmail(email);
+      assert.equal(firstUser?.emailVerifiedAt, null);
+
+      // 2) Cooldown: dərhal təkrar cəhd poçt qutusuna kod yağdırmır.
+      await signup(body("Əsl Sahib", "Yeni-Kampus-Sirr-77"), "203.0.113.202").expect(429);
+
+      // 3) Cooldown bitəndə əsl sahib təhvil alır: eyni hesab (id), yeni ad və şifrə.
+      resetLoginCodeCounters();
+      const claimed = await signup(body("Əsl Sahib", "Yeni-Kampus-Sirr-77"), "203.0.113.203").expect(201);
+      assert.equal(claimed.body.data.emailCodeRequired, true);
+      const claimedUser = await findUserByEmail(email);
+      assert.equal(claimedUser?.id, firstUser?.id);
+      assert.equal(claimedUser?.name, "Əsl Sahib");
+      assert.equal(claimedUser?.emailVerifiedAt, null);
+
+      // 4) Tutucunun şifrəsi və bileti artıq işləmir; yalnız yeni kod hesabı təsdiqləyir.
+      await request(app).post("/api/auth/login").set("X-Forwarded-For", "203.0.113.204").send({ email, password: "Kampus-Yolu-2026" }).expect(401);
+      const stale = await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: first.body.data.challenge, code: codeOf() });
+      assert.equal(stale.body.data?.token, undefined);
+      const verified = await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: claimed.body.data.challenge, code: codeOf() }).expect(200);
+      assert.ok(verified.body.data.token);
+      assert.ok((await findUserByEmail(email))?.emailVerifiedAt);
+
+      // 5) Təsdiqlənmiş hesab təhvil alınmır (şifrəsi dəyişmir).
+      resetLoginCodeCounters();
+      await signup(body("Hücumçu", "Hucum-Kampus-Sirr-99"), "203.0.113.205").expect(409);
+      assert.equal((await findUserByEmail(email))?.name, "Əsl Sahib");
+
+      // 6) Başqa rolda təhvil yoxdur.
+      const otherEmail = `claim.role.${Date.now()}@example.az`;
+      await signup({ ...body("Rol Testi", "Kampus-Yolu-2026"), email: otherEmail }, "203.0.113.206").expect(201);
+      resetLoginCodeCounters();
+      await signup({ name: "Rol Testi", email: otherEmail, password: "Kampus-Yolu-2026", university: "Qarabağ Universiteti", program: "Riyaziyyat", accountType: "teacher", legalAccepted: true }, "203.0.113.207").expect(409);
+    } finally {
+      loginCodeSettings.enabled = false;
+      resetLoginCodeCounters();
+    }
+  });
 });

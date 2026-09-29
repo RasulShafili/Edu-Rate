@@ -189,6 +189,12 @@ export async function findLoginChallenge(token:string){
   return result.rows[0]?{id:String(result.rows[0].id),userId:String(result.rows[0].user_id)}:null;
 }
 
+/** Hesab təhvil alınanda əvvəlki qeydiyyat cəhdinin bütün biletləri ləğv olunur. */
+export async function invalidateLoginChallenges(userId:string){
+  if(!databasePool){for(const item of memoryChallenges.values())if(item.userId===userId)item.used=true;return;}
+  await databasePool.query("UPDATE auth_login_challenges SET used_at=NOW() WHERE user_id=$1 AND used_at IS NULL",[userId]);
+}
+
 export async function consumeLoginChallenge(id:string){
   if(!databasePool){for(const item of memoryChallenges.values())if(item.id===id&&!item.used){item.used=true;return true;}return false;}
   const result=await databasePool.query("UPDATE auth_login_challenges SET used_at=NOW() WHERE id=$1 AND used_at IS NULL RETURNING id",[id]);

@@ -154,6 +154,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
       }
       case "RATE_LIMITED":
         return { message: { key: "auth.error.rateLimited" }, fields: {} };
+      case "RESEND_TOO_SOON":
+        return { message: { key: "auth.error.codeTooSoon", values: { count: Number(details.retryAfter) || 60 } }, fields: {} };
       case "EMAIL_EXISTS":
         return { message: { key: "auth.error.emailExists" }, fields: { email: { key: "auth.error.emailExists" } } };
       case "WEAK_PASSWORD": {

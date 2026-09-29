@@ -336,6 +336,42 @@ export async function deleteUser(id: string): Promise<boolean> {
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * Təsdiqlənməmiş e-poçtla açılmış hesabı yenidən qeydiyyat zamanı "təhvil almaq".
+ * Ünvanın sahibi kodu daxil edib təsdiq etməyibsə, hesab onun deyil: yarımçıq qoyulmuş
+ * qeydiyyat və ya başqasının e-poçtu ilə açılmış "tutma" hesabı əsl sahibi bloklamasın.
+ * Şərtlər SQL-də də var — arada təsdiqlənibsə heç nə dəyişmir (`null`).
+ */
+export async function claimUnverifiedUser(
+  id: string,
+  input: { name: string; university: string; faculty: string; program: string; passwordHash: string; termsVersion: string; privacyVersion: string },
+): Promise<UserRecord | null> {
+  if (!databasePool) {
+    const current = [...memoryUsers.values()].find((user) => user.id === id);
+    if (!current || current.emailVerifiedAt || current.deletedAt || current.status !== "Aktiv") return null;
+    Object.assign(current, {
+      name: input.name.trim(),
+      university: input.university.trim(),
+      faculty: input.faculty.trim(),
+      program: input.program.trim(),
+      passwordHash: input.passwordHash,
+      termsVersion: input.termsVersion,
+      privacyVersion: input.privacyVersion,
+      legalAcceptedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return current;
+  }
+  const result = await databasePool.query(
+    `UPDATE users SET name=$2, university=$3, faculty=$4, program=$5, password_hash=$6,
+            terms_version=$7, privacy_version=$8, legal_accepted_at=NOW(), updated_at=NOW()
+     WHERE id=$1 AND email_verified_at IS NULL AND deleted_at IS NULL AND status='Aktiv'
+     RETURNING *`,
+    [id, input.name.trim(), input.university.trim(), input.faculty.trim(), input.program.trim(), input.passwordHash, input.termsVersion, input.privacyVersion],
+  );
+  return result.rows[0] ? mapUser(result.rows[0]) : null;
+}
+
 /** İstifadəçi hüquqi sənədlərin yeni versiyasını qəbul edir (yenidən razılıq). */
 export async function recordLegalAcceptance(id: string, version: string): Promise<UserRecord | null> {
   if (!databasePool) {

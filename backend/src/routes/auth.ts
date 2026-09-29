@@ -11,6 +11,7 @@ import {
   updatePassword,
   deleteUser,
   recordLegalAcceptance,
+  claimUnverifiedUser,
   type UserRecord,
 } from "../db/database.js";
 import { buildAccountExport } from "../db/account-export.js";
@@ -55,6 +56,7 @@ import {
   createActionCode,
   createActionToken,
   createLoginChallenge,
+  invalidateLoginChallenges,
   deleteTwoFactor,
   findLoginChallenge,
   getLockRemainingSeconds,
@@ -322,12 +324,19 @@ authRouter.post("/signup", signupLimiter, async (request, response) => {
   }
 
   const existingUser = await findUserByEmail(input.email);
+  let claimable = false;
 
   if (existingUser) {
     if (existingUser.role === "teacher" && existingUser.status === "Gözləmədə") {
       throw new ApiError(409, "TEACHER_APPROVAL_PENDING", "Bu e-poçtla müəllim müraciəti artıq yaradılıb və rəhbərliyin təsdiqini gözləyir.");
     }
-    throw new ApiError(409, "EMAIL_EXISTS", "Bu e-poçt artıq istifadə olunur.");
+    // Təsdiqlənməmiş (kod daxil edilməmiş) eyni rolda hesab təhvil alınır: yarımçıq qeydiyyat və
+    // başqasının e-poçtu ilə "tutulmuş" hesab əsl sahibi bloklamır. Təsdiqlənmiş hesab toxunulmazdır.
+    claimable = loginCodeSettings.enabled && !existingUser.emailVerifiedAt && existingUser.status === "Aktiv" && existingUser.role === input.accountType;
+    if (!claimable) throw new ApiError(409, "EMAIL_EXISTS", "Bu e-poçt artıq istifadə olunur.");
+    // Qurbanın poçt qutusuna kod yağdırmaq mümkün olmasın (eyni cooldown yenidən göndərmədəki kimi).
+    const wait = resendWaitSeconds(existingUser.id);
+    if (wait) throw new ApiError(429, "RESEND_TOO_SOON", `Yeni kod üçün ${wait} saniyə gözlə.`, { retryAfter: String(wait) });
   }
 
   if (input.accountType !== "student" && input.university !== ACADEMIC_UNIVERSITY) {
@@ -337,7 +346,22 @@ authRouter.post("/signup", signupLimiter, async (request, response) => {
   }
 
   const isPrivilegedRegistration = input.accountType === "teacher";
-  const user = await createUser({
+  const passwordHash = await hashPassword(input.password);
+  const claimed = claimable && existingUser
+    ? await claimUnverifiedUser(existingUser.id, {
+      name: input.name,
+      university: input.university,
+      faculty: input.accountType === "teacher" ? "Müəllim heyəti" : input.faculty,
+      program: input.program,
+      passwordHash,
+      termsVersion: LEGAL_VERSION,
+      privacyVersion: LEGAL_VERSION,
+    })
+    : null;
+  // Arada hesab təsdiqlənibsə (yarış) təhvil alınmır — adi "artıq istifadə olunur" cavabı.
+  if (claimable && !claimed) throw new ApiError(409, "EMAIL_EXISTS", "Bu e-poçt artıq istifadə olunur.");
+  if (claimed) await invalidateLoginChallenges(claimed.id);
+  const user = claimed ?? await createUser({
     name: input.name,
     email: input.email,
     university: input.university,
@@ -345,7 +369,7 @@ authRouter.post("/signup", signupLimiter, async (request, response) => {
     program: input.program,
     role: input.accountType,
     status: isPrivilegedRegistration ? "Gözləmədə" : "Aktiv",
-    passwordHash: await hashPassword(input.password),
+    passwordHash,
     // E-poçt təsdiqi pilot üçün söndürülüb: hesab dərhal təsdiqlənir ki,
     // tələbə qeydiyyatdan sonra avtomatik daxil olsun (token qaytarılır).
     // E-poçt kodu aktivdirsə, ünvan kodla təsdiqlənənə qədər hesab açılmır:
