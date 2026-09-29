@@ -51,8 +51,15 @@ export type SignInInput = {
 
 /** Şifrə düzgündür; 2FA aktivdirsə sessiya əvəzinə kod mərhələsinin bileti gəlir. */
 export type SignInResult =
-  | { user: UserProfile; twoFactorChallenge?: undefined }
-  | { user?: undefined; twoFactorChallenge: string };
+  | { user: UserProfile; twoFactorChallenge?: undefined; emailChallenge?: undefined }
+  | { user?: undefined; twoFactorChallenge: string; emailChallenge?: undefined }
+  | { user?: undefined; twoFactorChallenge?: undefined; emailChallenge: EmailChallenge };
+
+/** Şifrədən (və ya qeydiyyatdan) sonra e-poçta 6 rəqəmli kod göndərildi. */
+export type EmailChallenge = { challenge: string; emailHint: string };
+
+/** Kod təsdiqləndi: sessiya (user) və ya müəllim üçün rəhbərlik təsdiqi gözlənilir. */
+export type EmailCodeResult = { user: UserProfile | null; requiresApproval: boolean };
 
 export type TwoFactorSignInResult = {
   user: UserProfile;
@@ -76,6 +83,7 @@ export type RegisterResult = {
   requiresApproval: boolean;
   requiresEmailVerification?: boolean;
   emailDeliveryPending?: boolean;
+  emailChallenge?: EmailChallenge;
   accountType: RegisterInput["accountType"];
 };
 
@@ -87,6 +95,8 @@ export type ProfileUpdateInput = Pick<
 export type AuthGateway = {
   signIn: (input: SignInInput) => Promise<SignInResult>;
   completeTwoFactor: (challenge: string, code: string) => Promise<TwoFactorSignInResult>;
+  completeEmailCode: (challenge: string, code: string) => Promise<EmailCodeResult>;
+  resendEmailCode: (challenge: string) => Promise<{ emailHint: string; retryAfter: number }>;
   register: (input: RegisterInput) => Promise<RegisterResult>;
   signOut: () => Promise<void>;
   updateProfile: (

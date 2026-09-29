@@ -5023,3 +5023,22 @@ body {
 .kuds-shell .privacy-data-panel__message.is-error { color: #9d3e35; }
 .kuds-shell .privacy-data-panel__meta { margin: 0; color: var(--kuds-muted); font-size: 12.5px; }
 .kuds-shell .privacy-data-panel__meta a { color: var(--ku-dark-green); font-weight: 600; }
+
+/* ---- E-poçt kodu: 6 ayrı rəqəm xanası ---- */
+.kuds-shell .auth-email-code { display: grid; gap: 16px; }
+.kuds-shell .auth-email-code__sent { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; color: #2f3e4c; border: 1px solid rgba(22,66,60,.16); border-radius: 12px; background: #f3f8f6; }
+.kuds-shell .auth-email-code__sent span { display: grid; flex: none; width: 32px; height: 32px; place-items: center; color: #16423c; border-radius: 9px; background: #e2efe9; }
+.kuds-shell .auth-email-code__sent p { margin: 0; font-size: 13.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.kuds-shell .auth-email-code__digits { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.kuds-shell .auth-email-code__digits input { width: 100%; min-width: 0; height: 58px; padding: 0; color: #16423c; border: 1.5px solid rgba(22,66,60,.22); border-radius: 13px; background: #fff; font: inherit; font-size: 26px; font-weight: 800; text-align: center; caret-color: #44766c; color-scheme: light; transition: border-color .15s, box-shadow .15s, background .15s; }
+.kuds-shell .auth-email-code__digits input:focus { outline: none; border-color: #44766c; box-shadow: 0 0 0 4px rgba(68,118,108,.16); }
+.kuds-shell .auth-email-code__digits input.is-filled { border-color: rgba(22,66,60,.45); background: #f3f8f6; }
+.kuds-shell .auth-email-code__digits:disabled input { opacity: .6; }
+.kuds-shell .auth-email-code__actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.kuds-shell .auth-email-code__actions button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 2px; color: #16423c; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.kuds-shell .auth-email-code__actions button:disabled { color: #7a8a86; cursor: default; }
+.kuds-shell .auth-email-code__tip { margin: 0; color: var(--kuds-muted); font-size: 12px; line-height: 1.55; }
+@media (max-width: 400px) {
+  .kuds-shell .auth-email-code__digits { gap: 6px; }
+  .kuds-shell .auth-email-code__digits input { height: 50px; font-size: 22px; border-radius: 11px; }
+}

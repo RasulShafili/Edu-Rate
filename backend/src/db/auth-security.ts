@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { databasePool } from "./database.js";
 
-export type AuthPurpose = "verify_email" | "reset_password" | "activate_account";
+export type AuthPurpose = "verify_email" | "reset_password" | "activate_account" | "login_code";
 type MemorySession = { id:string; userId:string; hash:string; expiresAt:number; revokedAt?:number; userAgent:string; ipAddress:string; createdAt:string; lastSeenAt:string };
 type MemoryAction = { userId:string; purpose:AuthPurpose; hash:string; expiresAt:number; used:boolean };
 const memorySessions = new Map<string, MemorySession>();
@@ -175,8 +175,8 @@ export async function countRecoveryCodes(userId:string){
 }
 
 /** Şifrə düzgündür, kod gözlənilir: 5 dəqiqəlik birdəfəlik bilet (sessiya deyil). */
-export async function createLoginChallenge(userId:string){
-  const token=opaqueToken();const hash=digest(token);const id=randomUUID();const expiresAt=new Date(Date.now()+5*60*1000);
+export async function createLoginChallenge(userId:string,ttlMs=5*60*1000){
+  const token=opaqueToken();const hash=digest(token);const id=randomUUID();const expiresAt=new Date(Date.now()+ttlMs);
   if(!databasePool){memoryChallenges.set(hash,{id,userId,expiresAt:expiresAt.getTime(),used:false});return token;}
   await databasePool.query("INSERT INTO auth_login_challenges(id,user_id,token_hash,expires_at) VALUES($1,$2,$3,$4)",[id,userId,hash,expiresAt]);
   return token;

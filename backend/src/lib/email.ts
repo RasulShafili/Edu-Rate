@@ -1,9 +1,14 @@
 import { env } from "../config/env.js";
 
+/** Poçt açarı olmayan inkişaf/test mühitində göndərilən son məktublar (testlər kodu buradan oxuyur). */
+export const devOutbox:Array<{to:string;subject:string;html:string}>=[];
+
 export async function sendAccountEmail(input:{to:string;subject:string;html:string}){
   if(!env.BREVO_API_KEY&&!env.RESEND_API_KEY){
     if(env.NODE_ENV==="production")throw new EmailDeliveryError("E-poçt xidməti aktiv deyil. Render-də BREVO_API_KEY və ya RESEND_API_KEY əlavə edilməlidir.");
     console.info(`[email disabled] ${input.subject} -> ${input.to}`);
+    devOutbox.push(input);
+    if(devOutbox.length>50)devOutbox.shift();
     return;
   }
   if(env.BREVO_API_KEY){

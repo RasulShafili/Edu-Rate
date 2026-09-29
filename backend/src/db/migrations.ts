@@ -662,6 +662,16 @@ const migrations: Migration[] = [
       CREATE INDEX IF NOT EXISTS announcement_comments_announcement_idx ON announcement_comments(announcement_id, created_at);
     `,
   },
+  {
+    version: 30,
+    name: "email login code purpose",
+    sql: `
+      -- Girişdə e-poçtla 6 rəqəmli kod: yeni təyinat.
+      ALTER TABLE auth_action_tokens DROP CONSTRAINT IF EXISTS auth_action_tokens_purpose_check;
+      ALTER TABLE auth_action_tokens ADD CONSTRAINT auth_action_tokens_purpose_check
+        CHECK (purpose IN ('verify_email','reset_password','activate_account','login_code'));
+    `,
+  },
 ];
 
 export const latestMigrationVersion = Math.max(...migrations.map((migration) => migration.version));

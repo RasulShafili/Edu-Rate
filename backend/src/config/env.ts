@@ -44,6 +44,8 @@ const envSchema = z
      * (sahibin qərarı): yalnız açıq `true` verildikdə tələb olunur.
      */
     ADMIN_2FA_REQUIRED: z.enum(["true", "false"]).optional(),
+    // Girişdə və qeydiyyatda e-poçt kodu. Standart — aktiv; poçt sıradan çıxsa "false".
+    EMAIL_LOGIN_CODE: z.enum(["true", "false"]).optional(),
     SEED_DEMO_DATA: booleanValue,
     RESEND_API_KEY: z.string().optional().or(z.literal("")),
     BREVO_API_KEY: z.string().optional().or(z.literal("")),
@@ -110,6 +112,7 @@ export const env = {
   DATABASE_URL: parsed.data.DATABASE_URL || undefined,
   EDURATE_PROXY_SECRET: parsed.data.EDURATE_PROXY_SECRET || undefined,
   ADMIN_2FA_REQUIRED: parsed.data.ADMIN_2FA_REQUIRED === "true",
+  EMAIL_LOGIN_CODE: parsed.data.EMAIL_LOGIN_CODE !== "false",
   ALLOWED_ORIGINS: parsed.data.FRONTEND_URL.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
