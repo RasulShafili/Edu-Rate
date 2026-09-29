@@ -16,6 +16,7 @@ import {
   type RegisterResult,
   type SignInInput,
   type SignInResult,
+  type EmailCodeResult,
   type TwoFactorSignInResult,
   type UserProfile,
 } from "../data/user";
@@ -38,6 +39,8 @@ type AuthContextValue = {
   adminRole: AdminAccessRole | null;
   signIn: (input: SignInInput) => Promise<SignInResult>;
   completeTwoFactor: (challenge: string, code: string) => Promise<TwoFactorSignInResult>;
+  completeEmailCode: (challenge: string, code: string) => Promise<EmailCodeResult>;
+  resendEmailCode: (challenge: string) => Promise<{ emailHint: string; retryAfter: number }>;
   register: (input: RegisterInput) => Promise<RegisterResult>;
   signOut: () => Promise<void>;
   updateProfile: (input: ProfileUpdateInput) => Promise<UserProfile>;
@@ -120,6 +123,19 @@ export function AuthProvider({
     }
   }, [activeGateway]);
 
+  const completeEmailCode = useCallback(async (challenge: string, code: string) => {
+    setStatus("submitting");
+    try {
+      const result = await activeGateway.completeEmailCode(challenge, code);
+      if (result.user) setUser(result.user);
+      return result;
+    } finally {
+      setStatus("idle");
+    }
+  }, [activeGateway]);
+
+  const resendEmailCode = useCallback((challenge: string) => activeGateway.resendEmailCode(challenge), [activeGateway]);
+
   const register = useCallback(async (input: RegisterInput) => {
     setStatus("submitting");
     try {
@@ -164,11 +180,13 @@ export function AuthProvider({
     status,
     signIn,
     completeTwoFactor,
+    completeEmailCode,
+    resendEmailCode,
     register,
     signOut,
     updateProfile,
     replaceUser: setUser,
-  }), [adminRole, completeTwoFactor, credentialAuthAvailable, register, sessionPending, signIn, signOut, signOutHref, status, updateProfile, user]);
+  }), [adminRole, completeEmailCode, resendEmailCode, completeTwoFactor, credentialAuthAvailable, register, sessionPending, signIn, signOut, signOutHref, status, updateProfile, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

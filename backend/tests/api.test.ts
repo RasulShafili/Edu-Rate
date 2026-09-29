@@ -2154,3 +2154,120 @@ describe("Hüquqi: yenidən razılıq, məlumat ixracı, silmə", () => {
     assert.equal((await listNotifications(owner.id)).items.length, 0);
   });
 });
+
+describe("E-poçtla 6 rəqəmli giriş və qeydiyyat kodu", () => {
+  let ipCounter = 0;
+  const codeIp = () => `198.51.100.${(ipCounter += 1)}`;
+  it("şifrədən sonra kod istəyir, kodsuz sessiya vermir, kodu birdəfəlik edir, səhvləri kilidləyir", async () => {
+    const [{ createUser }, { hashPassword }, { loginCodeSettings, resetLoginCodeCounters }, { devOutbox }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/auth.js"),
+      import("../src/lib/login-code.js"),
+      import("../src/lib/email.js"),
+    ]);
+    loginCodeSettings.enabled = true;
+    resetLoginCodeCounters();
+    try {
+      const base = { passwordHash: await hashPassword("Kampus-Yolu-2026"), university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv" as const, role: "student" as const, emailVerifiedAt: new Date().toISOString() };
+      await createUser({ ...base, name: "Kod Sahibi", email: "code.owner@example.az" });
+      await createUser({ ...base, name: "Başqa Tələbə", email: "code.other@example.az" });
+      const lastCode = (to: string) => {
+        const mail = [...devOutbox].reverse().find((item) => item.to === to);
+        return mail?.subject.match(/(\d{6})$/)?.[1] ?? "";
+      };
+      const login = (email: string, ip: string) => request(app).post("/api/auth/login").set("X-Forwarded-For", ip).send({ email, password: "Kampus-Yolu-2026" });
+
+      // Şifrə düzgündür, amma token yoxdur — yalnız bilet və maskalanmış ünvan.
+      const first = await login("code.owner@example.az", "203.0.113.181").expect(200);
+      assert.equal(first.body.data.token, undefined);
+      assert.equal(first.body.data.emailCodeRequired, true);
+      assert.equal(first.body.data.emailHint, "c***r@example.az");
+      const code = lastCode("code.owner@example.az");
+      assert.match(code, /^\d{6}$/);
+      assert.match(devOutbox.at(-1)!.subject, /Giriş kodunuz/);
+
+      // Başqasının bileti ilə bu kod işləmir.
+      const other = await login("code.other@example.az", "203.0.113.182").expect(200);
+      await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: other.body.data.challenge, code }).expect(422);
+
+      // Düzgün kod → sessiya; eyni bilet/kod ikinci dəfə işləmir.
+      const ok = await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: first.body.data.challenge, code }).expect(200);
+      assert.ok(ok.body.data.token);
+      assert.equal(ok.body.data.user.email, "code.owner@example.az");
+      await request(app).get("/api/auth/session").set("Authorization", `Bearer ${ok.body.data.token}`).expect(200);
+      await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: first.body.data.challenge, code }).expect(401);
+
+      // Yenidən göndər: 60 saniyə gözləmə; yeni kod köhnəni etibarsız edir.
+      const second = await login("code.owner@example.az", "203.0.113.183").expect(200);
+      const tooSoon = await request(app).post("/api/auth/login/email-code/resend").set("X-Forwarded-For", codeIp()).send({ challenge: second.body.data.challenge }).expect(429);
+      assert.equal(tooSoon.body.error.code, "RESEND_TOO_SOON");
+      const oldCode = lastCode("code.owner@example.az");
+      resetLoginCodeCounters();
+      await request(app).post("/api/auth/login/email-code/resend").set("X-Forwarded-For", codeIp()).send({ challenge: second.body.data.challenge }).expect(200);
+      const newCode = lastCode("code.owner@example.az");
+      let failures = 0;
+      if (oldCode !== newCode) {
+        failures += 1;
+        await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: second.body.data.challenge, code: oldCode }).expect(422);
+      }
+
+      // 5 səhv cəhd → kilid, bilet yanır; düzgün kod belə artıq işləmir.
+      const wrong = newCode === "000000" ? "111111" : "000000";
+      for (let attempt = failures; attempt < 4; attempt += 1) {
+        await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: second.body.data.challenge, code: wrong }).expect(422);
+      }
+      const locked = await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: second.body.data.challenge, code: wrong }).expect(429);
+      assert.equal(locked.body.error.code, "ACCOUNT_THROTTLED");
+      await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: second.body.data.challenge, code: newCode }).expect(401);
+
+      // Söndürüləndə köhnə qayda: dərhal token.
+      loginCodeSettings.enabled = false;
+      const direct = await login("code.other@example.az", "203.0.113.184").expect(200);
+      assert.ok(direct.body.data.token);
+    } finally {
+      loginCodeSettings.enabled = false;
+      resetLoginCodeCounters();
+    }
+  });
+
+  it("qeydiyyatda e-poçtu kodla təsdiqləmədən hesabı açmır", async () => {
+    const [{ findUserByEmail }, { loginCodeSettings, resetLoginCodeCounters }, { devOutbox }] = await Promise.all([
+      import("../src/db/database.js"),
+      import("../src/lib/login-code.js"),
+      import("../src/lib/email.js"),
+    ]);
+    loginCodeSettings.enabled = true;
+    resetLoginCodeCounters();
+    try {
+      const email = `signup.code.${Date.now()}@example.az`;
+      const signup = await request(app).post("/api/auth/signup").set("X-Forwarded-For", "203.0.113.191").send({
+        name: "Yeni Tələbə", email, password: "Kampus-Yolu-2026", university: "Qarabağ Universiteti",
+        faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", accountType: "student", legalAccepted: true,
+      }).expect(201);
+      assert.equal(signup.body.data.token, undefined);
+      assert.equal(signup.body.data.emailCodeRequired, true);
+      assert.equal((await findUserByEmail(email))?.emailVerifiedAt, null);
+      const mail = [...devOutbox].reverse().find((item) => item.to === email)!;
+      assert.match(mail.subject, /E-poçt təsdiq kodunuz/);
+      const code = mail.subject.match(/(\d{6})$/)![1];
+
+      const verified = await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: signup.body.data.challenge, code }).expect(200);
+      assert.ok(verified.body.data.token);
+      assert.ok((await findUserByEmail(email))?.emailVerifiedAt);
+
+      // Müəllim: təsdiqdən sonra sessiya yox, rəhbərlik təsdiqi gözlənilir.
+      const teacherEmail = `teacher.code.${Date.now()}@example.az`;
+      const teacher = await request(app).post("/api/auth/signup").set("X-Forwarded-For", "203.0.113.192").send({
+        name: "Kod Müəllim", email: teacherEmail, password: "Kampus-Yolu-2026", university: "Qarabağ Universiteti", accountType: "teacher", program: "Riyaziyyat", legalAccepted: true,
+      }).expect(201);
+      assert.equal(teacher.body.data.requiresApproval, true);
+      const teacherCode = [...devOutbox].reverse().find((item) => item.to === teacherEmail)!.subject.match(/(\d{6})$/)![1];
+      const pending = await request(app).post("/api/auth/login/email-code").set("X-Forwarded-For", codeIp()).send({ challenge: teacher.body.data.challenge, code: teacherCode }).expect(200);
+      assert.equal(pending.body.data.token, undefined);
+      assert.equal(pending.body.data.requiresApproval, true);
+    } finally {
+      loginCodeSettings.enabled = false;
+      resetLoginCodeCounters();
+    }
+  });
+});

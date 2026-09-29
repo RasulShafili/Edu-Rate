@@ -17,6 +17,19 @@ import { buildAccountExport } from "../db/account-export.js";
 import { deleteNotificationsForUser } from "../db/notifications.js";
 import { removeAllSubscriptions } from "../db/push.js";
 import { LEGAL_VERSION } from "../lib/legal.js";
+import {
+  codeEmailHtml,
+  LOGIN_CODE_TTL_MS,
+  loginCodeEmail,
+  loginCodeSettings,
+  maskEmail,
+  MAX_SENDS_PER_CHALLENGE,
+  noteCodeSent,
+  RESEND_COOLDOWN_MS,
+  resendWaitSeconds,
+  sendsForChallenge,
+  signupCodeEmail,
+} from "../lib/login-code.js";
 import { removeUserAvatar } from "./media.js";
 import {
   ACADEMIC_UNIVERSITY,
@@ -231,7 +244,38 @@ async function trySendVerification(user:{id:string;email:string;name:string}){
 function escapeHtml(value:string){return value.replace(/[&<>"']/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]!));}
 
 function passwordResetEmailHtml(name:string,code:string){
-  return `<!doctype html><html lang="az"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>EduRate bərpa kodu</title></head><body style="margin:0;padding:0;background:#eef4f1;font-family:Arial,Helvetica,sans-serif;color:#17332d"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef4f1;padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;overflow:hidden;border:1px solid #d8e5df;border-radius:24px;background:#ffffff;box-shadow:0 18px 55px rgba(24,73,62,.12)"><tr><td style="padding:30px 34px;background:linear-gradient(135deg,#123c33,#2d7968);color:#ffffff"><div style="font-size:12px;font-weight:800;letter-spacing:3px">EDURATE</div><h1 style="margin:34px 0 8px;font-size:32px;line-height:1.08">Şifrənizi təhlükəsiz yeniləyin.</h1><p style="margin:0;color:#d9eee7;font-size:14px;line-height:1.6">Hesabınıza qayıtmaq üçün birdəfəlik kodunuz hazırdır.</p></td></tr><tr><td style="padding:34px"><p style="margin:0 0 12px;font-size:16px">Salam, <strong>${escapeHtml(name)}</strong></p><p style="margin:0 0 26px;color:#5c716b;font-size:14px;line-height:1.7">Aşağıdakı 6 rəqəmli kodu EduRate şifrə bərpası səhifəsinə daxil edin.</p><div style="padding:22px 14px;text-align:center;border:1px solid #dce9e4;border-radius:16px;background:#f4f8f6"><div style="margin-bottom:8px;color:#668078;font-size:10px;font-weight:800;letter-spacing:2px">BƏRPA KODU</div><div style="color:#1f6657;font-size:38px;font-weight:800;letter-spacing:10px">${code}</div></div><p style="margin:22px 0 0;color:#5c716b;font-size:13px;line-height:1.65">Kod <strong>10 dəqiqə</strong> qüvvədədir və yalnız bir dəfə istifadə oluna bilər.</p><p style="margin:14px 0 0;color:#879a94;font-size:12px;line-height:1.6">Bu sorğunu siz etməmisinizsə, məktubu nəzərə almayın və kodu heç kimlə paylaşmayın.</p></td></tr><tr><td style="padding:18px 34px;border-top:1px solid #e5ede9;color:#8a9b96;font-size:11px">EduRate · Müstəqil tələbə pilot platforması</td></tr></table></td></tr></table></body></html>`;
+  return codeEmailHtml({
+    name,
+    code,
+    title:"EduRate bərpa kodu",
+    heading:"Şifrənizi təhlükəsiz yeniləyin.",
+    lead:"Hesabınıza qayıtmaq üçün birdəfəlik kodunuz hazırdır.",
+    instruction:"Aşağıdakı 6 rəqəmli kodu EduRate şifrə bərpası səhifəsinə daxil edin.",
+    label:"BƏRPA KODU",
+    note:"Bu sorğunu siz etməmisinizsə, məktubu nəzərə almayın və kodu heç kimlə paylaşmayın.",
+  });
+}
+
+/*
+ * E-poçt kodu mərhələsi. Təsdiqlənməmiş e-poçt (yeni qeydiyyat) üçün
+ * `verify_email`, digər hallarda `login_code` kodu göndərilir; hər ikisi eyni
+ * `/login/email-code` endpoint-i ilə yoxlanır.
+ */
+function emailCodePurpose(user:UserRecord){return user.emailVerifiedAt?"login_code" as const:"verify_email" as const;}
+
+async function sendEmailCode(user:UserRecord){
+  const purpose=emailCodePurpose(user);
+  const code=await createActionCode(user.id,purpose,LOGIN_CODE_TTL_MS);
+  const message=purpose==="login_code"?loginCodeEmail(user.name,code):signupCodeEmail(user.name,code);
+  try{await sendAccountEmail({to:user.email,...message});}
+  catch(error){if(error instanceof EmailDeliveryError)throw new ApiError(503,"EMAIL_DELIVERY_UNAVAILABLE",error.message);throw error;}
+}
+
+async function startEmailCode(user:UserRecord){
+  await sendEmailCode(user);
+  const challenge=await createLoginChallenge(user.id,LOGIN_CODE_TTL_MS);
+  noteCodeSent(user.id,challenge);
+  return {emailCodeRequired:true as const,challenge,emailHint:maskEmail(user.email),purpose:emailCodePurpose(user)};
 }
 
 const profileSchema = z.object({
@@ -304,10 +348,16 @@ authRouter.post("/signup", signupLimiter, async (request, response) => {
     passwordHash: await hashPassword(input.password),
     // E-poçt təsdiqi pilot üçün söndürülüb: hesab dərhal təsdiqlənir ki,
     // tələbə qeydiyyatdan sonra avtomatik daxil olsun (token qaytarılır).
-    emailVerifiedAt: new Date().toISOString(),
+    // E-poçt kodu aktivdirsə, ünvan kodla təsdiqlənənə qədər hesab açılmır:
+    // başqasının Gmail-i ilə qeydiyyatdan keçib daxil olmaq olmur.
+    emailVerifiedAt: loginCodeSettings.enabled ? null : new Date().toISOString(),
     termsVersion: LEGAL_VERSION,
     privacyVersion: LEGAL_VERSION,
   });
+  if (loginCodeSettings.enabled) {
+    response.status(201).json({ data: { ...(await startEmailCode(user)), user: toPublicUser(user), requiresApproval: user.status !== "Aktiv" } });
+    return;
+  }
   if (user.status !== "Aktiv") {
     const emailDelivered = user.emailVerifiedAt ? true : await trySendVerification(user);
     response.status(201).json({ data: { user: toPublicUser(user), requiresApproval: true, requiresEmailVerification: !user.emailVerifiedAt, emailDeliveryPending: !emailDelivered } });
@@ -341,6 +391,12 @@ authRouter.post("/login", loginLimiter, async (request, response) => {
   // dəqiqəlik birdəfəlik bilet. Sessiya `/login/2fa`-da kod yoxlanandan sonra.
   if (await isTwoFactorEnabled(user.id)) {
     response.json({ data: { twoFactorRequired: true, challenge: await createLoginChallenge(user.id) } });
+    return;
+  }
+
+  // Şifrə düzgündür, amma sessiya yalnız e-poçta gələn kodla verilir.
+  if (loginCodeSettings.enabled) {
+    response.json({ data: await startEmailCode(user) });
     return;
   }
 
@@ -381,6 +437,84 @@ authRouter.post("/login/2fa", loginLimiter, async (request, response) => {
       recoveryCodesRemaining: method === "recovery" ? await countRecoveryCodes(user.id) : undefined,
     },
   });
+});
+
+const emailCodeSchema = z.object({
+  challenge: z.string().min(32).max(256),
+  code: z.string().trim().regex(/^\d{6}$/, "Kod 6 rəqəmdən ibarət olmalıdır."),
+}).strict();
+// Kod addımının öz IP limiti: girişin büdcəsini yeməsin (bir-iki səhv kod +
+// yenidən göndərmə istifadəçini kilidləməsin). Əsas qoruma hesab üzrə 5 cəhddir.
+const emailCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  keyGenerator: clientIpKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: "RATE_LIMITED", message: "Çox sayda cəhd edildi." } },
+});
+const emailChallengeSchema = z.object({ challenge: z.string().min(32).max(256) }).strict();
+
+/** Bilet → istifadəçi. 2FA (TOTP) hesabında e-poçt kodu işləmir: 2FA-dan yan keçmək olmasın. */
+async function emailChallengeUser(token: string) {
+  const challenge = await findLoginChallenge(token);
+  const user = challenge ? await findUserById(challenge.userId) : null;
+  if (!challenge || !user || await isTwoFactorEnabled(user.id)) {
+    throw new ApiError(401, "CHALLENGE_EXPIRED", "Kodun vaxtı bitdi. Yenidən daxil ol.");
+  }
+  if (user.status !== "Aktiv" && !(user.status === "Gözləmədə" && !user.emailVerifiedAt)) {
+    throw new ApiError(403, "ACCOUNT_RESTRICTED", "Hesab aktiv deyil.");
+  }
+  return { challenge, user };
+}
+
+/** Girişin (və qeydiyyatın) ikinci mərhələsi: e-poçta gələn 6 rəqəmli kod. */
+authRouter.post("/login/email-code", emailCodeLimiter, async (request, response) => {
+  const input = emailCodeSchema.parse(request.body);
+  const { challenge, user } = await emailChallengeUser(input.challenge);
+
+  const attemptKey = `email-code:${user.id}`;
+  const locked = await getLockRemainingSeconds(attemptKey);
+  if (locked) {
+    await consumeLoginChallenge(challenge.id);
+    throw accountThrottled(locked);
+  }
+  if (!(await consumeActionCode(user.id, input.code, emailCodePurpose(user)))) {
+    const lockedNow = await registerFailedAttempt(attemptKey, RESET_CODE_ATTEMPTS);
+    if (lockedNow) {
+      // Kilid düşəndə bilet də yanır: davam etmək üçün şifrə yenidən lazımdır.
+      await consumeLoginChallenge(challenge.id);
+      throw accountThrottled(lockedNow);
+    }
+    throw new ApiError(422, "CODE_INVALID", "Kod yanlışdır və ya vaxtı bitib.");
+  }
+  await clearAttempts(attemptKey);
+  if (!(await consumeLoginChallenge(challenge.id))) {
+    throw new ApiError(401, "CHALLENGE_EXPIRED", "Kodun vaxtı bitdi. Yenidən daxil ol.");
+  }
+
+  const verified = user.emailVerifiedAt ? user : (await markEmailVerified(user.id)) ?? user;
+  if (verified.status !== "Aktiv") {
+    response.json({ data: { requiresApproval: true, user: toPublicUser(verified) } });
+    return;
+  }
+  response.json({ data: { token: await issueSession(verified, request), user: await publicUserWithSecurity(verified) } });
+});
+
+/** Kodu yenidən göndər: 60 saniyədə bir, bilet başına ən çox 5 dəfə. */
+authRouter.post("/login/email-code/resend", emailCodeLimiter, async (request, response) => {
+  const { challenge } = emailChallengeSchema.parse(request.body);
+  const { user } = await emailChallengeUser(challenge);
+  const wait = resendWaitSeconds(user.id);
+  if (wait) {
+    throw new ApiError(429, "RESEND_TOO_SOON", `Yeni kod üçün ${wait} saniyə gözlə.`, { retryAfter: String(wait) });
+  }
+  if (sendsForChallenge(challenge) >= MAX_SENDS_PER_CHALLENGE) {
+    throw new ApiError(429, "RESEND_LIMIT", "Çox sayda kod istənildi. Yenidən daxil ol.");
+  }
+  await sendEmailCode(user);
+  noteCodeSent(user.id, challenge);
+  response.json({ data: { sent: true, emailHint: maskEmail(user.email), retryAfter: RESEND_COOLDOWN_MS / 1000 } });
 });
 
 authRouter.get("/session", authenticate, async (request, response) => {

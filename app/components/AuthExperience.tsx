@@ -39,6 +39,8 @@ import {
   useAuth,
 } from "./AuthProvider";
 import { PasswordStrength, passwordProblemKey } from "./PasswordStrength";
+import { EmailCodeStep } from "./EmailCodeStep";
+import type { EmailChallenge, EmailCodeResult } from "../data/user";
 
 type AuthMode = "login" | "register";
 type AccountType = "student" | "teacher";
@@ -75,6 +77,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
   const [drafts, setDrafts] = useState({ name: "", email: "", password: "" });
   /** Şifrə düzgündür, 2FA kodu gözlənilir. */
   const [challenge, setChallenge] = useState("");
+  /** Şifrədən və ya qeydiyyatdan sonra e-poçta 6 rəqəmli kod göndərildi. */
+  const [emailStep, setEmailStep] = useState<{ data: EmailChallenge; purpose: "login" | "signup"; email: string } | null>(null);
   const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const formId = useId();
   const router = useRouter();
@@ -163,6 +167,8 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
         return { message: { key: "auth.twoFactor.invalid" }, fields: {} };
       case "CHALLENGE_EXPIRED":
         return { message: { key: "auth.twoFactor.expired" }, fields: {} };
+      case "EMAIL_DELIVERY_UNAVAILABLE":
+        return { message: { key: "auth.error.emailDelivery" }, fields: {} };
       default:
         return { message: { key: fallback }, fields: {} };
     }
@@ -188,6 +194,10 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
     try {
       if (mode === "login") {
         const result = await signIn({ email: values.email, password: values.password });
+        if (result.emailChallenge) {
+          setEmailStep({ data: result.emailChallenge, purpose: "login", email: values.email });
+          return;
+        }
         if (!result.user) {
           setChallenge(result.twoFactorChallenge);
           setUseRecoveryCode(false);
@@ -207,6 +217,13 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
           accountType: values.accountType as AccountType,
           legalAccepted: true,
         });
+        // Hesab yaradıldı, amma e-poçt kodla təsdiqlənməyincə açılmır.
+        if (result.emailChallenge) {
+          setEmailStep({ data: result.emailChallenge, purpose: "signup", email: values.email });
+          setSelectedFaculty("");
+          setSelectedProgram("");
+          return;
+        }
         if (result.requiresApproval) {
           setPendingTeacherEmail(values.email);
           setPendingTeacherDelivery(Boolean(result.emailDeliveryPending));
@@ -265,8 +282,34 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
     }
   }
 
-  const heading = challenge ? t("auth.twoFactor.title") : mode === "login" ? t("auth.signInTitle") : t("auth.signUpTitle");
-  const description = challenge
+  function handleEmailVerified(result: EmailCodeResult) {
+    const step = emailStep;
+    setEmailStep(null);
+    if (!result.user) {
+      // Müəllim: e-poçt təsdiqləndi, indi rəhbərlik təsdiqi gözlənilir.
+      setMode("register");
+      setPendingTeacherEmail(step?.email ?? "");
+      setPendingTeacherDelivery(false);
+      return;
+    }
+    const role = result.user.accessRole;
+    if (step?.purpose === "signup") {
+      const isStudent = !role || role === "student";
+      router.push(isStudent && returnTo === "/profile" ? "/welcome" : getRoleHome(role, returnTo));
+      return;
+    }
+    router.push(getRoleHome(role, returnTo));
+  }
+
+  function handleEmailRestart(key: string, values?: Record<string, string | number>) {
+    setEmailStep(null);
+    showMessage(key ? { key, values } : null, Boolean(key));
+  }
+
+  const heading = emailStep ? t(emailStep.purpose === "signup" ? "auth.emailCode.titleSignup" : "auth.emailCode.title") : challenge ? t("auth.twoFactor.title") : mode === "login" ? t("auth.signInTitle") : t("auth.signUpTitle");
+  const description = emailStep
+    ? t("auth.emailCode.text")
+    : challenge
     ? t(useRecoveryCode ? "auth.twoFactor.recoveryText" : "auth.twoFactor.text")
     : mode === "login" ? t("auth.signInHint") : t("auth.signUpHint");
   const errorText = (field: AuthField) => errors[field] ? t(errors[field].key, errors[field].values) : undefined;
@@ -295,7 +338,9 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
             <p>{description}</p>
           </header>
 
-          {challenge ? (
+          {emailStep ? (
+            <EmailCodeStep challenge={emailStep.data} purpose={emailStep.purpose} onVerified={handleEmailVerified} onRestart={handleEmailRestart} />
+          ) : challenge ? (
             <form method="post" className="auth-form auth-form-login auth-two-factor" noValidate aria-busy={submitting} onSubmit={handleTwoFactorSubmit}>
               <AuthFieldShell
                 id={`${formId}-code`}

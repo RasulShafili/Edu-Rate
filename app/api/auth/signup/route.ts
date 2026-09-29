@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     const input = await readJsonBody<RegisterInput>(request);
-    const result = await requestRemoteApi<{ token?: string; user: RemoteApiUser; requiresApproval?: boolean; requiresEmailVerification?:boolean; emailDeliveryPending?:boolean }>(
+    const result = await requestRemoteApi<{ token?: string; user: RemoteApiUser; requiresApproval?: boolean; requiresEmailVerification?:boolean; emailDeliveryPending?:boolean; emailCodeRequired?: boolean; challenge?: string; emailHint?: string }>(
       "/api/auth/signup",
       { method: "POST", body: input },
     );
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       requiresApproval,
       requiresEmailVerification,
       emailDeliveryPending: Boolean(result.emailDeliveryPending),
+      ...(result.emailCodeRequired ? { emailCodeRequired: true, challenge: result.challenge, emailHint: result.emailHint } : {}),
     }, 201);
     if (result.token) {
       response.cookies.set(
