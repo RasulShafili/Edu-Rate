@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Brauzerlər və botlar avtomatik /favicon.ico istəyir; ikon SVG-dir. Əvvəl 404 qaytarırdı.
+  async redirects() {
+    return [{ source: "/favicon.ico", destination: "/favicon.svg", permanent: true }];
+  },
   async headers() {
     return [
       {
