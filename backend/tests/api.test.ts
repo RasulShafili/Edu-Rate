@@ -2328,3 +2328,31 @@ describe("E-poçtla 6 rəqəmli giriş və qeydiyyat kodu", () => {
     }
   });
 });
+
+describe("Şifrə dəyişmə", () => {
+  it("cari şifrəni yoxlayır, zəif və eyni şifrəni rədd edir, digər sessiyaları bağlayır", async () => {
+    const [{ createUser }, { hashPassword }] = await Promise.all([import("../src/db/database.js"), import("../src/lib/auth.js")]);
+    const email = `pwchange.${Date.now()}@example.az`;
+    await createUser({ passwordHash: await hashPassword("Kampus-Yolu-2026"), name: "Şifrə Dəyişən", email, university: "Qarabağ Universiteti", faculty: "Mühəndislik fakültəsi", program: "Kompüter mühəndisliyi", status: "Aktiv", role: "student", emailVerifiedAt: new Date().toISOString() });
+    const login = (password: string, ip: string) => request(app).post("/api/auth/login").set("X-Forwarded-For", ip).send({ email, password });
+    const sessionA = (await login("Kampus-Yolu-2026", "203.0.113.211").expect(200)).body.data.token as string;
+    const sessionB = (await login("Kampus-Yolu-2026", "203.0.113.212").expect(200)).body.data.token as string;
+    const change = (token: string, body: object) => request(app).post("/api/auth/password/change").set("Authorization", `Bearer ${token}`).set("X-Forwarded-For", "203.0.113.213").send(body);
+
+    await request(app).post("/api/auth/password/change").send({ currentPassword: "Kampus-Yolu-2026", newPassword: "Yeni-Sirr-Kampus-88" }).expect(401);
+    await change(sessionA, { currentPassword: "Sehv-Sifre-123456", newPassword: "Yeni-Sirr-Kampus-88" }).expect(401);
+    const weak = await change(sessionA, { currentPassword: "Kampus-Yolu-2026", newPassword: "12345678" }).expect(422);
+    assert.equal(weak.body.error.code, "WEAK_PASSWORD");
+    const same = await change(sessionA, { currentPassword: "Kampus-Yolu-2026", newPassword: "Kampus-Yolu-2026" }).expect(422);
+    assert.equal(same.body.error.code, "SAME_PASSWORD");
+    await change(sessionA, { currentPassword: "Kampus-Yolu-2026", newPassword: "Yeni-Sirr-Kampus-88", extra: 1 }).expect(422);
+
+    await change(sessionA, { currentPassword: "Kampus-Yolu-2026", newPassword: "Yeni-Sirr-Kampus-88" }).expect(204);
+    // Cari sessiya qalır, digər cihaz çıxarılır.
+    await request(app).get("/api/auth/session").set("Authorization", `Bearer ${sessionA}`).expect(200);
+    await request(app).get("/api/auth/session").set("Authorization", `Bearer ${sessionB}`).expect(401);
+    // Köhnə şifrə işləmir, yeni şifrə işləyir.
+    await login("Kampus-Yolu-2026", "203.0.113.214").expect(401);
+    await login("Yeni-Sirr-Kampus-88", "203.0.113.215").expect(200);
+  });
+});

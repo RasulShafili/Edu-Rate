@@ -5093,3 +5093,20 @@ body {
 .kuds-shell .schedule-form__actions .kuds-primary-button { min-height: 44px; margin: 0 !important; }
 .kuds-shell .schedule-form__actions button:not(.kuds-primary-button) { min-height: 44px; padding: 0 18px; color: var(--ku-dark-green, #16423c); border: 1px solid rgba(22, 66, 60, .25); border-radius: 11px; background: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .kuds-shell .schedule-form__actions button:not(.kuds-primary-button):hover { background: #edf4f1; }
+
+/* Ayarlar → Şifrəni dəyiş */
+.kuds-shell .change-password { display: grid; gap: 12px; }
+.kuds-shell .change-password h2 { display: flex; align-items: center; gap: 8px; }
+.kuds-shell .change-password__form { display: grid; gap: 12px; max-width: 420px; }
+.kuds-shell .change-password__form label { display: grid; gap: 6px; color: var(--kuds-text, #1e293b); font-size: 13px; font-weight: 700; }
+.kuds-shell .change-password__form input { min-height: 44px; padding: 0 12px; color: var(--kuds-text, #1e293b); border: 1px solid var(--kuds-border, #cbd5e1); border-radius: 10px; background: #fff; font: inherit; font-size: 15px; font-weight: 400; color-scheme: light; }
+.kuds-shell .change-password__form input:focus-visible { outline: 2px solid var(--ku-green, #44766c); outline-offset: 1px; }
+.kuds-shell .change-password__form input[aria-invalid="true"] { border-color: #9d3e35; }
+.kuds-shell .change-password__form small { color: var(--kuds-muted, #566476); font-size: 12px; font-weight: 400; }
+.kuds-shell .change-password__form small.is-error, .kuds-shell .change-password__error { color: #9d3e35; font-weight: 600; }
+.kuds-shell .change-password__error { margin: 0; font-size: 13px; }
+.kuds-shell .change-password__done { display: inline-flex; align-items: center; gap: 7px; margin: 0; color: #2f6b55; font-size: 13.5px; font-weight: 600; }
+.kuds-shell .change-password__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.kuds-shell .change-password__actions button { min-height: 44px; padding: 0 18px; color: var(--ku-dark-green, #16423c); border: 1px solid rgba(22, 66, 60, .25); border-radius: 11px; background: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.kuds-shell .change-password__actions button.is-primary { color: #fff; border-color: var(--ku-green, #44766c); background: var(--ku-green, #44766c); }
+.kuds-shell .change-password__actions button:disabled { opacity: .55; cursor: not-allowed; }

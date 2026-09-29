@@ -756,6 +756,30 @@ authRouter.post("/legal-consent", authenticate, async (request, response) => {
   response.json({ data: { user: await publicUserWithSecurity(user) } });
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(1).max(200),
+}).strict();
+
+/**
+ * Daxil olmuş istifadəçinin şifrə dəyişməsi. Əvvəl yalnız "Şifrəni unutdum" var idi:
+ * hesabın şifrəsi sızıbsa və ya zəifdirsə, istifadəçi onu dəyişə bilmirdi.
+ * Cari şifrə girişlə eyni sayğacla yoxlanır, digər cihazların sessiyaları bağlanır.
+ */
+authRouter.post("/password/change", authenticate, loginLimiter, async (request, response) => {
+  const input = changePasswordSchema.parse(request.body);
+  const user = await findUserById(request.auth!.userId);
+  if (!user) throw new ApiError(404, "USER_NOT_FOUND", "İstifadəçi tapılmadı.");
+  await assertCurrentPassword(user, input.currentPassword);
+  assertStrongPassword(input.newPassword, { email: user.email, name: user.name });
+  if (input.newPassword === input.currentPassword) {
+    throw new ApiError(422, "SAME_PASSWORD", "Yeni şifrə cari şifrədən fərqli olmalıdır.");
+  }
+  await updatePassword(user.id, await hashPassword(input.newPassword));
+  await revokeAllSessions(user.id, request.auth!.sessionId);
+  response.status(204).send();
+});
+
 // İxrac ağır sorğudur: saatda 3 dəfə kifayətdir.
 const exportLimiter = rateLimit({ windowMs: 60 * 60_000, limit: 3, keyGenerator: userOrIpKey, standardHeaders: true, legacyHeaders: false });
 /** "Məlumatlarımı yüklə": istifadəçinin öz fərdi məlumatlarının JSON surəti. */
