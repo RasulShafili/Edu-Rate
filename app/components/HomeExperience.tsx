@@ -61,6 +61,7 @@ type CampusEvent = {
   title?: string;
   name?: string;
   startAt?: string;
+  endAt?: string;
   place?: string;
   location?: string;
   category?: string;
@@ -119,7 +120,14 @@ export function HomeExperience() {
   const topClubs = [...(clubs.data ?? [])]
     .sort((a, b) => (b.memberCount ?? 0) - (a.memberCount ?? 0))
     .slice(0, 4);
-  const upcoming = (events.data ?? []).slice(0, 4);
+  // "Yaxınlaşan" — vaxtı keçməmiş tədbirlər (davam edənlər də daxil). Əvvəl süzgəc yox idi:
+  // bitmiş tədbirlər (18, 22, 28 sentyabr) sentyabrın sonunda da "yaxınlaşan" görünürdü.
+  const upcoming = (events.data ?? [])
+    .filter((event) => {
+      const end = new Date(event.endAt || event.startAt || "").getTime();
+      return Number.isNaN(end) || end >= Date.now();
+    })
+    .slice(0, 4);
 
   return (
     <div className="home-board">

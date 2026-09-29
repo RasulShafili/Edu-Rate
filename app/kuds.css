@@ -5070,3 +5070,20 @@ body {
 .kuds-shell .review-criteria > div { padding: 9px 11px; border: 1px solid var(--kuds-border, #dbe5e1); background: rgba(237, 244, 241, .55); }
 .kuds-shell .review-criteria dt { color: var(--kuds-muted, #566476); font-size: 12px; }
 .kuds-shell .review-criteria dd { font-size: 12px; }
+
+/* İcma kartı, dar ekran: düymələr alt-alta yığılır, ona görə blok məzmunun hündürlüyündə olmalıdır.
+   ≤480px-də köhnə `height: 44px` bunu əzirdi, "Şikayət et" düyməsi "Mesaj yaz"ın altında kəsilirdi. */
+@media (max-width: 767px) {
+  .kuds-shell .peer-actions { height: auto; }
+}
+
+/* İcma: başlıqdakı "Yenilə" düyməsinin heç bir üslubu yox idi (çılpaq mətn kimi görünürdü). */
+.kuds-shell .peers-heading-aside button { display: inline-flex; min-height: 38px; align-items: center; gap: 7px; padding: 0 14px; color: var(--ku-dark-green, #16423c); border: 1px solid rgba(22, 66, 60, .22); border-radius: 11px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.kuds-shell .peers-heading-aside button:hover:not(:disabled) { background: #edf4f1; }
+.kuds-shell .peers-heading-aside button:disabled { opacity: .6; cursor: progress; }
+
+/* Mentor kartı, dar ekran: ≤1080px qaydasından qalan `align-items: end` sütun düzülüşündə
+   məlumatı və qeyd sahəsini sağa yığıb solda boş yer qoyurdu. */
+@media (max-width: 767px) {
+  .kuds-shell .mentor-request-panel { align-items: stretch; }
+}
