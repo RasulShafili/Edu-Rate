@@ -11,6 +11,7 @@ import {
   Sparkles,
   UsersRound,
 } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { useAuth } from "./AuthProvider";
@@ -95,6 +96,7 @@ function splitDate(value: string | undefined, t: (key: string) => string, locale
 export function HomeExperience() {
   const { t, locale } = useLanguage();
   const { user } = useAuth();
+  const [openedAt] = useState(() => Date.now());
   // API "clubs"/"faculties" kimi açar qaytarır — seçilmiş dildə göstəririk.
   const categoryLabel = (value?: string) => (value ? t(`category.${value}`) : "");
   const firstName = user?.name.trim().split(/\s+/)[0];
@@ -125,7 +127,7 @@ export function HomeExperience() {
   const upcoming = (events.data ?? [])
     .filter((event) => {
       const end = new Date(event.endAt || event.startAt || "").getTime();
-      return Number.isNaN(end) || end >= Date.now();
+      return Number.isNaN(end) || end >= openedAt;
     })
     .slice(0, 4);
 
