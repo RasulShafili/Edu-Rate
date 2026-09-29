@@ -33,7 +33,7 @@ export function ReviewCard({ review, index }: ReviewCardProps) {
         <span>{review.course}</span>
         <strong className="review-score-value">{formatDecimalScore(review.rating)} / 5</strong>
       </div>
-      <div className="review-stars" aria-label={`${review.rating} ulduz`}> 
+      <div className="review-stars" role="img" aria-label={`${review.rating} ulduz`}> 
         {Array.from({ length: 5 }, (_, star) => (
           <Star key={star} size={12} fill={star < review.rating ? "currentColor" : "none"} />
         ))}

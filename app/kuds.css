@@ -5110,3 +5110,9 @@ body {
 .kuds-shell .change-password__actions button { min-height: 44px; padding: 0 18px; color: var(--ku-dark-green, #16423c); border: 1px solid rgba(22, 66, 60, .25); border-radius: 11px; background: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .kuds-shell .change-password__actions button.is-primary { color: #fff; border-color: var(--ku-green, #44766c); background: var(--ku-green, #44766c); }
 .kuds-shell .change-password__actions button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Suallar: "Sil" düyməsinin qırmızısı ağ fonda 3.8:1 idi (12px mətn üçün 4.5:1 lazımdır). */
+.kuds-shell .question-actions .is-danger { color: #b3261e; }
+
+/* Alt naviqasiya, aktiv tab: yaşıl (#44766c) açıq-yaşıl fonda 4.4:1 idi; tünd yaşıl 4.5:1-dən yuxarıdır. */
+.kuds-shell .platform-tabbar-item.is-active { color: var(--ku-dark-green, #16423c); }

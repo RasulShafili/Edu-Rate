@@ -52,6 +52,7 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
           type="button"
           className="platform-header-search"
           onClick={onSearchToggle}
+          aria-label={t("common.search")}
           aria-expanded={searchOpen}
           aria-controls="platform-desktop-utility-panel"
         >

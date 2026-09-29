@@ -400,7 +400,7 @@ export function AdminDashboard({ administrator }: AdminDashboardProps) {
               <Circle size={8} fill="currentColor" aria-hidden="true" />
               {connectionLabel}
             </p>
-            <div className="admin-account-chip" aria-label={t("admin.account.label")}>
+            <div className="admin-account-chip" role="group" aria-label={t("admin.account.label")}>
               <span aria-hidden="true">{getInitials(administrator.displayName)}</span>
               <div>
                 <strong>{administrator.displayName}</strong>

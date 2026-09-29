@@ -64,7 +64,7 @@ export function PlatformTabBar({ pathname, menuOpen, onMenu }: PlatformTabBarPro
   }, []);
 
   return (
-    <nav className={`platform-tabbar${typing ? " is-typing" : ""}`} aria-label={t("home.quickLinks")} aria-hidden={typing || undefined}>
+    <nav className={`platform-tabbar${typing ? " is-typing" : ""}`} aria-label={t("home.quickLinks")} inert={typing}>
       {tabs.map(({ href, label, icon: Icon }) => {
         const current = href === "/" ? pathname === "/" : isPlatformRouteCurrent(pathname, href);
         return (
