@@ -32,8 +32,6 @@ const quickLinks = [
   { href: "/clubs", label: "nav.clubs", icon: Sparkles },
   { href: "/community", label: "nav.community", icon: UsersRound },
   { href: "/teachers", label: "nav.teachers", icon: GraduationCap },
-  { href: "/mentors", label: "nav.mentors", icon: HeartHandshake },
-  { href: "/support", label: "nav.support", icon: LifeBuoy },
 ] as const;
 
 type Club = {

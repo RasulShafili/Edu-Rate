@@ -5042,3 +5042,190 @@ body {
   .kuds-shell .auth-email-code__digits { gap: 6px; }
   .kuds-shell .auth-email-code__digits input { height: 50px; font-size: 22px; border-radius: 11px; }
 }
+
+/* =========================================================
+   Müəllim və Mentorlar Birləşdirilmiş Tabları & Mobil Sadələşdirmə
+   ========================================================= */
+
+.teachers-mentors-unified {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.teachers-mentors-nav-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: 0 0 24px;
+}
+
+.teachers-mentors-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  width: 100%;
+  max-width: 460px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(22, 66, 60, 0.14);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -15px rgba(22, 66, 60, 0.25);
+}
+
+.teachers-mentors-tab-btn {
+  flex: 1;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--kuds-muted, #557069);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  white-space: nowrap;
+}
+
+.teachers-mentors-tab-btn:hover {
+  color: var(--kuds-text, #16423c);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.teachers-mentors-tab-btn.is-active {
+  color: #fff;
+  background: linear-gradient(110deg, #376e63, #57907f 54%, #7160a2);
+  box-shadow: 0 8px 18px -6px rgba(35, 82, 71, 0.45);
+}
+
+/* Ayarlar daxilində Dəstək kartı */
+.kuds-shell .settings-support-card {
+  margin-top: 14px;
+}
+
+/* ---------------- Mobil Düymə Daşması & İnterfeys Sadələşdirməsi ---------------- */
+
+@media (max-width: 767px) {
+  /* Üfüqi sürüşmə və daşmanın qarşısını tam almaq */
+  html, body, .site-shell, .kuds-shell, .platform-workspace, .platform-route-content {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Mobil başlıq: başlıq mətni və düymələr sıxışmasın */
+  .kuds-shell .platform-header {
+    padding: 10px 12px 10px 58px !important;
+    gap: 8px !important;
+  }
+
+  .kuds-shell .platform-header-context {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+  }
+
+  .kuds-shell .platform-breadcrumb {
+    font-size: 11.5px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .kuds-shell .platform-breadcrumb > span:first-child,
+  .kuds-shell .platform-breadcrumb > svg {
+    display: none !important;
+  }
+
+  .kuds-shell .platform-breadcrumb strong {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: block !important;
+  }
+
+  .kuds-shell .platform-header-actions {
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .kuds-shell .platform-header-search {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+
+  .kuds-shell .platform-header-icon {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+  }
+
+  /* Düymələrin mobildə daşmaması üçün tam enli (full-width) adaptasiya */
+  .kuds-shell :is(.home-btn, .reserve-button, .mentor-request-button, .mentor-request-secondary, .rating-submit, .ticket-submit, .profile-save-button, .auth-submit, .event-primary-action) {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .kuds-shell .home-banner__actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .kuds-shell .home-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+    min-height: 44px !important;
+  }
+
+  .kuds-shell .home-quick {
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .kuds-shell .home-quick__item {
+    font-size: 10.5px !important;
+    padding: 9px 4px !important;
+  }
+
+  /* Kart daxilindəki düymələr */
+  .kuds-shell :is(.mentor-card footer, .event-card-actions, .club-card__actions, .drawer-actions) {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .kuds-shell :is(.mentor-card footer button, .mentor-card footer a, .event-card-actions button, .club-card__actions button, .club-card__actions a) {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Alt naviqasiya paneli (Tab bar) sıxılmasın */
+  .platform-tabbar {
+    padding-inline: 4px !important;
+  }
+
+  .platform-tabbar-item {
+    min-width: 0 !important;
+    padding: 6px 2px !important;
+  }
+
+  .platform-tabbar-label {
+    font-size: 10px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}
+
