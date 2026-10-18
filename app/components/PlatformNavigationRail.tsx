@@ -29,6 +29,7 @@ import {
 import { isPlatformRouteCurrent } from "../data/platform-shell";
 import { navGroupKeys, routeLabelKeys } from "../i18n/config";
 import { useT } from "../i18n/LanguageProvider";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 type PlatformNavigationRailProps = {
   pathname: string;
@@ -114,6 +115,9 @@ export function PlatformNavigationRail(props: PlatformNavigationRailProps) {
             >
               <header><Brand pathname={props.pathname} onClick={props.onMobileClose} /><button type="button" onClick={props.onMobileClose} aria-label={t("shell.navClose")}><X size={19} /></button></header>
               <nav aria-label={t("shell.sections")} onClick={props.onMobileClose}>{navigation}</nav>
+              <footer className="platform-mobile-navigation-footer">
+                <LanguageSwitcher />
+              </footer>
             </motion.aside>
           </motion.div>
         )}

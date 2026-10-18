@@ -40,6 +40,9 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
   return (
     <header className="platform-header" aria-label={t("nav.home")}>
       <div className="platform-header-context">
+        <Link href="/" className="platform-header-mobile-brand" aria-label={t("shell.homeLink")}>
+          <span className="brand-mark" aria-hidden="true"><span /></span>
+        </Link>
         <div className="platform-breadcrumb" aria-label={t("shell.breadcrumb")}>
           <span>EduRate</span>
           <ChevronRight size={14} aria-hidden="true" />
