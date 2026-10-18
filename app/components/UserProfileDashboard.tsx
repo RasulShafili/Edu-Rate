@@ -1,14 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CampusTrail } from "./CampusTrail";
 import {
   ArrowRight,
   BadgeCheck,
   Bookmark,
   CalendarDays,
   Check,
-  GraduationCap,
   LogOut,
   Mail,
   MapPin,
@@ -44,7 +42,6 @@ import { useCurrentAvatar } from "../lib/current-avatar";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 const enterTransition = { duration: 0.62, ease };
-const viewportOnce = { once: true, margin: "-48px" } as const;
 
 const metricIcons: LucideIcon[] = [CalendarDays, UsersRound, Bookmark, BadgeCheck];
 
@@ -210,16 +207,7 @@ export function UserProfileDashboard() {
   const programLabel = isStudent ? t("profile.fieldProgram") : user.accessRole === "teacher" ? t("profile.fieldTeachingArea") : t("profile.fieldExpertise");
   const yearLabel = isStudent ? t("profile.fieldYear") : t("profile.fieldPosition");
   const details = user.details;
-  // Əvvəl faiz yer tutucu mətnlər doldurulandan sonra hesablanırdı və hamı üçün
-  // 100% idi — çatışmayan sahələr indi adbaad göstərilir.
-  const missingFields = [
-    !details.program ? programLabel : null,
-    !details.year ? yearLabel : null,
-    !details.about ? t("profile.fieldAbout") : null,
-  ].filter(Boolean).join(", ");
 
-  // Göstəricilər yüklənməyibsə saxta sıfır göstərilmir (əvvəl "Yadda
-  // saxlananlar 00" kimi mövcud olmayan göstərici də çıxırdı).
   const baseProfileMetrics = (workspace.data?.metrics ?? []).map((metric, index) => ({
     id: `workspace-${index}`,
     label: translate(METRIC_KEYS, metric.label),
@@ -240,24 +228,10 @@ export function UserProfileDashboard() {
   const recentItems = workspace.data?.items ?? [];
 
   return (
-    <section className="profile-section" aria-labelledby="profile-title">
-      <div className="profile-ambient profile-ambient-one" aria-hidden="true" />
-      <div className="profile-ambient profile-ambient-two" aria-hidden="true" />
-
-      <motion.header
-        className="profile-hero profile-hero-premium"
-        initial={reduceMotion ? false : { opacity: 0, y: 26, scale: 0.995 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={enterTransition}
-      >
-        <div className="profile-cover-canvas" aria-hidden="true">
-          <i className="profile-cover-mesh" />
-          <i className="profile-cover-orbit profile-cover-orbit-one" />
-          <i className="profile-cover-orbit profile-cover-orbit-two" />
-          <span className="profile-cover-monogram">ER</span>
-        </div>
+    <section className="profile-section profile-section-compact" aria-labelledby="profile-title">
+      <header className="profile-hero profile-hero-compact">
         <div className="profile-hero-main">
-          <motion.div className="profile-avatar-shell" aria-hidden="true" initial={reduceMotion ? false : { opacity: 0, scale: .72, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 20, delay: reduceMotion ? 0 : .18 }}>
+          <div className="profile-avatar-shell" aria-hidden="true">
             <span className={`profile-avatar${avatar.data?.secureUrl ? " has-image" : ""}`}>
               {avatar.data?.secureUrl ? (
                 <i
@@ -266,17 +240,17 @@ export function UserProfileDashboard() {
                 />
               ) : user.initials}
             </span>
-            <i className="profile-avatar-orbit" />
             <i className="profile-avatar-status" />
-          </motion.div>
+          </div>
           <div className="profile-hero-copy">
-            <span className="profile-kicker"><Sparkles size={12} aria-hidden="true" /> {t("profile.kicker")}</span>
-            <h1 id="profile-title">{user.name}</h1>
+            <div className="profile-title-row">
+              <h1 id="profile-title">{user.name}</h1>
+              <span className="profile-role-badge"><BadgeCheck size={13} aria-hidden="true" /> {roleLabel}</span>
+            </div>
             <p>{details.program || t("profile.notSet")}</p>
             <div className="profile-identity-meta">
-              <span><BadgeCheck size={14} aria-hidden="true" /> {roleLabel}</span>
-              <span><Mail size={14} aria-hidden="true" /> {user.email}</span>
-              <span><MapPin size={14} aria-hidden="true" /> {user.city}</span>
+              <span><Mail size={13} aria-hidden="true" /> {user.email}</span>
+              {user.city ? <span><MapPin size={13} aria-hidden="true" /> {user.city}</span> : null}
             </div>
           </div>
           <div className="profile-hero-actions">
@@ -298,22 +272,44 @@ export function UserProfileDashboard() {
                   setMessage(null);
                 }}
               >
-                {editing ? <X size={15} aria-hidden="true" /> : <Pencil size={15} aria-hidden="true" />}
+                {editing ? <X size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
                 {editing ? t("profile.closeEdit") : t("profile.edit")}
               </button>
             )}
             {signOutHref ? (
               <a href={signOutHref} className="profile-signout-button">
-                <LogOut size={15} aria-hidden="true" /> {t("profile.signOut")}
+                <LogOut size={14} aria-hidden="true" /> {t("profile.signOut")}
               </a>
             ) : (
               <button type="button" className="profile-signout-button" onClick={handleSignOut} disabled={submitting}>
-                <LogOut size={15} aria-hidden="true" /> {t("profile.signOut")}
+                <LogOut size={14} aria-hidden="true" /> {t("profile.signOut")}
               </button>
             )}
           </div>
         </div>
-      </motion.header>
+
+        <div className="profile-stats-bar" aria-label={t("profile.statsLabel")} aria-busy={workspace.isLoading}>
+          {profileMetrics.map((stat) => {
+            const Icon = stat.Icon;
+            const value = typeof stat.value === "number" ? String(stat.value) : stat.value;
+            const isConn = stat.id === "connections";
+            return (
+              <button
+                key={stat.id}
+                type="button"
+                className={`profile-stat-pill${isConn ? " is-interactive" : ""}`}
+                onClick={isConn ? () => setConnectionsOpen(true) : undefined}
+                disabled={!isConn}
+                aria-haspopup={isConn ? "dialog" : undefined}
+              >
+                <Icon size={14} aria-hidden="true" />
+                <strong>{value}</strong>
+                <span>{stat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </header>
 
       <AnimatePresence initial={false}>
         {editing && (
@@ -321,10 +317,10 @@ export function UserProfileDashboard() {
             id="profile-edit-panel"
             className="profile-edit-panel"
             aria-labelledby="profile-edit-title"
-            initial={reduceMotion ? false : { opacity: 0, y: -16, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -12, scale: 0.99 }}
-            transition={reduceMotion ? { duration: 0 } : { duration: 0.36, ease }}
+            initial={reduceMotion ? false : { opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -8 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.25, ease }}
           >
             <div className="profile-edit-heading">
               <div>
@@ -374,9 +370,6 @@ export function UserProfileDashboard() {
                   ))}
                 </select> : <input name="program" type="text" value={editProgram} onChange={(event) => setEditProgram(event.target.value)} required />}
               </label>
-              {/* Yer tutucu ("Kurs məlumatı əlavə edilməyib") əvvəl sahənin DƏYƏRİ kimi
-                  gəlirdi və "Yadda saxla" onu real kurs kimi yazırdı. Backend sahəni
-                  məcburi sayır — forma da indi bunu bildirir. */}
               <ProfileEditField
                 label={yearLabel}
                 name="year"
@@ -386,26 +379,24 @@ export function UserProfileDashboard() {
               />
               <label className="profile-edit-field profile-edit-about">
                 <span>{t("profile.fieldAbout")}</span>
-                <textarea name="about" defaultValue={details.about} maxLength={280} rows={4} />
+                <textarea name="about" defaultValue={details.about} maxLength={280} rows={3} />
               </label>
 
               <div className="profile-edit-footer">
                 <button type="button" onClick={() => setEditing(false)} disabled={submitting}>{t("profile.cancel")}</button>
-                <motion.button
+                <button
                   type="submit"
                   className="profile-save-button"
                   disabled={submitting}
-                  whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                 >
                   <Check size={15} aria-hidden="true" /> {submitting ? t("profile.saving") : t("profile.save")}
-                </motion.button>
+                </button>
               </div>
             </form>
           </motion.section>
         )}
       </AnimatePresence>
 
-      {/* Mesajın növü əvvəl azərbaycanca mətndə söz axtarmaqla təyin olunurdu. */}
       <p
         className={`profile-status-message${message ? " is-visible" : ""}`}
         role={message?.tone === "alert" ? "alert" : "status"}
@@ -414,48 +405,12 @@ export function UserProfileDashboard() {
         {message ? t(message.key) : ""}
       </p>
 
-      <SessionManager />
-
-      <CampusTrail />
       {workspace.error ? (
         <p className="schedule-warning is-error" role="alert">
           {t("profile.metricsFailed")}{" "}
           <button type="button" className="question-inline-retry" onClick={() => void workspace.mutate()}>{t("profile.retry")}</button>
         </p>
       ) : null}
-      <motion.div
-        className="profile-stats"
-        initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={viewportOnce}
-        transition={enterTransition}
-        aria-label={t("profile.statsLabel")}
-        aria-busy={workspace.isLoading}
-      >
-        {profileMetrics.map((stat, index) => {
-          const Icon = stat.Icon;
-          const value = typeof stat.value === "number" ? String(stat.value).padStart(2, "0") : stat.value;
-          return (
-            <motion.button
-              key={stat.id}
-              type="button"
-              className={`profile-stat-card profile-stat-tone-${index % 4}${stat.id === "connections" ? " profile-stat-button" : ""}`}
-              onClick={stat.id === "connections" ? () => setConnectionsOpen(true) : undefined}
-              disabled={stat.id !== "connections"}
-              aria-haspopup={stat.id === "connections" ? "dialog" : undefined}
-              initial={reduceMotion ? false : { opacity: 0, y: 24, scale: .97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              whileHover={reduceMotion ? undefined : { y: -6, scale: 1.018 }}
-              transition={{ duration: .5, ease, delay: reduceMotion ? 0 : .32 + index * .1 }}
-            >
-              <span><Icon size={18} aria-hidden="true" /></span>
-              <strong>{value}</strong>
-              <p>{stat.label}</p>
-              <i aria-hidden="true"><Icon size={72} /></i>
-            </motion.button>
-          );
-        })}
-      </motion.div>
 
       <AnimatePresence>
         {connectionsOpen ? (
@@ -503,15 +458,7 @@ export function UserProfileDashboard() {
       </AnimatePresence>
 
       <div className="profile-dashboard-grid">
-        <motion.article
-          className="profile-info-card profile-about-card"
-          initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          whileHover={reduceMotion ? undefined : { y: -5, scale: 1.008 }}
-          viewport={viewportOnce}
-          transition={enterTransition}
-        >
-          <span className="profile-card-number">01</span>
+        <article className="profile-info-card profile-about-card">
           <div>
             <span className="profile-card-kicker">{t("profile.educationKicker")}</span>
             <h2>{isStudent ? t("profile.academicProfile") : t("profile.professionalProfile")}</h2>
@@ -523,63 +470,9 @@ export function UserProfileDashboard() {
             <div><dt>{programLabel}</dt><dd>{details.program || t("profile.notSet")}</dd></div>
             <div><dt>{yearLabel}</dt><dd>{details.year || t("profile.notSet")}</dd></div>
           </dl>
-        </motion.article>
+        </article>
 
-        <motion.article
-          className="profile-info-card profile-progress-card"
-          initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          whileHover={reduceMotion ? undefined : { y: -5, scale: 1.008 }}
-          viewport={viewportOnce}
-          transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.06 }}
-        >
-          <span className="profile-card-number">02</span>
-          <div className="profile-progress-layout">
-            <div className="profile-progress-ring" role="progressbar" aria-label={t("profile.progressLabel")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={user.completion}>
-              <svg viewBox="0 0 120 120" aria-hidden="true">
-                <defs><linearGradient id="profile-progress-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#347c70" /><stop offset=".52" stopColor="#79b768" /><stop offset="1" stopColor="#9c83dc" /></linearGradient></defs>
-                <circle className="profile-progress-ring-track" cx="60" cy="60" r="52" />
-                <motion.circle className="profile-progress-ring-value" cx="60" cy="60" r="52" initial={reduceMotion ? false : { pathLength: 0 }} whileInView={{ pathLength: user.completion / 100 }} viewport={viewportOnce} transition={{ duration: reduceMotion ? 0 : 1.25, ease }} />
-              </svg>
-              <strong><AnimatedNumber value={user.completion} reduced={reduceMotion} /><small>%</small></strong>
-            </div>
-            <div className="profile-progress-copy">
-              <span className="profile-card-kicker">{t("profile.progressKicker")}</span>
-              <h2>{user.completion >= 100 ? t("profile.progressDone") : t("profile.progressTodo")}</h2>
-              <p>{user.completion >= 100 || !missingFields ? t("profile.progressDoneBody") : t("profile.progressTodoBody", { fields: missingFields })}</p>
-            </div>
-          </div>
-        </motion.article>
-
-        <motion.article
-          className="profile-info-card profile-interests-card"
-          initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          whileHover={reduceMotion ? undefined : { y: -5, scale: 1.008 }}
-          viewport={viewportOnce}
-          transition={enterTransition}
-        >
-          <span className="profile-card-number">03</span>
-          <div>
-            <span className="profile-card-kicker">{t("profile.accountKicker")}</span>
-            <h2>{t("profile.accountTitle")}</h2>
-          </div>
-          <dl className="profile-account-details">
-            <div><dt>{t("profile.email")}</dt><dd><Mail size={14} aria-hidden="true" />{user.email}</dd></div>
-            <div><dt>{t("profile.accountType")}</dt><dd><BadgeCheck size={14} aria-hidden="true" />{roleLabel}</dd></div>
-            <div><dt>{t("profile.direction")}</dt><dd><GraduationCap size={14} aria-hidden="true" />{details.program || t("profile.notSet")}</dd></div>
-          </dl>
-        </motion.article>
-
-        <motion.article
-          className="profile-info-card profile-activity-card"
-          initial={reduceMotion ? false : { opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          whileHover={reduceMotion ? undefined : { y: -5, scale: 1.008 }}
-          viewport={viewportOnce}
-          transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.06 }}
-        >
-          <span className="profile-card-number">04</span>
+        <article className="profile-info-card profile-activity-card">
           <div>
             <span className="profile-card-kicker">{t("profile.activityKicker")}</span>
             <h2>{t("profile.activityTitle")}</h2>
@@ -594,7 +487,6 @@ export function UserProfileDashboard() {
                     <h3>{activity.title ?? t("profile.activityDefaultTitle")}</h3>
                     {activity.text ? <p>{activity.text}</p> : null}
                   </div>
-                  {/* Əvvəl <time> içində xam "pending" / "open" yazılırdı. */}
                   <span className="profile-activity-status">{translate(STATUS_KEYS, activity.status)}</span>
                 </li>
               ))}
@@ -602,8 +494,10 @@ export function UserProfileDashboard() {
           ) : (
             <p className="profile-empty-copy">{t("profile.activityEmpty")}</p>
           )}
-        </motion.article>
+        </article>
       </div>
+
+      <SessionManager />
     </section>
   );
 }
@@ -643,26 +537,4 @@ function ProfileEditField({
 function readValue(formData: FormData, field: keyof ProfileUpdateInput): string {
   const value = formData.get(field);
   return typeof value === "string" ? value.trim() : "";
-}
-
-function AnimatedNumber({ value, reduced }: { value: number; reduced: boolean }) {
-  const [display, setDisplay] = useState(0);
-
-  useEffect(() => {
-    if (reduced) return;
-
-    let frame = 0;
-    const start = performance.now();
-    const duration = 1100;
-    const tick = (time: number) => {
-      const progress = Math.min(1, (time - start) / duration);
-      setDisplay(Math.round(value * (1 - Math.pow(1 - progress, 3))));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, reduced]);
-
-  return <>{reduced ? value : display}</>;
 }

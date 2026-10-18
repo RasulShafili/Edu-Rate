@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowDown, LoaderCircle, PenLine, Sparkles } from "lucide-react";
+import { ArrowDown, LoaderCircle, PenLine } from "lucide-react";
 import {
   startTransition,
   useEffect,
@@ -111,34 +111,10 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
 
   return (
     <section
-      className="feed-section relative z-[2] min-h-[80svh] px-[clamp(18px,5.2vw,84px)] pb-[clamp(96px,10vw,150px)] pt-[clamp(108px,10vw,140px)] max-[480px]:pb-[calc(88px+env(safe-area-inset-bottom))] max-[480px]:pt-[82px]"
+      className="feed-section route-module-section relative z-[2] min-h-[70svh] pb-10 pt-0"
       aria-labelledby="student-feed-title"
     >
-      <motion.header
-        className="student-feed-heading mx-auto grid w-full max-w-[1420px] grid-cols-[minmax(0,1fr)_minmax(240px,0.38fr)] items-end gap-10 border-b border-[color:var(--kuds-border,#e2e8f0)] pb-12 max-[767px]:grid-cols-1 max-[767px]:gap-5 max-[767px]:pb-8"
-        initial={reducedMotion ? false : { opacity: 0.76, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={
-          reducedMotion
-            ? { duration: 0 }
-            : { duration: 0.68, ease: [0.22, 1, 0.36, 1] }
-        }
-      >
-        <div>
-          <span className="mb-5 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-[color:var(--ku-green,#44766c)]">
-            <Sparkles size={13} aria-hidden="true" />
-            {t("feed.eyebrow")}
-          </span>
-          <h1
-            id="student-feed-title"
-            className="module-page-title m-0 text-[clamp(46px,6.5vw,96px)] font-medium leading-[0.91] tracking-[-0.068em] max-[480px]:text-[clamp(38px,11.4vw,48px)] max-[480px]:leading-[0.94]"
-          >
-            {t("feed.title")}
-          </h1>
-        </div>
-      </motion.header>
-
-      <div className="feed-layout mx-auto mt-12 w-full max-w-[1320px] max-[480px]:mt-8">
+      <div className="feed-layout mx-auto mt-0 w-full max-w-[1320px]">
         <AnnouncementsBoard
           items={announcements}
           activeFilter={activeFilter}
@@ -147,17 +123,17 @@ export function StudentFeed({ announcements, items }: StudentFeedProps) {
         />
 
         <section
-          className="student-feed-stream mt-[clamp(72px,8vw,108px)]"
+          className="student-feed-stream mt-7"
           aria-labelledby="student-feed-stream-title"
         >
-          <header className="feed-stream-heading mb-7 flex items-end justify-between gap-5 border-b border-[color:var(--kuds-border,#e2e8f0)] pb-5">
+          <header className="feed-stream-heading mb-4 flex items-end justify-between gap-4 border-b border-[color:var(--kuds-border,#e2e8f0)] pb-3">
             <div>
-              <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--kuds-muted,#64748b)]">
+              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--kuds-muted,#64748b)]">
                 {t(`category.${activeFilter}`)}
               </span>
               <h2
                 id="student-feed-stream-title"
-                className="text-[clamp(29px,4vw,42px)] font-medium leading-none tracking-[-0.05em]"
+                className="text-[clamp(22px,3vw,30px)] font-medium leading-none tracking-[-0.04em]"
               >
                 {t("feed.streamTitle")}
               </h2>

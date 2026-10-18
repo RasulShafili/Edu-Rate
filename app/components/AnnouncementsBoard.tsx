@@ -97,9 +97,9 @@ export function AnnouncementsBoard({ items, activeFilter, onFilterChange, reduce
   }
 
   return (
-    <section className="announcements-board" aria-labelledby="announcements-title">
+    <section className="announcements-board" aria-labelledby="student-feed-title">
       <header className="announcements-board-heading">
-        <div><span><Megaphone size={14} aria-hidden="true" /> {t("ann.eyebrow")}</span><h2 id="announcements-title">{t("ann.title")}</h2></div>
+        <div><span><Megaphone size={13} aria-hidden="true" /> {t("ann.eyebrow")}</span><h1 id="student-feed-title" className="module-page-title">{t("feed.title")}</h1></div>
         {user?<button type="button" className="announcement-submit-trigger" onClick={()=>setSubmissionOpen(true)}><Plus size={16}/>{t("ann.submit")}</button>:null}
       </header>
 

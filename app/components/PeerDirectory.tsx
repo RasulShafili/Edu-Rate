@@ -148,19 +148,67 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
             const incoming = connection?.status === "pending" && connection.recipientId === currentUserId;
             const outgoing = connection?.status === "pending" && connection.requesterId === currentUserId;
             const actionPending = actionPeerId === peer.id;
+            const connectLabel = t(
+              actionPending
+                ? blockedByMe
+                  ? "peers.unblocking"
+                  : outgoing
+                    ? "peers.withdrawing"
+                    : "peers.sending"
+                : accepted
+                  ? "peers.connected"
+                  : blockedByMe
+                    ? "peers.unblock"
+                    : blocked
+                      ? "peers.blockedYou"
+                      : incoming
+                        ? "peers.accept"
+                        : outgoing
+                          ? "peers.withdraw"
+                          : "peers.connect"
+            );
             return (
-              <motion.article layout key={peer.id} className="peer-card" style={{ "--peer-accent": peer.accent, "--peer-glow": peer.glow } as CSSProperties} initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.42, delay: index * 0.03 }}>
-                <div className={`peer-avatar${peer.avatarUrl?" has-image":""}`} style={peer.avatarUrl?{"--avatar-image":`url("${peer.avatarUrl}")`} as CSSProperties:undefined} aria-hidden="true"><span>{peer.avatarUrl?null:peer.initials}</span><i className="peer-avatar-orbit" /></div>
-                <div className="peer-identity"><h3>{peer.name}</h3><p>{t(peer.role)} · {peer.focus}</p></div>
-                <p className="peer-bio">{peer.bio}</p>
-                <div className="peer-location"><MapPin size={12} />{peer.city}</div>
-                <div className="peer-actions">
-                  <button type="button" className={accepted || outgoing ? "is-connected" : blockedByMe ? "is-unblock" : ""} disabled={accepted || (blocked && !blockedByMe) || actionPending} aria-busy={actionPending} title={outgoing ? t("peers.withdraw") : blockedByMe ? t("peers.unblockTitle") : undefined} onClick={() => void updateConnection(peer.id)}>
-                    {blockedByMe ? <Ban size={14} /> : accepted ? <Check size={14} /> : <UserPlus size={14} />}{t(actionPending ? blockedByMe ? "peers.unblocking" : outgoing ? "peers.withdrawing" : "peers.sending" : accepted ? "peers.connected" : blockedByMe ? "peers.unblock" : blocked ? "peers.blockedYou" : incoming ? "peers.accept" : outgoing ? "peers.withdraw" : "peers.connect")}
-                  </button>
-                  <button type="button" className="peer-message" disabled={!accepted} title={!accepted ? t("peers.needAccepted") : undefined} onClick={() => onMessage(peer)}><MessageCircle size={14} />{t("peers.message")}</button>
+              <motion.article layout key={peer.id} className="peer-card" style={{ "--peer-accent": peer.accent, "--peer-glow": peer.glow } as CSSProperties} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: index * 0.02 }}>
+                <div className="peer-card-top">
+                  <div className={`peer-avatar${peer.avatarUrl?" has-image":""}`} style={peer.avatarUrl?{"--avatar-image":`url("${peer.avatarUrl}")`} as CSSProperties:undefined} aria-hidden="true"><span>{peer.avatarUrl?null:peer.initials}</span></div>
+                  <div className="peer-identity"><h3>{peer.name}</h3><p>{t(peer.role)} · {peer.focus}</p></div>
+                  <div className="peer-actions">
+                    <button
+                      type="button"
+                      className={`peer-icon-btn ${accepted || outgoing ? "is-connected" : blockedByMe ? "is-unblock" : ""}`}
+                      disabled={accepted || (blocked && !blockedByMe) || actionPending}
+                      aria-busy={actionPending}
+                      aria-label={connectLabel}
+                      title={outgoing ? t("peers.withdraw") : blockedByMe ? t("peers.unblockTitle") : connectLabel}
+                      onClick={() => void updateConnection(peer.id)}
+                    >
+                      {blockedByMe ? <Ban size={15} aria-hidden="true" /> : accepted ? <Check size={15} aria-hidden="true" /> : <UserPlus size={15} aria-hidden="true" />}
+                    </button>
+                    <button
+                      type="button"
+                      className="peer-message peer-icon-btn"
+                      disabled={!accepted}
+                      aria-label={t("peers.message")}
+                      title={!accepted ? t("peers.needAccepted") : t("peers.message")}
+                      onClick={() => onMessage(peer)}
+                    >
+                      <MessageCircle size={15} aria-hidden="true" />
+                    </button>
+                    {canInteract ? (
+                      <button
+                        type="button"
+                        className="peer-report peer-icon-btn"
+                        aria-label={t("chat.report")}
+                        title={t("chat.report")}
+                        onClick={() => setReportTarget({ entityType: "profile", entityId: peer.id, label: peer.name })}
+                      >
+                        <Flag size={13} aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-                {canInteract ? <button type="button" className="peer-report" onClick={() => setReportTarget({ entityType: "profile", entityId: peer.id, label: peer.name })}><Flag size={12} aria-hidden="true" />{t("chat.report")}</button> : null}
+                {peer.bio ? <p className="peer-bio">{peer.bio}</p> : null}
+                {peer.city ? <div className="peer-location"><MapPin size={11} aria-hidden="true" />{peer.city}</div> : null}
               </motion.article>
             );
           })}

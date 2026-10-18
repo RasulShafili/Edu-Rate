@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Clock3, ImagePlus, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { Clock3, ImagePlus, Plus, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -109,27 +109,6 @@ export function ClubsExperience({ clubs, failed=false, pendingClubs=[] }: ClubsE
 
   return (
     <div className="clubs-experience">
-      <section className="clubs-hero" aria-labelledby="clubs-directory-title">
-        <motion.div
-          className="clubs-hero-copy"
-          initial={reducedMotion ? false : { opacity: 0, y: 28 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={
-            reducedMotion
-              ? { duration: 0 }
-              : { duration: 0.72, ease: [0.22, 1, 0.36, 1] }
-          }
-        >
-          <span className="clubs-hero-eyebrow">
-            <Sparkles size={13} strokeWidth={1.8} aria-hidden="true" />
-            {t("clubs.eyebrow")}
-          </span>
-          <h1 id="clubs-directory-title" className="module-page-title">
-            {t("clubs.title")}
-          </h1>
-        </motion.div>
-      </section>
-
       {pendingClubs.length ? (
         <section className="clubs-pending" aria-labelledby="clubs-pending-title">
           <header>
@@ -151,11 +130,11 @@ export function ClubsExperience({ clubs, failed=false, pendingClubs=[] }: ClubsE
         </section>
       ) : null}
 
-      <section className="clubs-directory" aria-labelledby="clubs-list-title">
+      <section className="clubs-directory" aria-labelledby="clubs-directory-title">
         <header className="clubs-section-heading">
           <div>
             <span>{t("clubs.sectionEyebrow")}</span>
-            <h2 id="clubs-list-title">{t("clubs.catalog")}</h2>
+            <h1 id="clubs-directory-title" className="module-page-title">{t("clubs.title")}</h1>
           </div>
           {canCreate ? (
             <button type="button" className="club-create-trigger" onClick={() => { setError(""); setSuccess(""); setCreateOpen(true); }}>
