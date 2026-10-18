@@ -82,7 +82,7 @@ export function PlatformHeader({ searchOpen, updatesOpen, onSearchToggle, onUpda
         >
           {user ? (
             <span
-              className={avatar.data?.secureUrl ? "has-image" : undefined}
+              className={`platform-account-avatar${avatar.data?.secureUrl ? " has-image" : ""}`}
             >
               {avatar.data?.secureUrl ? (
                 <i

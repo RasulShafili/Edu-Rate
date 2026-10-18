@@ -5615,10 +5615,9 @@ body {
   min-height: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
-  display: flex !important;
+  display: grid !important;
+  grid-template-columns: 64px minmax(0, 1fr) auto !important;
   align-items: center !important;
-  justify-content: space-between !important;
-  flex-wrap: wrap !important;
   gap: 14px !important;
 }
 
@@ -5626,19 +5625,33 @@ body {
   width: 64px !important;
   height: 64px !important;
   margin: 0 !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  place-self: center !important;
   flex-shrink: 0 !important;
 }
 
 .kuds-shell .profile-hero-compact .profile-avatar {
   width: 64px !important;
   height: 64px !important;
+  margin: 0 !important;
   border-radius: 16px !important;
+  border-width: 3px !important;
   font-size: 20px !important;
+}
+
+.kuds-shell .profile-hero-compact .profile-avatar-status {
+  right: -2px !important;
+  bottom: -2px !important;
+  width: 15px !important;
+  height: 15px !important;
+  border-width: 2.5px !important;
 }
 
 .kuds-shell .profile-hero-compact .profile-hero-copy {
   padding: 0 !important;
-  flex: 1 1 220px !important;
+  margin: 0 !important;
   min-width: 0 !important;
   display: grid !important;
   gap: 4px !important;
@@ -5804,12 +5817,40 @@ body {
     grid-template-columns: 1fr !important;
   }
 
+  .kuds-shell .profile-hero-compact {
+    padding: 14px !important;
+  }
+
+  .kuds-shell .profile-hero-compact .profile-hero-main {
+    grid-template-columns: 56px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .kuds-shell .profile-hero-compact .profile-avatar-shell,
+  .kuds-shell .profile-hero-compact .profile-avatar {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 14px !important;
+  }
+
+  .kuds-shell .profile-hero-compact .profile-hero-copy {
+    grid-column: 2 !important;
+  }
+
+  .kuds-shell .profile-hero-compact .profile-identity-meta {
+    grid-column: auto !important;
+  }
+
   .kuds-shell .profile-hero-compact .profile-hero-actions {
+    grid-column: 1 / -1 !important;
     width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
   }
 
   .kuds-shell .profile-hero-compact .profile-hero-actions > * {
-    flex: 1 1 auto !important;
+    width: 100% !important;
     justify-content: center !important;
   }
 }
@@ -5838,10 +5879,10 @@ body {
   /* 1. YUXARI BAŞLIQ (TOP BAR): Sol tərəfdəki 58px boş dəliyi ləğv edib,
         brend nişanı + səhifə adı + axtarış/bildiriş/profil ikonlarını düzürük */
   .kuds-shell .platform-header {
-    min-height: 52px !important;
-    height: 52px !important;
-    padding: 6px 12px !important;
-    gap: 8px !important;
+    min-height: 54px !important;
+    height: 54px !important;
+    padding: 8px 14px !important;
+    gap: 10px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -5863,9 +5904,9 @@ body {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
     border-radius: 10px !important;
     background: linear-gradient(135deg, #16423c, #2f665b) !important;
     box-shadow: 0 6px 14px -6px rgba(22, 66, 60, 0.45) !important;
@@ -5877,18 +5918,20 @@ body {
     height: 16px !important;
   }
 
-  .kuds-shell .platform-header-copy {
+  .kuds-shell .platform-breadcrumb {
     display: flex !important;
-    flex-direction: column !important;
+    align-items: center !important;
     min-width: 0 !important;
-    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  .kuds-shell .platform-header-copy > span {
+  .kuds-shell .platform-breadcrumb > span:first-child,
+  .kuds-shell .platform-breadcrumb > svg {
     display: none !important;
   }
 
-  .kuds-shell .platform-header-copy > strong {
+  .kuds-shell .platform-breadcrumb strong {
     font-size: 15.5px !important;
     font-weight: 800 !important;
     letter-spacing: -0.025em !important;
@@ -5902,60 +5945,72 @@ body {
   .kuds-shell .platform-header-actions {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    justify-content: flex-end !important;
+    gap: 7px !important;
+    margin: 0 !important;
+    padding: 0 !important;
     flex-shrink: 0 !important;
   }
 
   .kuds-shell .platform-header-search,
   .kuds-shell .platform-header-icon {
-    width: 35px !important;
-    height: 35px !important;
-    min-width: 35px !important;
-    min-height: 35px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     padding: 0 !important;
+    margin: 0 !important;
     border-radius: 10px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    flex: 0 0 36px !important;
   }
 
-  /* Mobildə sağ yuxarıda profil avatarını / Giriş düyməsini yığcam şəkildə göstəririk */
+  /* Mobildə sağ yuxarıda profil avatarını / Giriş düyməsini digər 2 ikonla
+     eyni ölçüdə (36x36px) və tam mərkəzlənmiş şəkildə göstəririk */
   .kuds-shell .platform-header-account {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-height: 35px !important;
-    height: 35px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
     padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
     border-radius: 10px !important;
-    border: 0 !important;
-    background: transparent !important;
+    border: 1px solid var(--kuds-border) !important;
+    background: var(--kuds-surface) !important;
+    color: var(--ku-dark-green) !important;
     box-shadow: none !important;
+    flex: 0 0 36px !important;
+    overflow: hidden !important;
   }
 
-  .kuds-shell .platform-header-account > span:not(.platform-account-avatar) {
+  .kuds-shell .platform-header-account small {
     display: none !important;
   }
 
+  .kuds-shell .platform-header-account > span,
   .kuds-shell .platform-header-account .platform-account-avatar {
-    width: 35px !important;
-    height: 35px !important;
-    min-width: 35px !important;
-    border-radius: 10px !important;
+    position: relative !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: inherit !important;
+    border: 0 !important;
     font-size: 12px !important;
-    border: 1px solid rgba(53, 104, 92, 0.2) !important;
-  }
-
-  .kuds-shell a.platform-header-account:not(:has(.platform-account-avatar)) {
-    padding: 0 10px !important;
-    background: #16423c !important;
-    color: #fff !important;
-    font-size: 11.5px !important;
-    font-weight: 700 !important;
-  }
-
-  .kuds-shell a.platform-header-account:not(:has(.platform-account-avatar)) > span {
-    display: inline !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    overflow: hidden !important;
   }
 
   /* 2. ALT NAVİQASİYA (BOTTOM TAB BAR) VƏ MENYU ÇEKMECESİ */
