@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
+  BadgeCheck,
   Bookmark,
   CalendarDays,
   Check,
