@@ -5601,29 +5601,32 @@ body {
 }
 
 .kuds-shell .profile-hero-compact {
-  padding: 16px 18px !important;
+  width: 100% !important;
+  padding: 20px 24px !important;
   border-radius: 18px !important;
   border: 1px solid rgba(255, 255, 255, 0.86) !important;
   background: var(--premium-glass) !important;
   box-shadow: var(--premium-shadow) !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 12px !important;
+  align-items: stretch !important;
+  gap: 14px !important;
 }
 
 .kuds-shell .profile-hero-compact .profile-hero-main {
+  width: 100% !important;
   min-height: 0 !important;
   padding: 0 !important;
   margin: 0 !important;
   display: grid !important;
-  grid-template-columns: 64px minmax(0, 1fr) auto !important;
+  grid-template-columns: 68px minmax(0, 1fr) auto !important;
   align-items: center !important;
-  gap: 14px !important;
+  gap: 18px !important;
 }
 
 .kuds-shell .profile-hero-compact .profile-avatar-shell {
-  width: 64px !important;
-  height: 64px !important;
+  width: 68px !important;
+  height: 68px !important;
   margin: 0 !important;
   padding: 0 !important;
   display: grid !important;
@@ -5633,8 +5636,8 @@ body {
 }
 
 .kuds-shell .profile-hero-compact .profile-avatar {
-  width: 64px !important;
-  height: 64px !important;
+  width: 68px !important;
+  height: 68px !important;
   margin: 0 !important;
   border-radius: 16px !important;
   border-width: 3px !important;
@@ -5665,8 +5668,9 @@ body {
 }
 
 .kuds-shell .profile-hero-compact .profile-hero-copy h1 {
-  font-size: clamp(20px, 2.4vw, 26px) !important;
-  line-height: 1.15 !important;
+  font-size: clamp(22px, 2.5vw, 28px) !important;
+  line-height: 1.25 !important;
+  padding-block: 2px !important;
   margin: 0 !important;
 }
 
@@ -5683,7 +5687,7 @@ body {
 }
 
 .kuds-shell .profile-hero-compact .profile-hero-copy > p {
-  font-size: 12.5px !important;
+  font-size: 13px !important;
   margin: 0 !important;
   color: var(--kuds-muted) !important;
 }
@@ -5698,29 +5702,34 @@ body {
   padding: 0 !important;
   margin: 0 !important;
   display: flex !important;
+  flex-direction: row !important;
   align-items: center !important;
-  gap: 8px !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
 }
 
 .kuds-shell .profile-stats-bar {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  padding-top: 10px !important;
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  padding-top: 12px !important;
   border-top: 1px solid rgba(53, 104, 92, 0.1) !important;
 }
 
 .kuds-shell .profile-stat-pill {
+  width: 100% !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 6px 12px !important;
-  border-radius: 10px !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 9px 14px !important;
+  border-radius: 12px !important;
   border: 1px solid rgba(53, 104, 92, 0.12) !important;
-  background: rgba(255, 255, 255, 0.68) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
   color: var(--kuds-text) !important;
   font: inherit !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   cursor: default;
 }
 
@@ -5736,14 +5745,14 @@ body {
 }
 
 .kuds-shell .profile-stat-pill strong {
-  font-size: 13.5px !important;
+  font-size: 14.5px !important;
   font-weight: 800 !important;
   color: #16423c !important;
 }
 
 .kuds-shell .profile-stat-pill span {
   color: var(--kuds-muted) !important;
-  font-size: 11.5px !important;
+  font-size: 12px !important;
 }
 
 .kuds-shell .profile-section-compact .profile-dashboard-grid {
@@ -5852,6 +5861,11 @@ body {
   .kuds-shell .profile-hero-compact .profile-hero-actions > * {
     width: 100% !important;
     justify-content: center !important;
+  }
+
+  .kuds-shell .profile-stats-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
   }
 }
 

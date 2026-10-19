@@ -3,7 +3,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
-  BadgeCheck,
   Bookmark,
   CalendarDays,
   Check,
@@ -203,7 +202,6 @@ export function UserProfileDashboard() {
   }
 
   const isStudent = user.accessRole === "student";
-  const roleLabel = t(`role.${user.accessRole ?? "student"}`);
   const programLabel = isStudent ? t("profile.fieldProgram") : user.accessRole === "teacher" ? t("profile.fieldTeachingArea") : t("profile.fieldExpertise");
   const yearLabel = isStudent ? t("profile.fieldYear") : t("profile.fieldPosition");
   const details = user.details;
@@ -245,7 +243,6 @@ export function UserProfileDashboard() {
           <div className="profile-hero-copy">
             <div className="profile-title-row">
               <h1 id="profile-title">{user.name}</h1>
-              <span className="profile-role-badge"><BadgeCheck size={13} aria-hidden="true" /> {roleLabel}</span>
             </div>
             <p>{details.program || t("profile.notSet")}</p>
             <div className="profile-identity-meta">
