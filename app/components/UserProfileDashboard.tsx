@@ -215,7 +215,7 @@ export function UserProfileDashboard() {
     Icon: metricIcons[index % metricIcons.length],
   }));
   const profileMetrics = [
-    ...baseProfileMetrics.filter((metric) => !metric.rawLabel.toLocaleLowerCase("az").includes("əlaqə")),
+    ...baseProfileMetrics.filter((metric) => !metric.rawLabel.toLocaleLowerCase("az").includes("əlaqə") && !metric.rawLabel.toLocaleLowerCase("az").includes("mentor")),
     {
       id: "connections",
       label: t("profile.connections"),

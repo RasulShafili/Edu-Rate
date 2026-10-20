@@ -176,10 +176,10 @@ export function RoleWorkspace() {
   }
 
   const mentorApplication = data.mentorApplication;
-  const canApplyForMentorship = data.role === "teacher"
+  const showMentorFeatures = Boolean(false); const canApplyForMentorship = showMentorFeatures && data.role === "teacher"
     && !data.mentorEnabled
     && (!mentorApplication || mentorApplication.status === "rejected");
-  const isActiveMentor = data.role === "mentor" || (data.role === "teacher" && data.mentorEnabled);
+  const isActiveMentor = showMentorFeatures && (data.role === "mentor" || (data.role === "teacher" && data.mentorEnabled));
 
   function openMentorApplication() {
     setApplicationOpen(true);
@@ -226,13 +226,13 @@ export function RoleWorkspace() {
               <HeartHandshake size={15} aria-hidden="true" /> {mentorApplication?.status === "rejected" ? t("workspace.applyAgain") : t("workspace.applyButton")}
             </button>
           )}
-          {data.role === "teacher" && mentorApplication?.status === "pending" && <span className="workspace-header-status">{t("workspace.statusReviewing")}</span>}
-          {data.role === "teacher" && data.mentorEnabled && <span className="workspace-header-status is-approved"><Check size={14} aria-hidden="true" /> {t("workspace.statusActive")}</span>}
+          {showMentorFeatures && data.role === "teacher" && mentorApplication?.status === "pending" && <span className="workspace-header-status">{t("workspace.statusReviewing")}</span>}
+          {showMentorFeatures && data.role === "teacher" && data.mentorEnabled && <span className="workspace-header-status is-approved"><Check size={14} aria-hidden="true" /> {t("workspace.statusActive")}</span>}
           <button type="button" onClick={() => void mutate()} disabled={isValidating}><RefreshCw size={15} aria-hidden="true" /> {t("workspace.refresh")}</button>
         </div>
       </header>
       <div className="workspace-metrics">
-        {data.metrics.map((metric) => (
+        {data.metrics.filter((metric) => !metric.label.toLocaleLowerCase("az").includes("mentor")).map((metric) => (
           <article key={metric.label}>
             <span>{translateLabel(METRIC_KEYS, metric.label, t)}</span>
             <strong>{metric.value}</strong>
@@ -240,7 +240,7 @@ export function RoleWorkspace() {
         ))}
       </div>
 
-      {data.role === "teacher" && (
+      {showMentorFeatures && data.role === "teacher" && (
         <section className="workspace-mentor-path" aria-labelledby="mentor-path-title">
           <div className="workspace-mentor-copy">
             <span><HeartHandshake size={15} aria-hidden="true" /> {t("workspace.pathEyebrow")}</span>

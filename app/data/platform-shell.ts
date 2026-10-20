@@ -61,19 +61,11 @@ const routeContexts: Record<string, PlatformRouteContext> = {
       { href: "/teachers#teacher-rating-panel", key: "ratingPanel" },
     ],
   },
-  "/mentors": {
-    key: "mentors",
-    labelKey: "nav.mentors",
-    shortcuts: [
-      { href: "/mentors#mentors", key: "findMentors" },
-      { href: "/support", key: "contactSupport" },
-    ],
-  },
   "/questions": {
     key: "questions",
     labelKey: "nav.questions",
     shortcuts: [
-      { href: "/mentors", key: "findMentors" },
+      { href: "/teachers", key: "chooseTeacher" },
       { href: "/support", key: "contactSupport" },
     ],
   },
@@ -169,7 +161,6 @@ const searchKeyByHref: Record<string, string> = {
   "/events": "events",
   "/community": "community",
   "/teachers": "teachers",
-  "/mentors": "mentors",
   "/questions": "questions",
   "/support": "support",
   "/feed": "feed",
@@ -197,7 +188,7 @@ export const platformSearchItems = [
       : route.href === "/settings"
         ? "parametrlər bildiriş seçim"
         : route.href === "/workspace"
-          ? "iş paneli müəllim mentor"
+          ? "iş paneli müəllim tələbə"
           : "daxil ol qeydiyyat hesab",
   })),
 ].map((item) => ({ ...item, key: searchKeyByHref[item.href] ?? "home" }));
