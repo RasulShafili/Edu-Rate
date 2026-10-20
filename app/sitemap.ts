@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const publicRoutes = ["", "/events", "/community", "/teachers", "/support", "/feed", "/clubs", "/privacy", "/terms", "/cookies", "/community-guidelines"];
+const publicRoutes = ["", "/events", "/community", "/teachers", "/support", "/feed", "/clubs", "/privacy", "/terms", "/community-guidelines"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://edu-rate-nu.vercel.app").replace(/\/$/, "");

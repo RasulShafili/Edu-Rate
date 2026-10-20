@@ -56,7 +56,7 @@ export function LegalConsentGate() {
           <ul className="legal-gate__links">
             <li><Link href="/privacy" target="_blank">{t("legalNav.privacy")}</Link></li>
             <li><Link href="/terms" target="_blank">{t("legalNav.terms")}</Link></li>
-            <li><Link href="/cookies" target="_blank">{t("legalNav.cookies")}</Link></li>
+
             <li><Link href="/community-guidelines" target="_blank">{t("legalNav.guidelines")}</Link></li>
           </ul>
           <label className="legal-gate__check">

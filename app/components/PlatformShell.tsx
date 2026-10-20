@@ -14,7 +14,7 @@ import { useT } from "../i18n/LanguageProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useAuth } from "./AuthProvider";
 import { MotionLayer } from "./MotionLayer";
-import { CookieConsent, openCookieSettings } from "./CookieConsent";
+
 import { LegalConsentGate } from "./LegalConsentGate";
 import { PwaLayer } from "./PwaLayer";
 import { PlatformHeader } from "./PlatformHeader";
@@ -168,7 +168,7 @@ export function PlatformShell({ children }: PlatformShellProps) {
     <div className="site-shell kuds-shell">
       <MotionLayer />
       <PwaLayer />
-      <CookieConsent />
+
       <LegalConsentGate />
       <a className="skip-link" href="#main-content">{t("nav.skipToContent")}</a>
 
@@ -224,9 +224,9 @@ export function PlatformShell({ children }: PlatformShellProps) {
             <nav className="site-footer__legal" aria-label={t("footer.legal")}>
               <Link href="/privacy">{t("legalNav.privacy")}</Link>
               <Link href="/terms">{t("legalNav.terms")}</Link>
-              <Link href="/cookies">{t("legalNav.cookies")}</Link>
+
               <Link href="/community-guidelines">{t("legalNav.guidelines")}</Link>
-              <button type="button" onClick={openCookieSettings}>{t("legalNav.cookieSettings")}</button>
+
               <Link href="/support?topic=privacy">{t("legalNav.privacyRequest")}</Link>
             </nav>
           </footer>

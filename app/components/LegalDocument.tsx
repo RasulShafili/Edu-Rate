@@ -10,7 +10,7 @@ type LegalKind = "privacy" | "terms" | "cookies" | "guidelines";
 const NAV: { kind: LegalKind; href: string; key: string }[] = [
   { kind: "privacy", href: "/privacy", key: "legalNav.privacy" },
   { kind: "terms", href: "/terms", key: "legalNav.terms" },
-  { kind: "cookies", href: "/cookies", key: "legalNav.cookies" },
+
   { kind: "guidelines", href: "/community-guidelines", key: "legalNav.guidelines" },
 ];
 
