@@ -30,8 +30,8 @@ function toPeer(user: ApiUser, index: number): Peer {
     name: user.name,
     initials: user.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join(""),
     role: roleLabelKey(user.role),
-    focus: user.program,
-    bio: user.faculty,
+    focus: /platforma|idarəetmə|admin/i.test(user.program) ? "" : user.program,
+    bio: /platforma|idarəetmə|admin/i.test(user.faculty) ? "" : user.faculty,
     city: user.city,
     // Serverdə iştirak məlumatı yoxdur; `Peer` tipi sahəni tələb etdiyi üçün
     // saxlanılır, amma interfeysdə GÖSTƏRİLMİR — əks halda uydurma olardı.
@@ -76,7 +76,7 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
       if (!usersResponse.ok || !connectionsResponse.ok) {
         throw new Error(users.error?.message || links.error?.message || t("peers.loadFailed"));
       }
-      setDirectory((users.data ?? []).map(toPeer));
+      setDirectory((users.data ?? []).filter((user) => user.role !== "teacher" && user.role !== "mentor").map(toPeer));
       setConnections(links.data ?? []);
     } catch (value) {
       setError(value instanceof Error ? value.message : t("peers.loadFailed"));
@@ -171,7 +171,7 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
               <motion.article layout key={peer.id} className="peer-card" style={{ "--peer-accent": peer.accent, "--peer-glow": peer.glow } as CSSProperties} initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: index * 0.02 }}>
                 <div className="peer-card-top">
                   <div className={`peer-avatar${peer.avatarUrl?" has-image":""}`} style={peer.avatarUrl?{"--avatar-image":`url("${peer.avatarUrl}")`} as CSSProperties:undefined} aria-hidden="true"><span>{peer.avatarUrl?null:peer.initials}</span></div>
-                  <div className="peer-identity"><h3>{peer.name}</h3><p>{t(peer.role)} · {peer.focus}</p></div>
+                  <div className="peer-identity"><h3>{peer.name}</h3><p>{t(peer.role)}{peer.focus ? ` · ${peer.focus}` : ""}</p></div>
                   <div className="peer-actions">
                     <button
                       type="button"
@@ -221,7 +221,7 @@ export function PeerDirectory({ canInteract, currentUserId, onMessage, onRequire
 
 /** Rol adı tərcümə açarı kimi saxlanılır; göstərilən yerdə `t()` ilə açılır. */
 export function roleLabelKey(role: string) {
-  return ["student", "teacher", "mentor", "assistant_admin", "admin", "owner_admin"].includes(role)
+  if (role === "owner_admin" || role === "admin" || role === "assistant_admin") return "role.student"; return ["student", "teacher", "mentor"].includes(role)
     ? `role.${role}`
     : role;
 }

@@ -26,9 +26,9 @@ const iso = (value: unknown) => new Date(String(value)).toISOString();
 const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("az")).join("");
 
 export async function listCommunityUsers(currentUserId: string): Promise<CommunityUser[]> {
-  if (!databasePool) return Promise.all((await listUsers(100)).filter((user) => user.id !== currentUserId && user.status === "Aktiv").map(async(user)=>({...toCommunityUser(user),avatarUrl:(await getMedia("avatar",user.id))?.secureUrl})));
-  const result = await databasePool.query("SELECT users.id,users.name,users.role,users.faculty,users.program,users.city,media_assets.secure_url avatar_url FROM users LEFT JOIN media_assets ON media_assets.owner_type='avatar' AND media_assets.owner_id=users.id::text WHERE users.id<>$1 AND users.status='Aktiv' ORDER BY users.updated_at DESC LIMIT 100", [currentUserId]);
-  return result.rows.map((row) => ({ id: String(row.id), name: String(row.name), role: String(row.role), faculty: String(row.faculty), program: String(row.program), city: String(row.city),avatarUrl:row.avatar_url?String(row.avatar_url):undefined }));
+  if (!databasePool) return Promise.all((await listUsers(100)).filter((user) => user.id !== currentUserId && user.status === "Aktiv" && user.role !== "teacher" && user.role !== "mentor").map(async(user)=>({...toCommunityUser(user),avatarUrl:(await getMedia("avatar",user.id))?.secureUrl})));
+  const result = await databasePool.query("SELECT users.id,users.name,users.role,users.faculty,users.program,users.city,media_assets.secure_url avatar_url FROM users LEFT JOIN media_assets ON media_assets.owner_type='avatar' AND media_assets.owner_id=users.id::text WHERE users.id<>$1 AND users.status='Aktiv' AND users.role NOT IN ('teacher','mentor') ORDER BY users.updated_at DESC LIMIT 100", [currentUserId]);
+  return result.rows.map((row) => ({ id: String(row.id), name: String(row.name), role: ["owner_admin", "admin", "assistant_admin"].includes(String(row.role)) ? "student" : String(row.role), faculty: String(row.faculty), program: String(row.program), city: String(row.city),avatarUrl:row.avatar_url?String(row.avatar_url):undefined }));
 }
 
 export async function listConnections(userId: string): Promise<Connection[]> {
@@ -167,7 +167,7 @@ export async function listConversations(userId: string): Promise<Conversation[]>
     JOIN conversation_participants other ON other.conversation_id=c.id AND other.user_id<>$1 JOIN users u ON u.id=other.user_id
     LEFT JOIN media_assets ON media_assets.owner_type='avatar' AND media_assets.owner_id=u.id::text
     WHERE c.kind='direct' AND EXISTS(SELECT 1 FROM connections cn WHERE cn.status='accepted' AND ((cn.requester_id=$1 AND cn.recipient_id=u.id) OR (cn.recipient_id=$1 AND cn.requester_id=u.id))) ORDER BY c.updated_at DESC`, [userId]);
-  return result.rows.map((row) => ({ id: String(row.id), peer: { id: String(row.peer_id), name: String(row.name), role: String(row.role), faculty: String(row.faculty), program: String(row.program), city: String(row.city),avatarUrl:row.avatar_url?String(row.avatar_url):undefined }, lastMessage: String(row.last_message), updatedAt: iso(row.updated_at), unreadCount: Number(row.unread_count), muted:Boolean(row.muted) }));
+  return result.rows.map((row) => ({ id: String(row.id), peer: { id: String(row.peer_id), name: String(row.name), role: ["owner_admin", "admin", "assistant_admin"].includes(String(row.role)) ? "student" : String(row.role), faculty: String(row.faculty), program: String(row.program), city: String(row.city),avatarUrl:row.avatar_url?String(row.avatar_url):undefined }, lastMessage: String(row.last_message), updatedAt: iso(row.updated_at), unreadCount: Number(row.unread_count), muted:Boolean(row.muted) }));
 }
 
 export async function ensureClubConversation(club: { id: string; slug: string; name: string; createdBy?: string | null }) {
@@ -500,5 +500,5 @@ function pairMatches(connection: Connection, first: string, second: string) {
 }
 
 function toCommunityUser(user: { id: string; name: string; role: string; faculty: string; program: string; city: string }): CommunityUser {
-  return { id: user.id, name: user.name, role: user.role, faculty: user.faculty, program: user.program, city: user.city };
+  return { id: user.id, name: user.name, role: ["owner_admin", "admin", "assistant_admin"].includes(user.role) ? "student" : user.role, faculty: user.faculty, program: user.program, city: user.city };
 }
