@@ -6362,7 +6362,8 @@ html { scroll-padding-top: 24px; }
 .auth-input-shell :is(input, select):disabled { border-color: rgba(244, 243, 237, 0.08); background: rgba(255, 255, 255, 0.02); }
 .auth-input-shell :is(input, select) { color: var(--paper); }
 .auth-input-shell :is(input, select)::placeholder { color: rgba(244, 243, 237, 0.28); }
-.auth-input-shell select option { color: var(--paper); background: #141415; }
+.auth-input-shell select option { color: #1b302b; background: #ffffff; }
+.auth-input-shell select option:disabled { color: #6b7f79; background: #f4f7f6; }
 .auth-field-icon,
 .auth-password-toggle { color: rgba(244, 243, 237, 0.45); }
 .auth-input-shell:focus-within .auth-field-icon { color: var(--lime); }
