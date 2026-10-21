@@ -27,7 +27,7 @@ import {
   primaryNavigationGroups,
 } from "../data/navigation";
 import { isPlatformRouteCurrent } from "../data/platform-shell";
-import { routeLabelKeys } from "../i18n/config";
+import { navGroupKeys, routeLabelKeys } from "../i18n/config";
 import { useT } from "../i18n/LanguageProvider";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
@@ -56,31 +56,34 @@ export function PlatformNavigationRail(props: PlatformNavigationRailProps) {
   const reducedMotion = useReducedMotion();
   const t = useT();
   const navigation = (
-    <div className="platform-nav-group">
+    <>
       <NavigationLink href="/" label={t("nav.home")} pathname={props.pathname} icon={Home} reducedMotion={Boolean(reducedMotion)} />
-      {primaryNavigationGroups.flatMap((group) =>
-        group.routes.map((href) => {
-          const route = platformRoutes.find((item) => item.href === href);
-          if (!route) return null;
-          return <NavigationLink key={href} href={href} label={t(routeLabelKeys[href] ?? route.label)} pathname={props.pathname} icon={routeIcons[href]} reducedMotion={Boolean(reducedMotion)} />;
-        }),
-      )}
-      {props.isAdmin && (
-        <NavigationLink href="/admin" label={t("nav.admin")} pathname={props.pathname} icon={ShieldCheck} reducedMotion={Boolean(reducedMotion)} />
-      )}
+      {primaryNavigationGroups.map((group) => (
+        <div className="platform-nav-group" key={group.label}>
+          <span className="platform-nav-group-label">{t(navGroupKeys[group.label] ?? group.label)}</span>
+          {group.routes.map((href) => {
+            const route = platformRoutes.find((item) => item.href === href);
+            if (!route) return null;
+            return <NavigationLink key={href} href={href} label={t(routeLabelKeys[href] ?? route.label)} pathname={props.pathname} icon={routeIcons[href]} reducedMotion={Boolean(reducedMotion)} />;
+          })}
+        </div>
+      ))}
       {props.authenticated ? (
-        <>
+        <div className="platform-nav-group">
+          <span className="platform-nav-group-label">{t("nav.group.account")}</span>
+          {props.isAdmin && <NavigationLink href="/admin" label={t("nav.admin")} pathname={props.pathname} icon={ShieldCheck} reducedMotion={Boolean(reducedMotion)} />}
           <NavigationLink href="/profile" label={t("nav.profile")} pathname={props.pathname} icon={UserRound} reducedMotion={Boolean(reducedMotion)} />
           {!props.isAdmin && <NavigationLink href="/workspace" label={t("nav.workspace.student")} pathname={props.pathname} icon={LayoutDashboard} reducedMotion={Boolean(reducedMotion)} />}
           <NavigationLink href="/settings" label={t("nav.settings")} pathname={props.pathname} icon={Settings} reducedMotion={Boolean(reducedMotion)} />
-        </>
+        </div>
       ) : (
-        <>
+        <div className="platform-nav-group">
+          <span className="platform-nav-group-label">{t("nav.group.account")}</span>
           <NavigationLink href="/auth" label={t("nav.signIn")} pathname={props.pathname} icon={LogIn} reducedMotion={Boolean(reducedMotion)} />
           <NavigationLink href="/auth?mode=register" label={t("nav.signUp")} pathname={props.pathname} icon={UserPlus} reducedMotion={Boolean(reducedMotion)} />
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 
   return (
