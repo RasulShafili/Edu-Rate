@@ -48,8 +48,6 @@ export function CampusTrail() {
   const items = [
     { key: "clubs", icon: Compass, value: trail.clubs, label: t("trail.clubs"), hint: trail.clubNames.join(", ") },
     { key: "events", icon: CalendarCheck, value: trail.eventsAttended, label: t("trail.events"), hint: trail.eventsUpcoming ? t("trail.upcoming", { count: trail.eventsUpcoming }) : "" },
-    { key: "reviews", icon: Star, value: trail.reviews, label: t("trail.reviews"), hint: "" },
-    { key: "qa", icon: MessageCircleQuestion, value: trail.questions + trail.answers, label: t("trail.qa"), hint: trail.answers ? t("trail.answers", { count: trail.answers }) : "" },
     { key: "lessons", icon: BookOpen, value: trail.lessons, label: t("trail.lessons"), hint: "" },
   ].filter((item) => item.value > 0 || (item.key === "events" && trail.eventsUpcoming > 0));
   if (items.length === 0) return null;

@@ -53,14 +53,6 @@ const routeContexts: Record<string, PlatformRouteContext> = {
       { href: "/clubs", key: "browseClubs" },
     ],
   },
-  "/questions": {
-    key: "questions",
-    labelKey: "nav.questions",
-    shortcuts: [
-      { href: "/community", key: "openCommunity" },
-      { href: "/support", key: "contactSupport" },
-    ],
-  },
   "/support": {
     key: "support",
     labelKey: "nav.support",
@@ -152,7 +144,6 @@ const searchKeyByHref: Record<string, string> = {
   "/schedule": "schedule",
   "/events": "events",
   "/community": "community",
-  "/questions": "questions",
   "/support": "support",
   "/feed": "feed",
   "/clubs": "clubs",

@@ -12,7 +12,6 @@ export const presentationModules = [
   "Tədbirlər",
   "Klublar və qrup söhbətləri",
   "İcma və mesajlaşma",
-  "Anonim kampus sualları",
   "Dəstək sistemi",
   "Profil və giriş/qeydiyyat",
   "Admin panel",
@@ -53,7 +52,7 @@ export const plannedApiContracts = [
   "GET, POST, PATCH, DELETE /api/timetable",
   "GET, POST, PATCH, DELETE /api/community/connections",
   "GET, POST /api/community/conversations və /messages",
-  "GET, POST /api/questions və /api/support/tickets",
+  "POST /api/support/tickets",
   "GET /api/openapi.json",
 ] as const;
 
@@ -73,7 +72,7 @@ export const readinessNotes = [
   {
     label: "Backend",
     status: "Canlı",
-    detail: "Giriş, sessiya, profil, cədvəl, tədbir, klub, sual-cavab, dəstək, icma, mesajlaşma və idarəetmə endpoint-ləri Render-də işləyir.",
+    detail: "Giriş, sessiya, profil, cədvəl, tədbir, klub, dəstək, icma, mesajlaşma və idarəetmə endpoint-ləri Render-də işləyir.",
   },
   {
     label: "Database",
@@ -90,11 +89,11 @@ export const readinessNotes = [
 export const presentationChecklist = [
   "Sayt desktop və mobil ölçülərdə açılır.",
   "Sol menyudan bütün bölmələrə keçid işləyir.",
-  "Cədvəl, elan, tədbir, klub, icma və suallar səhifələri səliqəli açılır.",
+  "Cədvəl, elan, tədbir, klub və icma səhifələri səliqəli açılır.",
   "Real vaxt mesajlaşma və klub qrup söhbətləri işləyir.",
   "Admin panel verilənlər bazasından canlı məlumatları göstərir.",
   "Build prosesi uğurla tamamlanır.",
 ] as const;
 
 export const leadershipScript =
-  "EduRate Qarabağ Universiteti üçün tələbə təcrübəsini birləşdirən rəqəmsal platformadır. Frontend React, Next.js və TypeScript, backend Node.js və Express, qalıcı məlumat qatı isə PostgreSQL ilə hazırlanıb. Qeydiyyat, dərs cədvəli, elanlar, tədbir iştirakı, klub üzvlüyü, anonim sual-cavab, dəstək, şəxsi mesajlaşma və rol əsaslı idarəetmə canlı API-yə bağlıdır. Sistem HttpOnly sessiya, server validasiyası, moderasiya, audit tarixçəsi və səlahiyyət nəzarəti ilə Sprint 4 çərçivəsində yekunlaşdırılıb.";
+  "EduRate Qarabağ Universiteti üçün tələbə təcrübəsini birləşdirən rəqəmsal platformadır. Frontend React, Next.js və TypeScript, backend Node.js və Express, qalıcı məlumat qatı isə PostgreSQL ilə hazırlanıb. Qeydiyyat, dərs cədvəli, elanlar, tədbir iştirakı, klub üzvlüyü, dəstək, şəxsi mesajlaşma və rol əsaslı idarəetmə canlı API-yə bağlıdır. Sistem HttpOnly sessiya, server validasiyası, moderasiya, audit tarixçəsi və səlahiyyət nəzarəti ilə Sprint 4 çərçivəsində yekunlaşdırılıb.";

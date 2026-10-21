@@ -10,7 +10,7 @@ export const termsOfUse: LegalDocSet = {
         id: "acceptance",
         title: "1. Ümumi müddəalar və şərtlərin qəbulu",
         blocks: [
-          { p: "EduRate (bundan sonra — «Platforma») Qarabağ Universitetinin tələbələri üçün kampus sualları, klublar, tədbirlər, elanlar və yazışma imkanları təqdim edən müstəqil tələbə pilot layihəsidir. Platformanın operatoru fiziki şəxs Rəsul Şəfilidir (fərdi layihə), əlaqə: edurate111@gmail.com." },
+          { p: "EduRate (bundan sonra — «Platforma») Qarabağ Universitetinin tələbələri üçün dərs cədvəli, klublar, tədbirlər, elanlar və yazışma imkanları təqdim edən müstəqil tələbə pilot layihəsidir. Platformanın operatoru fiziki şəxs Rəsul Şəfilidir (fərdi layihə), əlaqə: edurate111@gmail.com." },
           { p: "Qeydiyyat formasında «oxudum və qəbul edirəm» qutusunu işarələməklə və ya platformadan istifadə etməklə bu İstifadə şərtlərini, Məxfilik siyasətini, Kuki siyasətini və İcma qaydalarını (birlikdə — «Şərtlər») qəbul etmiş olursan. Şərtlərlə razı deyilsənsə, platformadan istifadə etmə." },
           { p: "Platforma universitetin rəsmi informasiya sistemi deyil və universitetin adından çıxış etmir." },
         ],
@@ -74,7 +74,7 @@ export const termsOfUse: LegalDocSet = {
         id: "anonymous",
         title: "6. Anonim məzmun",
         blocks: [
-          { p: "Kampus sualları və elanlara anonim şərhlər digər istifadəçilərə müəllif adı olmadan göstərilir. Anonimlik yalnız digər istifadəçilərə qarşıdır: müəllif sistemdə qeyd olunur və anonim məzmun da bu Şərtlərə, İcma qaydalarına və qanunvericiliyə tabedir. Qaydaları pozan anonim məzmun silinir, müəllifinə qarşı tədbir görülür və qanunla nəzərdə tutulmuş hallarda məlumat səlahiyyətli orqanlara verilə bilər." },
+          { p: "Elanlara anonim şərhlər digər istifadəçilərə müəllif adı olmadan göstərilir. Anonimlik yalnız digər istifadəçilərə qarşıdır: müəllif sistemdə qeyd olunur və anonim məzmun da bu Şərtlərə, İcma qaydalarına və qanunvericiliyə tabedir. Qaydaları pozan anonim məzmun silinir, müəllifinə qarşı tədbir görülür və qanunla nəzərdə tutulmuş hallarda məlumat səlahiyyətli orqanlara verilə bilər." },
         ],
       },
       {
@@ -129,7 +129,7 @@ export const termsOfUse: LegalDocSet = {
         id: "liability",
         title: "12. Məsuliyyətin məhdudlaşdırılması",
         blocks: [
-          { p: "İstifadəçilərin paylaşdığı sual, şərh, mesaj və digər məzmun onların şəxsi fikridir; operator bu məzmunun doğruluğuna görə məsuliyyət daşımır, lakin qanunsuz məzmundan xəbər tutduqda onu aradan qaldırır. Platformadan istifadə nəticəsində qəbul etdiyin qərarlara görə məsuliyyət səndədir." },
+          { p: "İstifadəçilərin paylaşdığı şərh, mesaj və digər məzmun onların şəxsi fikridir; operator bu məzmunun doğruluğuna görə məsuliyyət daşımır, lakin qanunsuz məzmundan xəbər tutduqda onu aradan qaldırır. Platformadan istifadə nəticəsində qəbul etdiyin qərarlara görə məsuliyyət səndədir." },
           { p: "Qanunvericiliyin icazə verdiyi həddə operator dolayı zərərə, əldən çıxmış fayda və ya məlumat itkisinə görə məsuliyyət daşımır. Bu məhdudiyyət operatorun qəsdən və ya kobud ehtiyatsızlıqla vurduğu zərərə və qanunla istisna edilə bilməyən məsuliyyətə şamil olunmur." },
         ],
       },
@@ -165,7 +165,7 @@ export const termsOfUse: LegalDocSet = {
         id: "acceptance",
         title: "1. General provisions and acceptance",
         blocks: [
-          { p: "EduRate (the “Platform”) is an independent student pilot project offering campus questions, clubs, events, announcements and messaging to students of Karabakh University. The Platform is operated by Rasul Shafili, a private individual (personal project); contact: edurate111@gmail.com." },
+          { p: "EduRate (the “Platform”) is an independent student pilot project offering timetables, clubs, events, announcements and messaging to students of Karabakh University. The Platform is operated by Rasul Shafili, a private individual (personal project); contact: edurate111@gmail.com." },
           { p: "By ticking “I have read and accept” on the registration form or by using the Platform you accept these Terms of Use, the Privacy Policy, the Cookie Policy and the Community Guidelines (together — the “Terms”). If you do not agree, do not use the Platform." },
           { p: "The Platform is not the university's official information system and does not speak on the university's behalf. Reviews and ratings on the Platform are not the university's official position." },
         ],
@@ -229,7 +229,7 @@ export const termsOfUse: LegalDocSet = {
         id: "anonymous",
         title: "6. Anonymous content",
         blocks: [
-          { p: "Campus questions and anonymous comments on announcements are shown to other users without the author's name. Anonymity applies only towards other users: the author is recorded in the system, and anonymous content is subject to these Terms, the Community Guidelines and the law. Anonymous content that breaks the rules is removed, action is taken against its author and, in cases provided by law, information may be disclosed to competent authorities." },
+          { p: "Anonymous comments on announcements are shown to other users without the author's name. Anonymity applies only towards other users: the author is recorded in the system, and anonymous content is subject to these Terms, the Community Guidelines and the law. Anonymous content that breaks the rules is removed, action is taken against its author and, in cases provided by law, information may be disclosed to competent authorities." },
         ],
       },
       {
@@ -284,7 +284,7 @@ export const termsOfUse: LegalDocSet = {
         id: "liability",
         title: "12. Limitation of liability",
         blocks: [
-          { p: "Questions, comments, messages and other content shared by users are their personal opinions; the operator is not responsible for their accuracy but removes unlawful content once aware of it. You are responsible for decisions you make based on the Platform." },
+          { p: "Comments, messages and other content shared by users are their personal opinions; the operator is not responsible for their accuracy but removes unlawful content once aware of it. You are responsible for decisions you make based on the Platform." },
           { p: "To the extent permitted by law, the operator is not liable for indirect loss, lost profit or loss of data. This limitation does not apply to damage caused intentionally or through gross negligence, or to liability that cannot be excluded by law." },
         ],
       },
@@ -320,7 +320,7 @@ export const termsOfUse: LegalDocSet = {
         id: "acceptance",
         title: "1. Общие положения и принятие условий",
         blocks: [
-          { p: "EduRate («Платформа») — независимый студенческий пилотный проект, предоставляющий студентам Карабахского университета вопросы кампуса, клубы, мероприятия, объявления и переписку. Оператор Платформы — физическое лицо Расул Шафили (личный проект), контакт: edurate111@gmail.com." },
+          { p: "EduRate («Платформа») — независимый студенческий пилотный проект, предоставляющий студентам Карабахского университета расписание, клубы, мероприятия, объявления и переписку. Оператор Платформы — физическое лицо Расул Шафили (личный проект), контакт: edurate111@gmail.com." },
           { p: "Отмечая «прочитал(а) и принимаю» в форме регистрации или пользуясь Платформой, вы принимаете настоящие Условия использования, Политику конфиденциальности, Политику cookie и Правила сообщества (вместе — «Условия»). Если вы не согласны, не пользуйтесь Платформой." },
           { p: "Платформа не является официальной информационной системой университета и не выступает от его имени. Отзывы и оценки на Платформе не являются официальной позицией университета." },
         ],
@@ -384,7 +384,7 @@ export const termsOfUse: LegalDocSet = {
         id: "anonymous",
         title: "6. Анонимный контент",
         blocks: [
-          { p: "Вопросы кампуса и анонимные комментарии к объявлениям показываются другим пользователям без имени автора. Анонимность действует только в отношении других пользователей: автор фиксируется в системе, а анонимный контент подчиняется этим Условиям, Правилам сообщества и закону. Нарушающий анонимный контент удаляется, к автору применяются меры, а в предусмотренных законом случаях сведения могут быть переданы компетентным органам." },
+          { p: "Анонимные комментарии к объявлениям показываются другим пользователям без имени автора. Анонимность действует только в отношении других пользователей: автор фиксируется в системе, а анонимный контент подчиняется этим Условиям, Правилам сообщества и закону. Нарушающий анонимный контент удаляется, к автору применяются меры, а в предусмотренных законом случаях сведения могут быть переданы компетентным органам." },
         ],
       },
       {
@@ -439,7 +439,7 @@ export const termsOfUse: LegalDocSet = {
         id: "liability",
         title: "12. Ограничение ответственности",
         blocks: [
-          { p: "Вопросы, комментарии, сообщения и другой контент пользователей — их личное мнение; оператор не отвечает за его достоверность, но удаляет незаконный контент, узнав о нём. Ответственность за решения, принятые на основе Платформы, несёте вы." },
+          { p: "Комментарии, сообщения и другой контент пользователей — их личное мнение; оператор не отвечает за его достоверность, но удаляет незаконный контент, узнав о нём. Ответственность за решения, принятые на основе Платформы, несёте вы." },
           { p: "В пределах, допускаемых законом, оператор не отвечает за косвенные убытки, упущенную выгоду или потерю данных. Ограничение не распространяется на вред, причинённый умышленно или по грубой неосторожности, и на ответственность, которую нельзя исключить по закону." },
         ],
       },

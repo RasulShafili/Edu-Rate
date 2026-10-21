@@ -64,7 +64,7 @@ export function TechnicalPresentation() {
           <h2>EduRate nədir?</h2>
           <p>
             EduRate Azərbaycan dilli universitet platformasıdır. Tələbələr dərs cədvəlini qura, elanları izləyə,
-            tədbirlərə yazıla, klublara qoşula, icmada ünsiyyət qura, anonim sual verə və dəstək sorğusu göndərə bilir.
+            tədbirlərə yazıla, klublara qoşula, icmada ünsiyyət qura və dəstək sorğusu göndərə bilir.
           </p>
           <ul className="technical-chip-list">
             {presentationModules.map((module) => <li key={module}>{module}</li>)}

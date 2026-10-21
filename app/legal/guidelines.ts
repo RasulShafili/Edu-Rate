@@ -34,9 +34,9 @@ export const communityGuidelines: LegalDocSet = {
       },
       {
         id: "anonymous",
-        title: "3. Anonim suallar və şərhlər",
+        title: "3. Anonim şərhlər",
         blocks: [
-          { p: "Anonimlik utanmadan sual verə bilməyin üçündür, başqalarını incitmək üçün deyil. Anonim məzmun da eyni qaydalara tabedir, müəllifi sistemdə qeyd olunur və pozuntu zamanı tədbir görülür." },
+          { p: "Anonimlik fikrini rahat bildirməyin üçündür, başqalarını incitmək üçün deyil. Anonim məzmun da eyni qaydalara tabedir, müəllifi sistemdə qeyd olunur və pozuntu zamanı tədbir görülür." },
         ],
       },
       {
@@ -124,9 +124,9 @@ export const communityGuidelines: LegalDocSet = {
       },
       {
         id: "anonymous",
-        title: "3. Anonymous questions and comments",
+        title: "3. Anonymous comments",
         blocks: [
-          { p: "Anonymity is there so you can ask without embarrassment, not to hurt others. Anonymous content follows the same rules, its author is recorded in the system, and action is taken on violations." },
+          { p: "Anonymity is there so you can share your thoughts comfortably, not to hurt others. Anonymous content follows the same rules, its author is recorded in the system, and action is taken on violations." },
         ],
       },
       {
@@ -214,9 +214,9 @@ export const communityGuidelines: LegalDocSet = {
       },
       {
         id: "anonymous",
-        title: "3. Анонимные вопросы и комментарии",
+        title: "3. Анонимные комментарии",
         blocks: [
-          { p: "Анонимность нужна, чтобы спрашивать без стеснения, а не чтобы обижать других. Анонимный контент подчиняется тем же правилам, его автор фиксируется в системе, а за нарушения применяются меры." },
+          { p: "Анонимность нужна, чтобы свободно делиться мнением, а не чтобы обижать других. Анонимный контент подчиняется тем же правилам, его автор фиксируется в системе, а за нарушения применяются меры." },
         ],
       },
       {

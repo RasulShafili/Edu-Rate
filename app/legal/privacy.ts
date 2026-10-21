@@ -40,7 +40,7 @@ export const privacyPolicy: LegalDocSet = {
                 ["Hesab məlumatları", "Ad və soyad, e-poçt ünvanı, universitet, fakültə, ixtisas", "Qeydiyyat zamanı sən"],
                 ["Şifrə", "Şifrə açıq şəkildə saxlanmır — yalnız bcrypt ilə geri qaytarılmayan heşi", "Sən"],
                 ["Profil məlumatları", "Kurs, şəhər, «haqqımda» mətni, profil şəkli", "Profili redaktə edəndə sən"],
-                ["Paylaşdığın məzmun", "Kampus sualları və cavablar, elanlara şərhlər, reaksiyalar, klub və tədbir təklifləri, elanlar, dəstək müraciətləri, şikayətlər", "Sən"],
+                ["Paylaşdığın məzmun", "Elanlara şərhlər, reaksiyalar, klub və tədbir təklifləri, elanlar, dəstək müraciətləri, şikayətlər", "Sən"],
                 ["Yazışmalar", "Söhbətlərdə göndərdiyin mesajlar, reaksiyalar, oxunma vaxtı", "Sən və həmsöhbətin"],
                 ["Əlaqələr və fəaliyyət", "Əlaqə sorğuları, klub üzvlükləri, tədbir qeydiyyatları, dərs cədvəli", "Sən"],
                 ["Bildirişlər", "Platformadaxili bildirişlər və push abunəliyi (brauzerin verdiyi texniki ünvan və açarlar)", "Sistem və sən"],
@@ -63,7 +63,7 @@ export const privacyPolicy: LegalDocSet = {
               head: ["Məqsəd", "Hüquqi əsas"],
               rows: [
                 ["Hesab yaratmaq, girişi təmin etmək, profili göstərmək", "Sənin razılığın və İstifadə şərtlərinin icrası"],
-                ["Sual, şərh, mesaj və digər funksiyaların işləməsi", "İstifadə şərtlərinin icrası"],
+                ["Şərh, mesaj və digər funksiyaların işləməsi", "İstifadə şərtlərinin icrası"],
                 ["Bildirişlər (platformadaxili, push, e-poçt)", "İstifadə şərtlərinin icrası; push üçün ayrıca razılığın"],
                 ["Hesabın təhlükəsizliyi: sessiyaların idarəsi, şifrə sındırma cəhdlərinin qarşısının alınması, sui-istifadənin aşkarlanması", "Platformanın və istifadəçilərin qanuni marağı"],
                 ["Moderasiya: şikayətlərə baxmaq, qaydaları pozan məzmunu gizlətmək", "Qanuni maraq və İcma qaydalarının icrası"],
@@ -83,7 +83,6 @@ export const privacyPolicy: LegalDocSet = {
           { ul: [
             "Profilin (ad, universitet, fakültə, ixtisas, kurs, «haqqımda», profil şəkli) platformaya daxil olmuş digər istifadəçilərə görünə bilər. E-poçt ünvanın digər istifadəçilərə göstərilmir.",
 
-            "Kampus sualları və cavablar digər istifadəçilərə müəllif adı olmadan göstərilir.",
             "Elana şərh yazanda «Anonim göndər» seçimini etsən, adın və şəklin digər istifadəçilərə göstərilmir və API cavablarında ümumiyyətlə yer almır.",
             "Mesajları yalnız söhbətin iştirakçıları görür. Klub üzvlərinin adları klub səhifəsində digər üzvlərə və ziyarətçilərə görünə bilər.",
 
@@ -142,7 +141,7 @@ export const privacyPolicy: LegalDocSet = {
               ],
             },
           },
-          { p: "Suallar, şərhlər və mesajlar sən onları silənə və ya hesabını silənə qədər saxlanılır. Sildiyin mesajın mətni bazadan dərhal təmizlənir." },
+          { p: "Şərhlər və mesajlar sən onları silənə və ya hesabını silənə qədər saxlanılır. Sildiyin mesajın mətni bazadan dərhal təmizlənir." },
         ],
       },
       {
@@ -157,7 +156,7 @@ export const privacyPolicy: LegalDocSet = {
             "push abunəliklərin və bildirişlərin silinir;",
 
           ] },
-          { p: "İcmanın bütövlüyü üçün yazdığın cavablar və mesajlar silinmir, lakin artıq sənin adınla deyil, «Silinmiş istifadəçi» kimi görünür. Onların da silinməsini istəyirsənsə, hesabı silməzdən əvvəl özün silə və ya edurate111@gmail.com ünvanına yaza bilərsən." },
+          { p: "İcmanın bütövlüyü üçün yazdığın şərhlər və mesajlar silinmir, lakin artıq sənin adınla deyil, «Silinmiş istifadəçi» kimi görünür. Onların da silinməsini istəyirsənsə, hesabı silməzdən əvvəl özün silə və ya edurate111@gmail.com ünvanına yaza bilərsən." },
         ],
       },
       {
@@ -256,7 +255,7 @@ export const privacyPolicy: LegalDocSet = {
                 ["Account data", "First and last name, e-mail address, university, faculty, programme", "You, at registration"],
                 ["Password", "Never stored in plain text — only an irreversible bcrypt hash", "You"],
                 ["Profile data", "Year of study, city, “about me” text, profile photo", "You, when editing your profile"],
-                ["Content you share", "Campus questions and answers, announcement comments, reactions, club and event proposals, announcements, support requests, reports", "You"],
+                ["Content you share", "Announcement comments, reactions, club and event proposals, announcements, support requests, reports", "You"],
                 ["Messages", "Messages you send in chats, reactions, read times", "You and the people you chat with"],
                 ["Connections and activity", "Connection requests, club memberships, event registrations, class timetable", "You"],
                 ["Notifications", "In-app notifications and push subscription (technical address and keys issued by your browser)", "The system and you"],
@@ -279,7 +278,7 @@ export const privacyPolicy: LegalDocSet = {
               head: ["Purpose", "Legal basis"],
               rows: [
                 ["Creating your account, signing you in, displaying your profile", "Your consent and performance of the Terms of Use"],
-                ["Running reviews, questions, comments, messages and other features", "Performance of the Terms of Use"],
+                ["Running comments, messages and other features", "Performance of the Terms of Use"],
                 ["Notifications (in-app, push, e-mail)", "Performance of the Terms of Use; separate consent for push"],
                 ["Account security: managing sessions, preventing password-guessing, detecting abuse", "Legitimate interest of the Platform and its users"],
                 ["Moderation: reviewing reports, hiding content that breaks the rules", "Legitimate interest and enforcement of the Community Guidelines"],
@@ -299,7 +298,6 @@ export const privacyPolicy: LegalDocSet = {
           { ul: [
             "Your profile (name, university, faculty, programme, year, “about me”, photo) may be visible to other signed-in users. Your e-mail address is never shown to other users.",
 
-            "Campus questions and answers are shown to other users without the author's name.",
             "If you choose “Post anonymously” when commenting on an announcement, your name and photo are not shown to other users and are not included in API responses at all.",
             "Messages are visible only to the participants of the conversation. Club members' names may be visible to other members and visitors on the club page.",
 
@@ -358,7 +356,7 @@ export const privacyPolicy: LegalDocSet = {
               ],
             },
           },
-          { p: "Reviews, questions, comments and messages are kept until you delete them or delete your account. When you delete a message, its text is removed from the database immediately." },
+          { p: "Comments and messages are kept until you delete them or delete your account. When you delete a message, its text is removed from the database immediately." },
         ],
       },
       {
@@ -373,7 +371,7 @@ export const privacyPolicy: LegalDocSet = {
             "your push subscriptions and notifications are deleted;",
 
           ] },
-          { p: "To keep the community's history intact, your reviews, answers and messages are not deleted but are shown as “Deleted user” instead of your name. If you want them removed too, delete them yourself before deleting the account or write to edurate111@gmail.com." },
+          { p: "To keep the community's history intact, your comments and messages are not deleted but are shown as “Deleted user” instead of your name. If you want them removed too, delete them yourself before deleting the account or write to edurate111@gmail.com." },
         ],
       },
       {
@@ -472,7 +470,7 @@ export const privacyPolicy: LegalDocSet = {
                 ["Данные аккаунта", "Имя и фамилия, e-mail, университет, факультет, специальность", "Вы, при регистрации"],
                 ["Пароль", "Не хранится в открытом виде — только необратимый хеш bcrypt", "Вы"],
                 ["Данные профиля", "Курс, город, текст «о себе», фото профиля", "Вы, при редактировании профиля"],
-                ["Ваш контент", "Вопросы и ответы кампуса, комментарии к объявлениям, реакции, предложения клубов и мероприятий, объявления, обращения в поддержку, жалобы", "Вы"],
+                ["Ваш контент", "Комментарии к объявлениям, реакции, предложения клубов и мероприятий, объявления, обращения в поддержку, жалобы", "Вы"],
                 ["Переписка", "Отправленные вами сообщения, реакции, время прочтения", "Вы и ваш собеседник"],
                 ["Связи и активность", "Запросы на связь, членство в клубах, регистрации на мероприятия, расписание", "Вы"],
                 ["Уведомления", "Уведомления внутри платформы и push-подписка (технический адрес и ключи браузера)", "Система и вы"],
@@ -495,7 +493,7 @@ export const privacyPolicy: LegalDocSet = {
               head: ["Цель", "Правовое основание"],
               rows: [
                 ["Создание аккаунта, вход, показ профиля", "Ваше согласие и исполнение Условий использования"],
-                ["Работа отзывов, вопросов, комментариев, сообщений и других функций", "Исполнение Условий использования"],
+                ["Работа комментариев, сообщений и других функций", "Исполнение Условий использования"],
                 ["Уведомления (внутри платформы, push, e-mail)", "Исполнение Условий; для push — отдельное согласие"],
                 ["Безопасность аккаунта: управление сессиями, защита от подбора пароля, выявление злоупотреблений", "Законный интерес Платформы и пользователей"],
                 ["Модерация: рассмотрение жалоб, скрытие нарушающего контента", "Законный интерес и исполнение Правил сообщества"],
@@ -515,7 +513,6 @@ export const privacyPolicy: LegalDocSet = {
           { ul: [
             "Ваш профиль (имя, университет, факультет, специальность, курс, «о себе», фото) может быть виден другим вошедшим пользователям. Ваш e-mail другим пользователям не показывается.",
 
-            "Вопросы и ответы кампуса показываются другим пользователям без имени автора.",
             "Если при комментировании объявления выбрать «Отправить анонимно», ваше имя и фото не показываются другим пользователям и вообще не попадают в ответы API.",
             "Сообщения видят только участники беседы. Имена членов клуба могут быть видны другим участникам и посетителям страницы клуба.",
 
@@ -574,7 +571,7 @@ export const privacyPolicy: LegalDocSet = {
               ],
             },
           },
-          { p: "Отзывы, вопросы, комментарии и сообщения хранятся, пока вы их не удалите или не удалите аккаунт. Текст удалённого сообщения сразу стирается из базы данных." },
+          { p: "Комментарии и сообщения хранятся, пока вы их не удалите или не удалите аккаунт. Текст удалённого сообщения сразу стирается из базы данных." },
         ],
       },
       {
@@ -589,7 +586,7 @@ export const privacyPolicy: LegalDocSet = {
             "push-подписки и уведомления удаляются;",
 
           ] },
-          { p: "Для сохранности истории сообщества ваши отзывы, ответы и сообщения не удаляются, но показываются как «Удалённый пользователь». Если вы хотите удалить и их, сделайте это до удаления аккаунта или напишите на edurate111@gmail.com." },
+          { p: "Для сохранности истории сообщества ваши комментарии и сообщения не удаляются, но показываются как «Удалённый пользователь». Если вы хотите удалить и их, сделайте это до удаления аккаунта или напишите на edurate111@gmail.com." },
         ],
       },
       {
