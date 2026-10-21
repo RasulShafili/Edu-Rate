@@ -376,7 +376,7 @@ function UserFields({
         <Field label={t("admin.field.newRole")} name="role" required>
           <select name="role" defaultValue={record?.role ?? "student"} autoFocus required>
             <option value="student">{roleName("student")}</option>
-            <option value="teacher">{roleName("teacher")}</option>
+            {record?.role === "teacher" ? <option value="teacher">{t("admin.field.legacy", { role: roleName("teacher") })}</option> : null}
             {record?.role === "mentor" ? <option value="mentor">{t("admin.field.legacy", { role: roleName("mentor") })}</option> : null}
           </select>
         </Field>
@@ -394,13 +394,13 @@ function UserFields({
       <Field label={t("admin.field.role")} name="role" required>
         <select name="role" defaultValue={record?.role ?? "student"} required>
           <option value="student">{roleName("student")}</option>
-          <option value="teacher">{roleName("teacher")}</option>
           {canAssignElevatedRoles && (
             <>
               <option value="assistant_admin">{roleName("assistant_admin")}</option>
               <option value="admin">{roleName("admin")}</option>
             </>
           )}
+          {record?.role === "teacher" ? <option value="teacher">{t("admin.field.legacy", { role: roleName("teacher") })}</option> : null}
           {record?.role === "mentor" ? <option value="mentor">{t("admin.field.legacy", { role: roleName("mentor") })}</option> : null}
           {record?.role === "owner_admin" ? <option value="owner_admin">{t("admin.field.current", { role: roleName("owner_admin") })}</option> : null}
           {!canAssignElevatedRoles && (record?.role === "admin" || record?.role === "assistant_admin") ? (

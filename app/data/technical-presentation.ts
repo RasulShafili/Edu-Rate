@@ -7,13 +7,13 @@ export const presentationQuestions = [
 
 export const presentationModules = [
   "Ana səhifə",
+  "Dərs cədvəli",
+  "Elanlar və paylaşımlar",
   "Tədbirlər",
+  "Klublar və qrup söhbətləri",
   "İcma və mesajlaşma",
-  "Mentorlar",
-  "Müəllim seçimi və qiymətləndirmə",
+  "Anonim kampus sualları",
   "Dəstək sistemi",
-  "Elanlar",
-  "Klublar",
   "Profil və giriş/qeydiyyat",
   "Admin panel",
 ] as const;
@@ -50,18 +50,18 @@ export const plannedApiContracts = [
   "GET, POST, PATCH, DELETE /api/admin/clubs və /api/admin/events",
   "POST, DELETE /api/clubs/:clubId/memberships",
   "GET, POST, PATCH, DELETE /api/events və /api/events/:eventId",
-  "GET, POST, PATCH, DELETE /api/mentorship/requests",
+  "GET, POST, PATCH, DELETE /api/timetable",
   "GET, POST, PATCH, DELETE /api/community/connections",
   "GET, POST /api/community/conversations və /messages",
-  "POST /api/reviews və /api/support/tickets",
+  "GET, POST /api/questions və /api/support/tickets",
   "GET /api/openapi.json",
 ] as const;
 
 export const reviewCriteria = [
-  "İzahın aydınlığı",
-  "Fənn biliyi",
-  "Obyektivlik",
-  "Ünsiyyət və dəstək",
+  "HttpOnly sessiya",
+  "2FA və e-poçt təsdiqi",
+  "Məzmun moderasiyası",
+  "Rol əsaslı icazələr",
 ] as const;
 
 export const readinessNotes = [
@@ -73,7 +73,7 @@ export const readinessNotes = [
   {
     label: "Backend",
     status: "Canlı",
-    detail: "Giriş, sessiya, profil, tədbir, klub, mentorluq, rəy, dəstək, icma, mesajlaşma və idarəetmə endpoint-ləri Render-də işləyir.",
+    detail: "Giriş, sessiya, profil, cədvəl, tədbir, klub, sual-cavab, dəstək, icma, mesajlaşma və idarəetmə endpoint-ləri Render-də işləyir.",
   },
   {
     label: "Database",
@@ -83,18 +83,18 @@ export const readinessNotes = [
   {
     label: "Təhlükəsizlik",
     status: "Tətbiq edilib",
-    detail: "HttpOnly sessiya, server validasiyası, rəy moderasiyası, sorğu limiti və rol əsaslı icazələr tətbiq edilib.",
+    detail: "HttpOnly sessiya, server validasiyası, məzmun moderasiyası, sorğu limiti və rol əsaslı icazələr tətbiq edilib.",
   },
 ] as const;
 
 export const presentationChecklist = [
   "Sayt desktop və mobil ölçülərdə açılır.",
   "Sol menyudan bütün bölmələrə keçid işləyir.",
-  "Tədbir, klub, mentor və müəllim səhifələri vizual olaraq dağılmır.",
-  "Müəllim qiymətləndirməsində meyarlar aydın görünür.",
+  "Cədvəl, elan, tədbir, klub, icma və suallar səhifələri səliqəli açılır.",
+  "Real vaxt mesajlaşma və klub qrup söhbətləri işləyir.",
   "Admin panel verilənlər bazasından canlı məlumatları göstərir.",
   "Build prosesi uğurla tamamlanır.",
 ] as const;
 
 export const leadershipScript =
-  "EduRate Qarabağ Universiteti üçün tələbə təcrübəsini birləşdirən rəqəmsal platformadır. Frontend React, Next.js və TypeScript, backend Node.js və Express, qalıcı məlumat qatı isə PostgreSQL ilə hazırlanıb. Qeydiyyat, tədbir iştirakı, klub üzvlüyü, mentorluq, müəllim rəyi, dəstək, şəxsi mesajlaşma və rol əsaslı idarəetmə canlı API-yə bağlıdır. Sistem HttpOnly sessiya, server validasiyası, moderasiya, audit tarixçəsi və səlahiyyət nəzarəti ilə Sprint 4 çərçivəsində yekunlaşdırılıb.";
+  "EduRate Qarabağ Universiteti üçün tələbə təcrübəsini birləşdirən rəqəmsal platformadır. Frontend React, Next.js və TypeScript, backend Node.js və Express, qalıcı məlumat qatı isə PostgreSQL ilə hazırlanıb. Qeydiyyat, dərs cədvəli, elanlar, tədbir iştirakı, klub üzvlüyü, anonim sual-cavab, dəstək, şəxsi mesajlaşma və rol əsaslı idarəetmə canlı API-yə bağlıdır. Sistem HttpOnly sessiya, server validasiyası, moderasiya, audit tarixçəsi və səlahiyyət nəzarəti ilə Sprint 4 çərçivəsində yekunlaşdırılıb.";

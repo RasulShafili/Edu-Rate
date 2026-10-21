@@ -49,7 +49,6 @@ export function WelcomeExperience() {
 
     loadInto<Club>("/api/clubs", setClubs, setClubsState);
     loadInto<CampusEvent>("/api/catalog/events", setEvents);
-    loadInto<Teacher>("/api/catalog/teachers", setTeachers);
 
     return () => {
       cancelled = true;

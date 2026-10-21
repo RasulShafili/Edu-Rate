@@ -63,8 +63,8 @@ export function TechnicalPresentation() {
           <span className="technical-kicker"><Layers3 size={14} /> Layihənin məqsədi</span>
           <h2>EduRate nədir?</h2>
           <p>
-            EduRate Azərbaycan dilli universitet platformasıdır. Tələbələr tədbirləri görə, elanları izləyə,
-            klublara baxa, mentor tapa, müəllimləri obyektiv meyarlarla qiymətləndirə və dəstək sorğusu göndərə bilir.
+            EduRate Azərbaycan dilli universitet platformasıdır. Tələbələr dərs cədvəlini qura, elanları izləyə,
+            tədbirlərə yazıla, klublara qoşula, icmada ünsiyyət qura, anonim sual verə və dəstək sorğusu göndərə bilir.
           </p>
           <ul className="technical-chip-list">
             {presentationModules.map((module) => <li key={module}>{module}</li>)}
@@ -117,10 +117,10 @@ export function TechnicalPresentation() {
           transition={{ duration: 0.62, ease }}
         >
           <span className="technical-kicker"><LockKeyhole size={14} /> Təhlükəsizlik və moderasiya</span>
-          <h2>Rəy şəxsi hücum yox, tədris təcrübəsi olmalıdır.</h2>
+          <h2>Etibarlı sessiya, təsdiqlənmiş məzmun və rol nəzarəti.</h2>
           <p>
-            Müəllim qiymətləndirməsi ümumi ulduzdan çox, bacarıq meyarlarına əsaslanır. Nalayiq sözlər,
-            şəxsi təhqir və reklam xarakterli mətnlər backend mərhələsində də yoxlanmalıdır.
+            Platformada girişlər e-poçt kodu və 2FA ilə qorunur, tələbələrin göndərdiyi elan, paylaşım və klub
+            müraciətləri admin moderasiyasından keçir, şikayətlər isə əməliyyat mərkəzində izlənir.
           </p>
           <ul className="technical-chip-list">
             {reviewCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}

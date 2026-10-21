@@ -99,31 +99,16 @@ workspaceRouter.get("/", async (request, response) => {
     return;
   }
 
-  const [events, clubs, mentorships, tickets] = await Promise.all([
-    listMyEventRegistrations(user.id), listMyClubMemberships(user.id), listMentorshipRequests(user.id), listSupportTickets(user.id),
+  const [events, clubs, tickets] = await Promise.all([
+    listMyEventRegistrations(user.id), listMyClubMemberships(user.id), listSupportTickets(user.id),
   ]);
-  const visibleMentorships = mentorships.filter((item) => item.status !== "cancelled");
-  const mentorshipItems = await Promise.all(visibleMentorships.slice(0, 4).map(async (item) => {
-    const mentorProfile = await findProfessionalProfile(item.mentorProfileId ?? item.mentorId, "mentor");
-    const mentorUser = mentorProfile?.userId ? await findUserById(mentorProfile.userId) : null;
-    return {
-      id: item.id,
-      title: mentorProfile?.name ?? "Mentorluq müraciəti",
-      text: item.note,
-      status: item.status,
-      type: "Mentor",
-      chatPeer: item.status === "accepted" && mentorUser ? toChatPeer(mentorUser) : undefined,
-    };
-  }));
   response.json({ data: { role: user.role, title: "Tələbə paneli", focus: user.program, metrics: [
     { label: "Tədbir qeydiyyatı", value: events.length },
     { label: "Klub üzvlüyü", value: clubs.length },
-    { label: "Mentorluq müraciəti", value: visibleMentorships.length },
     { label: "Dəstək bileti", value: tickets.length },
   ], items: [
     ...events.slice(0, 4).map((item) => ({ id: item.id, title: item.title, status: "Qeydiyyat aktivdir", type: "Tədbir" })),
     ...clubs.slice(0, 4).map((item) => ({ id: item.id, title: item.name, status: "Klub üzvü", type: "Klub" })),
-    ...mentorshipItems,
     ...tickets.slice(0, 4).map((item) => ({ id: item.id, title: item.topic, text: item.reference, status: item.status, type: "Dəstək" })),
   ] } });
 });
