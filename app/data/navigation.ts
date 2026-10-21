@@ -27,15 +27,6 @@ export const platformRoutes = [
     accent: "#77b8ff",
   },
   {
-    href: "/teachers",
-    label: "Müəllimlər",
-    number: "03",
-    title: "Müəllimini seç və qiymətləndir",
-    description: "Bacarıqlara əsaslanan şəffaf qiymətləndirmə və real tələbə rəyləri.",
-    metric: "Müəllim profilləri",
-    accent: "#b9a7ff",
-  },
-  {
     href: "/questions",
     label: "Suallar",
     number: "08",
@@ -85,7 +76,7 @@ export const accountRoutes = [
 export const primaryNavigationGroups = [
   { label: "Gündəlik", routes: ["/schedule", "/feed"] },
   { label: "Kəşf et", routes: ["/events", "/clubs"] },
-  { label: "İnsanlar", routes: ["/community", "/teachers"] },
+  { label: "İnsanlar", routes: ["/community", "/questions"] },
 ] as const;
 
 export const allPlatformRoutes = [...platformRoutes, ...accountRoutes] as const;

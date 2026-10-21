@@ -15,7 +15,7 @@ export const privacyPolicy: LegalDocSet = {
         id: "operator",
         title: "1. Məlumatların sahibi və operatoru",
         blocks: [
-          { p: "EduRate (bundan sonra — «Platforma», «biz») Qarabağ Universitetinin tələbələri, müəllimləri və mentorları üçün hazırlanmış müstəqil tələbə pilot layihəsidir. Platforma universitetin rəsmi informasiya sistemi deyil və universitetin adından fəaliyyət göstərmir." },
+          { p: "EduRate (bundan sonra — «Platforma», «biz») Qarabağ Universitetinin tələbələri üçün hazırlanmış müstəqil tələbə pilot layihəsidir. Platforma universitetin rəsmi informasiya sistemi deyil və universitetin adından fəaliyyət göstərmir." },
           { p: "Fərdi məlumatların operatoru fiziki şəxs Rəsul Şəfilidir (fərdi layihə). Məxfilik, fərdi məlumatlar və bu siyasətlə bağlı bütün müraciətlər üçün əlaqə ünvanı: edurate111@gmail.com." },
           { p: "Bu siyasət Azərbaycan Respublikasının «Fərdi məlumatlar haqqında» Qanununa və «İnformasiya, informasiyalaşdırma və informasiyanın mühafizəsi haqqında» Qanununa uyğun hazırlanıb. Siyasətdə işlənən «fərdi məlumat», «subyekt», «emal» və «operator» anlayışları həmin qanunlardakı mənada başa düşülür." },
         ],
@@ -25,7 +25,7 @@ export const privacyPolicy: LegalDocSet = {
         title: "2. Tətbiq dairəsi",
         blocks: [
           { p: "Siyasət EduRate veb saytına, onun mobil (PWA) versiyasına, platformanın API-sinə və platformanın göndərdiyi e-poçt və push bildirişlərinə şamil olunur. Platformadakı linklər vasitəsilə keçdiyin üçüncü tərəf saytları (məsələn, universitetin saytı) öz məxfilik qaydalarına tabedir." },
-          { p: "Qeydiyyatdan keçməklə və ya platformadan istifadə etməklə bu siyasətlə tanış olduğunu təsdiq edirsən. Siyasət İstifadə şərtlərinin, Kuki siyasətinin və İcma qaydalarının ayrılmaz hissəsidir." },
+          { p: "Qeydiyyatdan keçməklə və ya platformadan istifadə etməklə bu siyasətlə tanış olduğunu təsdiq edirsən. Siyasət İstifadə şərtlərinin və İcma qaydalarının ayrılmaz hissəsidir." },
         ],
       },
       {
@@ -37,12 +37,12 @@ export const privacyPolicy: LegalDocSet = {
             table: {
               head: ["Kateqoriya", "Nümunələr", "Mənbə"],
               rows: [
-                ["Hesab məlumatları", "Ad və soyad, e-poçt ünvanı, hesab növü (tələbə/müəllim/mentor), universitet, fakültə, ixtisas", "Qeydiyyat zamanı sən"],
+                ["Hesab məlumatları", "Ad və soyad, e-poçt ünvanı, universitet, fakültə, ixtisas", "Qeydiyyat zamanı sən"],
                 ["Şifrə", "Şifrə açıq şəkildə saxlanmır — yalnız bcrypt ilə geri qaytarılmayan heşi", "Sən"],
                 ["Profil məlumatları", "Kurs, şəhər, «haqqımda» mətni, profil şəkli", "Profili redaktə edəndə sən"],
-                ["Paylaşdığın məzmun", "Müəllim rəyləri və qiymətləri, kampus sualları və cavablar, elanlara şərhlər, reaksiyalar, klub və tədbir təklifləri, elanlar, bazar elanları, dəstək müraciətləri, şikayətlər", "Sən"],
+                ["Paylaşdığın məzmun", "Kampus sualları və cavablar, elanlara şərhlər, reaksiyalar, klub və tədbir təklifləri, elanlar, dəstək müraciətləri, şikayətlər", "Sən"],
                 ["Yazışmalar", "Söhbətlərdə göndərdiyin mesajlar, reaksiyalar, oxunma vaxtı", "Sən və həmsöhbətin"],
-                ["Əlaqələr və fəaliyyət", "Əlaqə sorğuları, klub üzvlükləri, tədbir qeydiyyatları, mentorluq müraciətləri, dərs cədvəli", "Sən"],
+                ["Əlaqələr və fəaliyyət", "Əlaqə sorğuları, klub üzvlükləri, tədbir qeydiyyatları, dərs cədvəli", "Sən"],
                 ["Bildirişlər", "Platformadaxili bildirişlər və push abunəliyi (brauzerin verdiyi texniki ünvan və açarlar)", "Sistem və sən"],
                 ["Təhlükəsizlik məlumatları", "Aktiv sessiyalar: IP ünvanı, brauzer/cihaz (user-agent), giriş vaxtı; uğursuz giriş cəhdlərinin sayı; iki mərhələli doğrulama açarı (aktiv edilibsə)", "Brauzerin və sistem"],
                 ["Razılıq qeydləri", "Qəbul etdiyin İstifadə şərtləri və Məxfilik siyasətinin versiyası və tarixi, kuki seçimi", "Sən"],
@@ -63,7 +63,7 @@ export const privacyPolicy: LegalDocSet = {
               head: ["Məqsəd", "Hüquqi əsas"],
               rows: [
                 ["Hesab yaratmaq, girişi təmin etmək, profili göstərmək", "Sənin razılığın və İstifadə şərtlərinin icrası"],
-                ["Rəy, sual, şərh, mesaj və digər funksiyaların işləməsi", "İstifadə şərtlərinin icrası"],
+                ["Sual, şərh, mesaj və digər funksiyaların işləməsi", "İstifadə şərtlərinin icrası"],
                 ["Bildirişlər (platformadaxili, push, e-poçt)", "İstifadə şərtlərinin icrası; push üçün ayrıca razılığın"],
                 ["Hesabın təhlükəsizliyi: sessiyaların idarəsi, şifrə sındırma cəhdlərinin qarşısının alınması, sui-istifadənin aşkarlanması", "Platformanın və istifadəçilərin qanuni marağı"],
                 ["Moderasiya: şikayətlərə baxmaq, qaydaları pozan məzmunu gizlətmək", "Qanuni maraq və İcma qaydalarının icrası"],
@@ -82,11 +82,11 @@ export const privacyPolicy: LegalDocSet = {
         blocks: [
           { ul: [
             "Profilin (ad, universitet, fakültə, ixtisas, kurs, «haqqımda», profil şəkli) platformaya daxil olmuş digər istifadəçilərə görünə bilər. E-poçt ünvanın digər istifadəçilərə göstərilmir.",
-            "Müəllim rəyləri müəllifin adı göstərilmədən, «Təsdiqlənmiş EduRate hesabı» kimi dərc olunur.",
+
             "Kampus sualları və cavablar digər istifadəçilərə müəllif adı olmadan göstərilir.",
             "Elana şərh yazanda «Anonim göndər» seçimini etsən, adın və şəklin digər istifadəçilərə göstərilmir və API cavablarında ümumiyyətlə yer almır.",
             "Mesajları yalnız söhbətin iştirakçıları görür. Klub üzvlərinin adları klub səhifəsində digər üzvlərə və ziyarətçilərə görünə bilər.",
-            "Mentorluq müraciəti yalnız seçdiyin mentora və administratorlara görünür.",
+
           ] },
           { note: "Anonimlik digər istifadəçilərə qarşıdır. Anonim məzmunun müəllifi sistemdə qeyd olunur ki, moderasiya, sui-istifadənin qarşısının alınması və qanunla nəzərdə tutulmuş hallarda səlahiyyətli orqanların tələbi icra oluna bilsin. Bu məlumat heç bir halda digər istifadəçilərə açıqlanmır." },
           { p: "Administratorlar və moderatorlar yalnız öz vəzifələri (təsdiq, moderasiya, dəstək) üçün zəruri olan məlumatlara çıxış əldə edirlər və bu hərəkətlər audit jurnalında qeyd olunur." },
@@ -142,7 +142,7 @@ export const privacyPolicy: LegalDocSet = {
               ],
             },
           },
-          { p: "Rəylər, suallar, şərhlər və mesajlar sən onları silənə və ya hesabını silənə qədər saxlanılır. Sildiyin mesajın mətni bazadan dərhal təmizlənir." },
+          { p: "Suallar, şərhlər və mesajlar sən onları silənə və ya hesabını silənə qədər saxlanılır. Sildiyin mesajın mətni bazadan dərhal təmizlənir." },
         ],
       },
       {
@@ -155,9 +155,9 @@ export const privacyPolicy: LegalDocSet = {
             "bütün aktiv sessiyaların ləğv olunur;",
             "profil şəklin həm bazadan, həm şəkil yaddaşından (Cloudinary) silinir;",
             "push abunəliklərin və bildirişlərin silinir;",
-            "müəllim və ya mentor profilin kataloqdan çıxarılır.",
+
           ] },
-          { p: "İcmanın bütövlüyü üçün yazdığın rəylər, cavablar və mesajlar silinmir, lakin artıq sənin adınla deyil, «Silinmiş istifadəçi» kimi görünür. Onların da silinməsini istəyirsənsə, hesabı silməzdən əvvəl özün silə və ya edurate111@gmail.com ünvanına yaza bilərsən." },
+          { p: "İcmanın bütövlüyü üçün yazdığın cavablar və mesajlar silinmir, lakin artıq sənin adınla deyil, «Silinmiş istifadəçi» kimi görünür. Onların da silinməsini istəyirsənsə, hesabı silməzdən əvvəl özün silə və ya edurate111@gmail.com ünvanına yaza bilərsən." },
         ],
       },
       {
@@ -166,10 +166,10 @@ export const privacyPolicy: LegalDocSet = {
         blocks: [
           { p: "«Fərdi məlumatlar haqqında» Qanuna əsasən, subyekt kimi aşağıdakı hüquqlara maliksən:" },
           { ul: [
-            "Tanış olmaq: haqqında hansı məlumatların toplandığını, emalın məqsədini, hüquqi əsasını, müddətini və məlumatların kimlərə verildiyini bilmək. «Ayarlar → Məxfilik və məlumatlarım → Məlumatlarımı yüklə» düyməsi ilə bütün məlumatlarının surətini dərhal JSON faylı kimi ala bilərsən.",
+            "Tanış olmaq: haqqında hansı məlumatların toplandığını, emalın məqsədini, hüquqi əsasını, müddətini və məlumatların kimlərə verildiyini bilmək.",
             "Düzəliş: yanlış və ya natamam məlumatları düzəltmək — profil məlumatlarını «Profil» bölməsindən özün dəyişə bilərsən.",
             "Silmə və məhv etmə: məlumatlarının silinməsini tələb etmək — «Hesabı sil» funksiyası və ya müraciət vasitəsilə.",
-            "Razılığı geri götürmək: kuki razılığını istənilən vaxt «Kuki ayarları» ilə, push bildirişlərini «Ayarlar»dan söndürmək; hesab emalına razılığı hesabı silməklə geri götürmək.",
+            "Razılığı geri götürmək: push bildirişlərini «Ayarlar»dan söndürmək; hesab emalına razılığı hesabı silməklə geri götürmək.",
             "Etiraz: qanuni marağa əsaslanan emala etiraz etmək.",
             "Emalın məhdudlaşdırılması: mübahisəli məlumatın emalının yoxlama dövründə dayandırılmasını tələb etmək.",
             "Şikayət: hüquqlarının pozulduğunu düşünürsənsə, fərdi məlumatlar sahəsində səlahiyyətli dövlət orqanına və ya məhkəməyə müraciət etmək.",
@@ -204,7 +204,7 @@ export const privacyPolicy: LegalDocSet = {
         id: "cookies",
         title: "13. Kukilər və brauzer yaddaşı",
         blocks: [
-          { p: "Girişi saxlamaq üçün zəruri kuki, dil seçimi üçün funksional kuki və yalnız razılıqla anonim statistika istifadə olunur. Ətraflı siyahı və müddətlər Kuki siyasətindədir. Seçimini istənilən vaxt səhifənin aşağısındakı «Kuki ayarları» ilə dəyişə bilərsən." },
+          { p: "Girişi saxlamaq üçün yalnız zəruri sessiya kukisi və dil seçimi üçün funksional kuki istifadə olunur." },
         ],
       },
       {
@@ -231,7 +231,7 @@ export const privacyPolicy: LegalDocSet = {
         id: "operator",
         title: "1. Data controller and operator",
         blocks: [
-          { p: "EduRate (the “Platform”, “we”) is an independent student pilot project built for students, teachers and mentors of Karabakh University. The Platform is not the university's official information system and does not act on the university's behalf." },
+          { p: "EduRate (the “Platform”, “we”) is an independent student pilot project built for students of Karabakh University. The Platform is not the university's official information system and does not act on the university's behalf." },
           { p: "The operator of personal data is Rasul Shafili, a private individual (personal project). For any request about privacy, personal data or this policy, contact: edurate111@gmail.com." },
           { p: "This policy is prepared in accordance with the Law of the Republic of Azerbaijan “On Personal Data” and the Law “On Information, Informatization and Protection of Information”. The terms “personal data”, “data subject”, “processing” and “operator” have the meaning given in those laws." },
         ],
@@ -253,12 +253,12 @@ export const privacyPolicy: LegalDocSet = {
             table: {
               head: ["Category", "Examples", "Source"],
               rows: [
-                ["Account data", "First and last name, e-mail address, account type (student/teacher/mentor), university, faculty, programme", "You, at registration"],
+                ["Account data", "First and last name, e-mail address, university, faculty, programme", "You, at registration"],
                 ["Password", "Never stored in plain text — only an irreversible bcrypt hash", "You"],
                 ["Profile data", "Year of study, city, “about me” text, profile photo", "You, when editing your profile"],
-                ["Content you share", "Teacher reviews and ratings, campus questions and answers, announcement comments, reactions, club and event proposals, announcements, marketplace listings, support requests, reports", "You"],
+                ["Content you share", "Campus questions and answers, announcement comments, reactions, club and event proposals, announcements, support requests, reports", "You"],
                 ["Messages", "Messages you send in chats, reactions, read times", "You and the people you chat with"],
-                ["Connections and activity", "Connection requests, club memberships, event registrations, mentorship requests, class timetable", "You"],
+                ["Connections and activity", "Connection requests, club memberships, event registrations, class timetable", "You"],
                 ["Notifications", "In-app notifications and push subscription (technical address and keys issued by your browser)", "The system and you"],
                 ["Security data", "Active sessions: IP address, browser/device (user agent), sign-in time; number of failed sign-in attempts; two-factor secret (if enabled)", "Your browser and the system"],
                 ["Consent records", "The version and date of the Terms and Privacy Policy you accepted, your cookie choice", "You"],
@@ -298,11 +298,11 @@ export const privacyPolicy: LegalDocSet = {
         blocks: [
           { ul: [
             "Your profile (name, university, faculty, programme, year, “about me”, photo) may be visible to other signed-in users. Your e-mail address is never shown to other users.",
-            "Teacher reviews are published without the author's name, as “Verified EduRate account”.",
+
             "Campus questions and answers are shown to other users without the author's name.",
             "If you choose “Post anonymously” when commenting on an announcement, your name and photo are not shown to other users and are not included in API responses at all.",
             "Messages are visible only to the participants of the conversation. Club members' names may be visible to other members and visitors on the club page.",
-            "A mentorship request is visible only to the mentor you chose and to administrators.",
+
           ] },
           { note: "Anonymity applies towards other users. The author of anonymous content is recorded in the system so that moderation, abuse prevention and, where required by law, requests from competent authorities can be handled. This information is never disclosed to other users." },
           { p: "Administrators and moderators access only the data they need for their duties (approval, moderation, support), and their actions are recorded in an audit log." },
@@ -371,7 +371,7 @@ export const privacyPolicy: LegalDocSet = {
             "all your active sessions are revoked;",
             "your profile photo is deleted from the database and from image storage (Cloudinary);",
             "your push subscriptions and notifications are deleted;",
-            "your teacher or mentor profile is removed from the directory.",
+
           ] },
           { p: "To keep the community's history intact, your reviews, answers and messages are not deleted but are shown as “Deleted user” instead of your name. If you want them removed too, delete them yourself before deleting the account or write to edurate111@gmail.com." },
         ],
@@ -382,10 +382,10 @@ export const privacyPolicy: LegalDocSet = {
         blocks: [
           { p: "Under the Law “On Personal Data”, as a data subject you have the right to:" },
           { ul: [
-            "Access: know what data is collected about you, the purpose, legal basis and period of processing and who receives it. Use “Settings → Privacy and my data → Download my data” to get an instant copy of all your data as a JSON file.",
+            "Access: know what data is collected about you, the purpose, legal basis and period of processing and who receives it.",
             "Rectification: correct inaccurate or incomplete data — you can edit your profile yourself under “Profile”.",
             "Erasure: request deletion of your data — via “Delete account” or a request to us.",
-            "Withdraw consent: withdraw cookie consent at any time via “Cookie settings”, turn off push notifications in “Settings”, and withdraw consent to account processing by deleting your account.",
+            "Withdraw consent: turn off push notifications in “Settings”, and withdraw consent to account processing by deleting your account.",
             "Object: object to processing based on legitimate interest.",
             "Restriction: ask us to suspend processing of disputed data while it is being checked.",
             "Complaint: if you believe your rights have been violated, apply to the competent state authority for personal data or to a court.",
@@ -420,7 +420,7 @@ export const privacyPolicy: LegalDocSet = {
         id: "cookies",
         title: "13. Cookies and browser storage",
         blocks: [
-          { p: "We use a strictly necessary cookie to keep you signed in, a functional cookie for your language and — only with consent — anonymous statistics. The full list and durations are in the Cookie Policy. You can change your choice at any time via “Cookie settings” at the bottom of the page." },
+          { p: "We use a strictly necessary cookie to keep you signed in and a functional cookie for your language." },
         ],
       },
       {
@@ -447,7 +447,7 @@ export const privacyPolicy: LegalDocSet = {
         id: "operator",
         title: "1. Владелец и оператор данных",
         blocks: [
-          { p: "EduRate («Платформа», «мы») — независимый студенческий пилотный проект для студентов, преподавателей и менторов Карабахского университета. Платформа не является официальной информационной системой университета и не действует от его имени." },
+          { p: "EduRate («Платформа», «мы») — независимый студенческий пилотный проект для студентов Карабахского университета. Платформа не является официальной информационной системой университета и не действует от его имени." },
           { p: "Оператор персональных данных — физическое лицо Расул Шафили (личный проект). По всем вопросам конфиденциальности, персональных данных и этой политики пишите на edurate111@gmail.com." },
           { p: "Политика подготовлена в соответствии с Законом Азербайджанской Республики «О персональных данных» и Законом «Об информации, информатизации и защите информации». Термины «персональные данные», «субъект», «обработка» и «оператор» используются в значении этих законов." },
         ],
@@ -469,12 +469,12 @@ export const privacyPolicy: LegalDocSet = {
             table: {
               head: ["Категория", "Примеры", "Источник"],
               rows: [
-                ["Данные аккаунта", "Имя и фамилия, e-mail, тип аккаунта (студент/преподаватель/ментор), университет, факультет, специальность", "Вы, при регистрации"],
+                ["Данные аккаунта", "Имя и фамилия, e-mail, университет, факультет, специальность", "Вы, при регистрации"],
                 ["Пароль", "Не хранится в открытом виде — только необратимый хеш bcrypt", "Вы"],
                 ["Данные профиля", "Курс, город, текст «о себе», фото профиля", "Вы, при редактировании профиля"],
-                ["Ваш контент", "Отзывы и оценки преподавателей, вопросы и ответы кампуса, комментарии к объявлениям, реакции, предложения клубов и мероприятий, объявления, объявления маркетплейса, обращения в поддержку, жалобы", "Вы"],
+                ["Ваш контент", "Вопросы и ответы кампуса, комментарии к объявлениям, реакции, предложения клубов и мероприятий, объявления, обращения в поддержку, жалобы", "Вы"],
                 ["Переписка", "Отправленные вами сообщения, реакции, время прочтения", "Вы и ваш собеседник"],
-                ["Связи и активность", "Запросы на связь, членство в клубах, регистрации на мероприятия, заявки на менторство, расписание", "Вы"],
+                ["Связи и активность", "Запросы на связь, членство в клубах, регистрации на мероприятия, расписание", "Вы"],
                 ["Уведомления", "Уведомления внутри платформы и push-подписка (технический адрес и ключи браузера)", "Система и вы"],
                 ["Данные безопасности", "Активные сессии: IP-адрес, браузер/устройство (user agent), время входа; число неудачных попыток входа; ключ двухфакторной аутентификации (если включена)", "Ваш браузер и система"],
                 ["Записи о согласии", "Версия и дата принятых Условий и Политики, выбор cookie", "Вы"],
@@ -514,11 +514,11 @@ export const privacyPolicy: LegalDocSet = {
         blocks: [
           { ul: [
             "Ваш профиль (имя, университет, факультет, специальность, курс, «о себе», фото) может быть виден другим вошедшим пользователям. Ваш e-mail другим пользователям не показывается.",
-            "Отзывы о преподавателях публикуются без имени автора, как «Подтверждённый аккаунт EduRate».",
+
             "Вопросы и ответы кампуса показываются другим пользователям без имени автора.",
             "Если при комментировании объявления выбрать «Отправить анонимно», ваше имя и фото не показываются другим пользователям и вообще не попадают в ответы API.",
             "Сообщения видят только участники беседы. Имена членов клуба могут быть видны другим участникам и посетителям страницы клуба.",
-            "Заявку на менторство видят только выбранный ментор и администраторы.",
+
           ] },
           { note: "Анонимность действует по отношению к другим пользователям. Автор анонимного контента фиксируется в системе, чтобы можно было проводить модерацию, предотвращать злоупотребления и в предусмотренных законом случаях исполнять требования компетентных органов. Эти сведения никогда не раскрываются другим пользователям." },
           { p: "Администраторы и модераторы получают доступ только к данным, необходимым для их обязанностей (одобрение, модерация, поддержка), и их действия записываются в журнал аудита." },
@@ -587,7 +587,7 @@ export const privacyPolicy: LegalDocSet = {
             "все активные сессии завершаются;",
             "фото профиля удаляется из базы и из хранилища изображений (Cloudinary);",
             "push-подписки и уведомления удаляются;",
-            "профиль преподавателя или ментора убирается из каталога.",
+
           ] },
           { p: "Для сохранности истории сообщества ваши отзывы, ответы и сообщения не удаляются, но показываются как «Удалённый пользователь». Если вы хотите удалить и их, сделайте это до удаления аккаунта или напишите на edurate111@gmail.com." },
         ],
@@ -598,10 +598,10 @@ export const privacyPolicy: LegalDocSet = {
         blocks: [
           { p: "Согласно Закону «О персональных данных», как субъект данных вы имеете право:" },
           { ul: [
-            "На доступ: знать, какие данные о вас собраны, цель, основание и срок обработки и кому они передаются. Кнопка «Настройки → Конфиденциальность и мои данные → Скачать мои данные» сразу выдаёт копию всех ваших данных в файле JSON.",
+            "На доступ: знать, какие данные о вас собраны, цель, основание и срок обработки и кому они передаются.",
             "На исправление: исправить неточные или неполные данные — профиль можно изменить самостоятельно в разделе «Профиль».",
             "На удаление: потребовать удаления данных — через «Удалить аккаунт» или обращение к нам.",
-            "На отзыв согласия: отозвать согласие на cookie через «Настройки cookie», отключить push в «Настройках», отозвать согласие на обработку аккаунта, удалив его.",
+            "На отзыв согласия: отключить push в «Настройках», отозвать согласие на обработку аккаунта, удалив его.",
             "На возражение: возразить против обработки на основании законного интереса.",
             "На ограничение: потребовать приостановить обработку спорных данных на время проверки.",
             "На жалобу: если вы считаете, что ваши права нарушены, обратиться в компетентный государственный орган в сфере персональных данных или в суд.",
@@ -636,7 +636,7 @@ export const privacyPolicy: LegalDocSet = {
         id: "cookies",
         title: "13. Cookie и хранилище браузера",
         blocks: [
-          { p: "Мы используем строго необходимый cookie для входа, функциональный cookie для языка и — только с согласия — анонимную статистику. Полный список и сроки приведены в Политике cookie. Выбор можно изменить в любой момент через «Настройки cookie» внизу страницы." },
+          { p: "Мы используем строго необходимый cookie для входа и функциональный cookie для языка." },
         ],
       },
       {

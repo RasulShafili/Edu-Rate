@@ -4,7 +4,7 @@ import type { LegalDocSet } from "./types";
 export const communityGuidelines: LegalDocSet = {
   az: {
     title: "İcma qaydaları",
-    lead: "EduRate tələbələr, müəllimlər və mentorlar üçün təhlükəsiz və faydalı məkan olmalıdır. Bu qaydalar platformada nəyin yaxşı, nəyin yolverilməz olduğunu və pozuntu zamanı nə baş verdiyini izah edir.",
+    lead: "EduRate tələbələr üçün təhlükəsiz və faydalı məkan olmalıdır. Bu qaydalar platformada nəyin yaxşı, nəyin yolverilməz olduğunu və pozuntu zamanı nə baş verdiyini izah edir.",
     sections: [
       {
         id: "principles",
@@ -21,13 +21,13 @@ export const communityGuidelines: LegalDocSet = {
       },
       {
         id: "reviews",
-        title: "2. Yaxşı müəllim rəyi necə yazılır",
+        title: "2. Konstruktiv paylaşım və şərhlər",
         blocks: [
           { ul: [
             "Dərsin necə keçdiyini, izahların aydınlığını, qiymətləndirmənin ədalətini, ünsiyyəti təsvir et.",
-            "Konkret ol: «imtahan sualları mühazirələrlə uyğun idi» ümumi «pis müəllimdir»dən daha faydalıdır.",
+            "Konkret ol: aydın və faktlara əsaslanan fikirlər ümumi ifadələrdən daha faydalıdır.",
             "Emosiyanı yox, təcrübəni paylaş; təhqiredici ifadə, ləqəb və ironiya işlətmə.",
-            "Müəllimin xarici görünüşü, şəxsi həyatı, ailəsi, dini və ya siyasi baxışları haqqında yazma.",
+            "Başqalarının xarici görünüşü, şəxsi həyatı, ailəsi, dini və ya siyasi baxışları haqqında yazma.",
             "Sübutu olmayan cinayət ittihamlarını (rüşvət və s.) rəydə yazma — bunun üçün rəsmi şikayət yolları var.",
           ] },
         ],
@@ -51,7 +51,7 @@ export const communityGuidelines: LegalDocSet = {
             "Cinsi xarakterli, açıq-saçıq və ya şok edici məzmun.",
             "Spam, reklam, piramida sxemləri, fırıldaqçılıq və saxta elanlar.",
             "İmtahan suallarının və cavablarının sızdırılması, pullu ödev yazdırma xidmətləri.",
-            "Başqa şəxs, müəllim və ya təşkilat adından çıxış etmək, saxta hesablar.",
+            "Başqa şəxs və ya təşkilat adından çıxış etmək, saxta hesablar.",
             "Müəllif hüququ ilə qorunan materialların icazəsiz paylaşılması.",
             "Platformanın işini pozmaq, zərərli linklər və ya proqramlar paylaşmaq.",
           ] },
@@ -94,7 +94,7 @@ export const communityGuidelines: LegalDocSet = {
   },
   en: {
     title: "Community Guidelines",
-    lead: "EduRate should be a safe and useful place for students, teachers and mentors. These guidelines explain what is welcome, what is not acceptable and what happens when the rules are broken.",
+    lead: "EduRate should be a safe and useful place for students. These guidelines explain what is welcome, what is not acceptable and what happens when the rules are broken.",
     sections: [
       {
         id: "principles",
@@ -111,13 +111,13 @@ export const communityGuidelines: LegalDocSet = {
       },
       {
         id: "reviews",
-        title: "2. How to write a good teacher review",
+        title: "2. Constructive posts and comments",
         blocks: [
           { ul: [
             "Describe how classes went, how clear the explanations were, how fair the grading was, and how communication worked.",
-            "Be specific: “exam questions matched the lectures” is more useful than a general “bad teacher”.",
+            "Be specific: clear, fact-based points are more useful than vague remarks.",
             "Share experience rather than emotion; avoid insults, nicknames and sarcasm.",
-            "Do not write about a teacher's appearance, private life, family, religion or political views.",
+            "Do not write about anyone's appearance, private life, family, religion or political views.",
             "Do not make unproven criminal accusations (bribery, etc.) in a review — official complaint channels exist for that.",
           ] },
         ],
@@ -141,7 +141,7 @@ export const communityGuidelines: LegalDocSet = {
             "Sexual, explicit or shocking content.",
             "Spam, advertising, pyramid schemes, fraud and fake listings.",
             "Leaking exam questions and answers, paid assignment-writing services.",
-            "Impersonating another person, teacher or organisation; fake accounts.",
+            "Impersonating another person or organisation; fake accounts.",
             "Sharing copyrighted material without permission.",
             "Disrupting the Platform, sharing malicious links or software.",
           ] },
@@ -184,7 +184,7 @@ export const communityGuidelines: LegalDocSet = {
   },
   ru: {
     title: "Правила сообщества",
-    lead: "EduRate должен быть безопасным и полезным местом для студентов, преподавателей и менторов. Эти правила объясняют, что приветствуется, что недопустимо и что происходит при нарушениях.",
+    lead: "EduRate должен быть безопасным и полезным местом для студентов. Эти правила объясняют, что приветствуется, что недопустимо и что происходит при нарушениях.",
     sections: [
       {
         id: "principles",
@@ -201,13 +201,13 @@ export const communityGuidelines: LegalDocSet = {
       },
       {
         id: "reviews",
-        title: "2. Как написать хороший отзыв о преподавателе",
+        title: "2. Конструктивные публикации и комментарии",
         blocks: [
           { ul: [
             "Опишите, как проходили занятия, насколько понятными были объяснения, справедливым — оценивание, каким — общение.",
-            "Будьте конкретны: «вопросы экзамена соответствовали лекциям» полезнее, чем общее «плохой преподаватель».",
+            "Будьте конкретны: ясные и основанные на фактах мысли полезнее общих фраз.",
             "Делитесь опытом, а не эмоциями; избегайте оскорблений, прозвищ и сарказма.",
-            "Не пишите о внешности, личной жизни, семье, религии или политических взглядах преподавателя.",
+            "Не пишите о внешности, личной жизни, семье, религии или политических взглядах других лиц.",
             "Не выдвигайте в отзыве бездоказательных обвинений в преступлениях (взятки и т. п.) — для этого есть официальные каналы.",
           ] },
         ],
@@ -231,7 +231,7 @@ export const communityGuidelines: LegalDocSet = {
             "Сексуальный, откровенный или шокирующий контент.",
             "Спам, реклама, пирамиды, мошенничество и фальшивые объявления.",
             "Утечка экзаменационных вопросов и ответов, платное написание работ.",
-            "Выдача себя за другое лицо, преподавателя или организацию; фейковые аккаунты.",
+            "Выдача себя за другое лицо или организацию; фейковые аккаунты.",
             "Публикация материалов, защищённых авторским правом, без разрешения.",
             "Нарушение работы Платформы, вредоносные ссылки и программы.",
           ] },

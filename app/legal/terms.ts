@@ -10,9 +10,9 @@ export const termsOfUse: LegalDocSet = {
         id: "acceptance",
         title: "1. Ümumi müddəalar və şərtlərin qəbulu",
         blocks: [
-          { p: "EduRate (bundan sonra — «Platforma») Qarabağ Universitetinin tələbələri, müəllimləri və mentorları üçün müəllim rəyləri, kampus sualları, klublar, tədbirlər, mentorluq və yazışma imkanları təqdim edən müstəqil tələbə pilot layihəsidir. Platformanın operatoru fiziki şəxs Rəsul Şəfilidir (fərdi layihə), əlaqə: edurate111@gmail.com." },
+          { p: "EduRate (bundan sonra — «Platforma») Qarabağ Universitetinin tələbələri üçün kampus sualları, klublar, tədbirlər, elanlar və yazışma imkanları təqdim edən müstəqil tələbə pilot layihəsidir. Platformanın operatoru fiziki şəxs Rəsul Şəfilidir (fərdi layihə), əlaqə: edurate111@gmail.com." },
           { p: "Qeydiyyat formasında «oxudum və qəbul edirəm» qutusunu işarələməklə və ya platformadan istifadə etməklə bu İstifadə şərtlərini, Məxfilik siyasətini, Kuki siyasətini və İcma qaydalarını (birlikdə — «Şərtlər») qəbul etmiş olursan. Şərtlərlə razı deyilsənsə, platformadan istifadə etmə." },
-          { p: "Platforma universitetin rəsmi informasiya sistemi deyil və universitetin adından çıxış etmir. Platformadakı rəylər və qiymətləndirmələr universitetin rəsmi mövqeyi deyil." },
+          { p: "Platforma universitetin rəsmi informasiya sistemi deyil və universitetin adından çıxış etmir." },
         ],
       },
       {
@@ -21,7 +21,7 @@ export const termsOfUse: LegalDocSet = {
         blocks: [
           { ul: [
             "Platformadan 16 yaşı tamam olmuş şəxslər istifadə edə bilər. Qeydiyyatla 16 yaşının tamam olduğunu təsdiq edirsən.",
-            "Tələbə hesabı universitetin tələbələri üçündür. Müəllim və mentor hesabları administrator təsdiqindən sonra aktivləşir.",
+            "Tələbə hesabı universitetin tələbələri üçündür.",
             "Hər şəxs yalnız bir hesab aça bilər. Başqasının adından, saxta və ya yanıltıcı məlumatla hesab açmaq qadağandır.",
             "Əvvəllər qaydaları pozduğu üçün hesabı bağlanmış şəxs icazəsiz yeni hesab aça bilməz.",
           ] },
@@ -52,18 +52,18 @@ export const termsOfUse: LegalDocSet = {
             "müəllif hüquqlarını və digər əqli mülkiyyət hüquqlarını pozan məzmun paylaşmaq;",
             "imtahan suallarının, cavablarının sızdırılması və ya akademik dürüstlüyün pozulmasına kömək;",
             "platformanın təhlükəsizliyini yoxlamaq, sındırmaq, məlumat toplamaq (scraping), sorğu limitlərini aşmaq və ya işini pozmaq cəhdləri;",
-            "başqa şəxs, müəllim, universitet və ya təşkilat adından çıxış etmək;",
+            "başqa şəxs, universitet və ya təşkilat adından çıxış etmək;",
             "Azərbaycan Respublikasının qanunvericiliyi ilə qadağan olunmuş hər hansı məzmun.",
           ] },
         ],
       },
       {
         id: "reviews",
-        title: "5. Müəllim rəyləri",
+        title: "5. İcma paylaşımları və şərhlər",
         blocks: [
           { ul: [
-            "Rəy yalnız həqiqətən dərs aldığın müəllim haqqında, öz şəxsi təcrübənə əsasən yazılmalıdır.",
-            "Rəy tədris prosesinə (izah, obyektivlik, ünsiyyət, fənn biliyi) aid olmalıdır; müəllimin şəxsi həyatı, xarici görünüşü və ya ailəsi haqqında yazmaq qadağandır.",
+            "Paylaşımlar və şərhlər həqiqi təcrübəyə əsaslanmalı və konstruktiv olmalıdır.",
+            "Paylaşımlar tədris və kampus mövzularına aid olmalıdır; başqalarının şəxsi həyatı, xarici görünüşü və ya ailəsi haqqında yazmaq qadağandır.",
             "Faktlar yoxlanıla bilən olmalıdır; sübutsuz ittihamlar (məsələn, rüşvət iddiası) rəydə deyil, müvafiq rəsmi orqanlara şikayət şəklində bildirilməlidir.",
             "Rəylər dərc olunmazdan əvvəl moderasiyadan keçə bilər və qaydalara uyğun olmayan rəy dərc edilməyə bilər.",
             "Rəy müəllifin adı göstərilmədən dərc olunur, lakin bu, sənin məzmuna görə məsuliyyətini aradan qaldırmır.",
@@ -79,13 +79,13 @@ export const termsOfUse: LegalDocSet = {
       },
       {
         id: "communication",
-        title: "7. Yazışma, klublar, tədbirlər və mentorluq",
+        title: "7. Yazışma, klublar və tədbirlər",
         blocks: [
           { ul: [
             "Mesajlar yalnız söhbət iştirakçılarına görünür. Şikayət olunmuş mesajlar moderasiya məqsədilə administratorlar tərəfindən yoxlanıla bilər.",
             "Klub və tədbir yaradan şəxs təqdim etdiyi məlumatın doğruluğuna, tədbirin təşkilinə və təhlükəsizliyinə görə məsuliyyət daşıyır. Platforma tədbirlərin təşkilatçısı deyil.",
             "Tədbir ləğv edildikdə və ya vaxtı/yeri dəyişdikdə qeydiyyatdan keçmiş iştirakçılara bildiriş göndərilir.",
-            "Mentorluq könüllü əsasda aparılır; platforma mentorların məsləhətlərinin nəticəsinə zəmanət vermir.",
+
             "Bazar elanlarındakı alqı-satqı və mübadilələr istifadəçilər arasında aparılır; platforma onların tərəfi deyil.",
           ] },
         ],
@@ -129,7 +129,7 @@ export const termsOfUse: LegalDocSet = {
         id: "liability",
         title: "12. Məsuliyyətin məhdudlaşdırılması",
         blocks: [
-          { p: "İstifadəçilərin paylaşdığı rəy, şərh, mesaj və digər məzmun onların şəxsi fikridir; operator bu məzmunun doğruluğuna görə məsuliyyət daşımır, lakin qanunsuz məzmundan xəbər tutduqda onu aradan qaldırır. Platformadan istifadə nəticəsində qəbul etdiyin qərarlara (məsələn, fənn və ya müəllim seçiminə) görə məsuliyyət səndədir." },
+          { p: "İstifadəçilərin paylaşdığı sual, şərh, mesaj və digər məzmun onların şəxsi fikridir; operator bu məzmunun doğruluğuna görə məsuliyyət daşımır, lakin qanunsuz məzmundan xəbər tutduqda onu aradan qaldırır. Platformadan istifadə nəticəsində qəbul etdiyin qərarlara görə məsuliyyət səndədir." },
           { p: "Qanunvericiliyin icazə verdiyi həddə operator dolayı zərərə, əldən çıxmış fayda və ya məlumat itkisinə görə məsuliyyət daşımır. Bu məhdudiyyət operatorun qəsdən və ya kobud ehtiyatsızlıqla vurduğu zərərə və qanunla istisna edilə bilməyən məsuliyyətə şamil olunmur." },
         ],
       },
@@ -165,7 +165,7 @@ export const termsOfUse: LegalDocSet = {
         id: "acceptance",
         title: "1. General provisions and acceptance",
         blocks: [
-          { p: "EduRate (the “Platform”) is an independent student pilot project offering teacher reviews, campus questions, clubs, events, mentorship and messaging to students, teachers and mentors of Karabakh University. The Platform is operated by Rasul Shafili, a private individual (personal project); contact: edurate111@gmail.com." },
+          { p: "EduRate (the “Platform”) is an independent student pilot project offering campus questions, clubs, events, announcements and messaging to students of Karabakh University. The Platform is operated by Rasul Shafili, a private individual (personal project); contact: edurate111@gmail.com." },
           { p: "By ticking “I have read and accept” on the registration form or by using the Platform you accept these Terms of Use, the Privacy Policy, the Cookie Policy and the Community Guidelines (together — the “Terms”). If you do not agree, do not use the Platform." },
           { p: "The Platform is not the university's official information system and does not speak on the university's behalf. Reviews and ratings on the Platform are not the university's official position." },
         ],
@@ -176,7 +176,7 @@ export const termsOfUse: LegalDocSet = {
         blocks: [
           { ul: [
             "The Platform may be used by people aged 16 and over. By registering you confirm that you are at least 16.",
-            "Student accounts are for students of the university. Teacher and mentor accounts become active after administrator approval.",
+            "Student accounts are for students of the university.",
             "Each person may have only one account. Creating an account in someone else's name or with false or misleading information is prohibited.",
             "A person whose account was closed for breaking the rules may not open a new account without permission.",
           ] },
@@ -207,18 +207,18 @@ export const termsOfUse: LegalDocSet = {
             "sharing content that infringes copyright or other intellectual property rights;",
             "leaking exam questions or answers or otherwise helping to breach academic integrity;",
             "attempts to probe, break into, scrape, exceed rate limits of or disrupt the Platform;",
-            "impersonating another person, teacher, the university or an organisation;",
+            "impersonating another person, the university or an organisation;",
             "any content prohibited by the laws of the Republic of Azerbaijan.",
           ] },
         ],
       },
       {
         id: "reviews",
-        title: "5. Teacher reviews",
+        title: "5. Community posts and comments",
         blocks: [
           { ul: [
-            "Only review teachers who actually taught you, based on your own experience.",
-            "Reviews must concern teaching (clarity, fairness, communication, subject knowledge); writing about a teacher's private life, appearance or family is prohibited.",
+            "Posts and comments must be constructive and based on your own experience.",
+            "Content must concern campus and study topics; writing about anyone's private life, appearance or family is prohibited.",
             "Facts must be verifiable; unproven accusations (for example, of bribery) belong in a complaint to the competent official bodies, not in a review.",
             "Reviews may be moderated before publication, and reviews that break the rules may not be published.",
             "Reviews are published without the author's name, but this does not remove your responsibility for the content.",
@@ -234,13 +234,13 @@ export const termsOfUse: LegalDocSet = {
       },
       {
         id: "communication",
-        title: "7. Messaging, clubs, events and mentorship",
+        title: "7. Messaging, clubs and events",
         blocks: [
           { ul: [
             "Messages are visible only to the conversation participants. Reported messages may be reviewed by administrators for moderation.",
             "Whoever creates a club or event is responsible for the accuracy of the information, the organisation and the safety of the event. The Platform is not the organiser of events.",
             "When an event is cancelled or its time/place changes, registered participants are notified.",
-            "Mentorship is voluntary; the Platform does not guarantee the outcome of mentors' advice.",
+
             "Marketplace sales and exchanges take place between users; the Platform is not a party to them.",
           ] },
         ],
@@ -284,7 +284,7 @@ export const termsOfUse: LegalDocSet = {
         id: "liability",
         title: "12. Limitation of liability",
         blocks: [
-          { p: "Reviews, comments, messages and other content shared by users are their personal opinions; the operator is not responsible for their accuracy but removes unlawful content once aware of it. You are responsible for decisions you make based on the Platform (for example, choosing a course or teacher)." },
+          { p: "Questions, comments, messages and other content shared by users are their personal opinions; the operator is not responsible for their accuracy but removes unlawful content once aware of it. You are responsible for decisions you make based on the Platform." },
           { p: "To the extent permitted by law, the operator is not liable for indirect loss, lost profit or loss of data. This limitation does not apply to damage caused intentionally or through gross negligence, or to liability that cannot be excluded by law." },
         ],
       },
@@ -320,7 +320,7 @@ export const termsOfUse: LegalDocSet = {
         id: "acceptance",
         title: "1. Общие положения и принятие условий",
         blocks: [
-          { p: "EduRate («Платформа») — независимый студенческий пилотный проект, предоставляющий студентам, преподавателям и менторам Карабахского университета отзывы о преподавателях, вопросы кампуса, клубы, мероприятия, менторство и переписку. Оператор Платформы — физическое лицо Расул Шафили (личный проект), контакт: edurate111@gmail.com." },
+          { p: "EduRate («Платформа») — независимый студенческий пилотный проект, предоставляющий студентам Карабахского университета вопросы кампуса, клубы, мероприятия, объявления и переписку. Оператор Платформы — физическое лицо Расул Шафили (личный проект), контакт: edurate111@gmail.com." },
           { p: "Отмечая «прочитал(а) и принимаю» в форме регистрации или пользуясь Платформой, вы принимаете настоящие Условия использования, Политику конфиденциальности, Политику cookie и Правила сообщества (вместе — «Условия»). Если вы не согласны, не пользуйтесь Платформой." },
           { p: "Платформа не является официальной информационной системой университета и не выступает от его имени. Отзывы и оценки на Платформе не являются официальной позицией университета." },
         ],
@@ -331,7 +331,7 @@ export const termsOfUse: LegalDocSet = {
         blocks: [
           { ul: [
             "Платформой могут пользоваться лица от 16 лет. Регистрируясь, вы подтверждаете, что вам исполнилось 16 лет.",
-            "Студенческий аккаунт предназначен для студентов университета. Аккаунты преподавателей и менторов активируются после одобрения администратором.",
+            "Студенческий аккаунт предназначен для студентов университета.",
             "Одно лицо может иметь только один аккаунт. Запрещено создавать аккаунт от чужого имени или с ложными либо вводящими в заблуждение данными.",
             "Лицо, чей аккаунт был закрыт за нарушения, не может без разрешения создать новый.",
           ] },
@@ -362,18 +362,18 @@ export const termsOfUse: LegalDocSet = {
             "контент, нарушающий авторские и иные права интеллектуальной собственности;",
             "утечка экзаменационных вопросов и ответов, иное содействие нарушению академической честности;",
             "попытки взлома, сбора данных (scraping), обхода лимитов или нарушения работы Платформы;",
-            "выдача себя за другое лицо, преподавателя, университет или организацию;",
+            "выдача себя за другое лицо, университет или организацию;",
             "любой контент, запрещённый законодательством Азербайджанской Республики.",
           ] },
         ],
       },
       {
         id: "reviews",
-        title: "5. Отзывы о преподавателях",
+        title: "5. Публикации и комментарии сообщества",
         blocks: [
           { ul: [
-            "Оставляйте отзыв только о преподавателе, у которого вы действительно учились, на основе личного опыта.",
-            "Отзыв должен касаться преподавания (ясность, объективность, общение, знание предмета); запрещено писать о личной жизни, внешности или семье преподавателя.",
+            "Публикации и комментарии должны быть конструктивными и основанными на личном опыте.",
+            "Контент должен касаться учёбы и кампуса; запрещено писать о личной жизни, внешности или семье других лиц.",
             "Факты должны быть проверяемыми; бездоказательные обвинения (например, во взяточничестве) следует направлять в компетентные органы, а не в отзыв.",
             "Отзывы могут проходить модерацию до публикации; отзыв, нарушающий правила, может быть не опубликован.",
             "Отзыв публикуется без имени автора, но это не снимает с вас ответственности за его содержание.",
@@ -389,13 +389,13 @@ export const termsOfUse: LegalDocSet = {
       },
       {
         id: "communication",
-        title: "7. Переписка, клубы, мероприятия и менторство",
+        title: "7. Переписка, клубы и мероприятия",
         blocks: [
           { ul: [
             "Сообщения видят только участники беседы. Сообщения, на которые поступила жалоба, могут быть проверены администраторами.",
             "Создатель клуба или мероприятия отвечает за достоверность информации, организацию и безопасность мероприятия. Платформа не является организатором мероприятий.",
             "При отмене мероприятия или изменении его времени/места зарегистрированные участники получают уведомление.",
-            "Менторство добровольно; Платформа не гарантирует результат советов менторов.",
+
             "Сделки и обмены в маркетплейсе совершаются между пользователями; Платформа не является их стороной.",
           ] },
         ],
@@ -439,7 +439,7 @@ export const termsOfUse: LegalDocSet = {
         id: "liability",
         title: "12. Ограничение ответственности",
         blocks: [
-          { p: "Отзывы, комментарии, сообщения и другой контент пользователей — их личное мнение; оператор не отвечает за его достоверность, но удаляет незаконный контент, узнав о нём. Ответственность за решения, принятые на основе Платформы (например, выбор курса или преподавателя), несёте вы." },
+          { p: "Вопросы, комментарии, сообщения и другой контент пользователей — их личное мнение; оператор не отвечает за его достоверность, но удаляет незаконный контент, узнав о нём. Ответственность за решения, принятые на основе Платформы, несёте вы." },
           { p: "В пределах, допускаемых законом, оператор не отвечает за косвенные убытки, упущенную выгоду или потерю данных. Ограничение не распространяется на вред, причинённый умышленно или по грубой неосторожности, и на ответственность, которую нельзя исключить по закону." },
         ],
       },

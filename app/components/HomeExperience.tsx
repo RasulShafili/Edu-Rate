@@ -31,7 +31,7 @@ const quickLinks = [
   { href: "/feed", label: "nav.feed", icon: Megaphone },
   { href: "/clubs", label: "nav.clubs", icon: Sparkles },
   { href: "/community", label: "nav.community", icon: UsersRound },
-  { href: "/teachers", label: "nav.teachers", icon: GraduationCap },
+
 ] as const;
 
 type Club = {

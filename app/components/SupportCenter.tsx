@@ -31,7 +31,7 @@ const MESSAGE_MAX = 2000;
 
 // Dəyər serverə olduğu kimi gedir (admin paneli onu oxuyur); görünən ad tərcümədir.
 const TOPICS = [
-  { value: "Mentorluq", key: "support.topic.mentorship" },
+
   { value: "Tədbirlər və qeydiyyat", key: "support.topic.events" },
   { value: "İcma və söhbət", key: "support.topic.community" },
   { value: "Hesab dəstəyi", key: "support.topic.account" },
@@ -45,7 +45,7 @@ const TOPICS = [
  * gedir), "tədbir qeydiyyatını dəyişmək üçün bizə yaz, yerini başqasına
  * keçirərik" (qeydiyyatı istifadəçi özü geri çəkir, ötürmə yoxdur).
  */
-const FAQS = ["mentor", "response", "events", "safety"] as const;
+const FAQS = ["response", "events", "safety"] as const;
 
 function topicLabel(value: string, t: ReturnType<typeof useT>) {
   const topic = TOPICS.find((item) => item.value === value);

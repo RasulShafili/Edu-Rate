@@ -435,7 +435,7 @@ export function AuthExperience({ initialMode = "login", returnTo = "/profile" }:
                 onSubmit={handleSubmit}
               >
                 {mode === "register" && (
-                  <fieldset className="auth-account-type">
+                  <fieldset className="auth-account-type" hidden>
                     <legend>{t("auth.roleQuestion")}</legend>
                     <input type="hidden" name="accountType" value={accountType} />
                     <div role="radiogroup" aria-label={t("auth.roleGroupAria")}>

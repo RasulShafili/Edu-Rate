@@ -22,7 +22,7 @@ const homeContext: PlatformRouteContext = {
   shortcuts: [
     { href: "/events", key: "discoverEvents" },
     { href: "/community", key: "openCommunity" },
-    { href: "/teachers", key: "chooseTeacher" },
+    { href: "/clubs", key: "browseClubs" },
   ],
 };
 
@@ -53,19 +53,11 @@ const routeContexts: Record<string, PlatformRouteContext> = {
       { href: "/clubs", key: "browseClubs" },
     ],
   },
-  "/teachers": {
-    key: "teachers",
-    labelKey: "nav.teachers",
-    shortcuts: [
-      { href: "/teachers#available-teachers-track", key: "compareTeachers" },
-      { href: "/teachers#teacher-rating-panel", key: "ratingPanel" },
-    ],
-  },
   "/questions": {
     key: "questions",
     labelKey: "nav.questions",
     shortcuts: [
-      { href: "/teachers", key: "chooseTeacher" },
+      { href: "/community", key: "openCommunity" },
       { href: "/support", key: "contactSupport" },
     ],
   },
@@ -160,7 +152,6 @@ const searchKeyByHref: Record<string, string> = {
   "/schedule": "schedule",
   "/events": "events",
   "/community": "community",
-  "/teachers": "teachers",
   "/questions": "questions",
   "/support": "support",
   "/feed": "feed",
@@ -188,7 +179,7 @@ export const platformSearchItems = [
       : route.href === "/settings"
         ? "parametrlər bildiriş seçim"
         : route.href === "/workspace"
-          ? "iş paneli müəllim tələbə"
+          ? "iş paneli tələbə"
           : "daxil ol qeydiyyat hesab",
   })),
 ].map((item) => ({ ...item, key: searchKeyByHref[item.href] ?? "home" }));

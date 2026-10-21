@@ -1439,7 +1439,7 @@ const az = {
   "legal.eyebrow": "Hüquqi məlumat · {date}",
   // --- Səhifə başlıqları ---
   "meta.home.title": "EduRate — Universitet həyatın bir yerdə.",
-  "meta.home.description": "Tədbirləri, tələbə klublarını, etibarlı icma əlaqələrini, mentorluğu, müəllim qiymətləndirməsini və ağıllı idarəetməni bir araya gətirən öyrənmə platforması.",
+  "meta.home.description": "Tədbirləri, tələbə klublarını, etibarlı icma əlaqələrini, sual-cavabı və elanları bir araya gətirən tələbə platforması.",
   "meta.home.imageAlt": "EduRate universitet şəbəkəsi",
   "meta.admin.title": "İdarəetmə mərkəzi — EduRate",
   "meta.admin.description": "EduRate istifadəçilərini, klublarını, tədbirlərini və platforma göstəricilərini vahid idarəetmə mərkəzindən izlə.",
@@ -3449,7 +3449,7 @@ const en: Partial<Record<TranslationKey, string>> = {
   "legal.eyebrow": "Legal information · {date}",
   // --- Səhifə başlıqları ---
   "meta.home.title": "EduRate — your university life in one place.",
-  "meta.home.description": "A learning platform that brings together events, student clubs, trusted community connections, mentoring, teacher ratings and simple administration.",
+  "meta.home.description": "A student platform that brings together events, student clubs, trusted community connections, questions and announcements.",
   "meta.home.imageAlt": "The EduRate university network",
   "meta.admin.title": "Control centre — EduRate",
   "meta.admin.description": "Follow EduRate's users, clubs, events and platform figures from one control centre.",
@@ -5459,7 +5459,7 @@ const ru: Partial<Record<TranslationKey, string>> = {
   "legal.eyebrow": "Правовая информация · {date}",
   // --- Səhifə başlıqları ---
   "meta.home.title": "EduRate — вся университетская жизнь в одном месте.",
-  "meta.home.description": "Учебная платформа, объединяющая мероприятия, студенческие клубы, надёжные связи в сообществе, менторство, оценку преподавателей и удобное администрирование.",
+  "meta.home.description": "Студенческая платформа, объединяющая мероприятия, клубы, надёжные связи в сообществе, вопросы и объявления.",
   "meta.home.imageAlt": "Университетская сеть EduRate",
   "meta.admin.title": "Центр управления — EduRate",
   "meta.admin.description": "Пользователи, клубы, мероприятия и показатели EduRate в едином центре управления.",

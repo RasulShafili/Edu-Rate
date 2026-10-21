@@ -196,7 +196,7 @@ export function WelcomeExperience() {
         </li>
       </ol>
 
-      {suggestedTeachers.length ? (
+      {Boolean(false) && suggestedTeachers.length ? (
         <div className="welcome-teachers">
           <h2><GraduationCap size={16} aria-hidden="true" /> {t("welcome.teachers.title")}</h2>
           <p>{t("welcome.teachers.text")}</p>

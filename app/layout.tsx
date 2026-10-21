@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     applicationName: "EduRate",
-    keywords: ["EduRate", "universitet", "tələbə", "tədbirlər", "mentor", "klublar"],
+    keywords: ["EduRate", "universitet", "tələbə", "tədbirlər", "klublar", "icma"],
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: "EduRate", statusBarStyle: "default" },
     icons: {

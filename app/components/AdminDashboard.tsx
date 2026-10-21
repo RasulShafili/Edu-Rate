@@ -139,7 +139,7 @@ function metricSummary(metric: AdminMetric, t: Translate): string {
   if (metric.id === "users") return total;
   if (metric.id === "clubs") return `${total} · ${t("admin.metric.pendingClubs", { count: counts.pending ?? 0 })}`;
   if (metric.id === "events") return `${total} · ${t("admin.metric.drafts", { count: counts.pending ?? 0 })}`;
-  return `${t("admin.metric.memberships", { count: counts.memberships ?? 0 })} · ${t("admin.metric.reviews", { count: counts.reviews ?? 0 })}`;
+  return `${t("admin.metric.memberships", { count: counts.memberships ?? 0 })}`;
 }
 
 type MetricCardProps = {
@@ -506,8 +506,8 @@ export function AdminDashboard({ administrator }: AdminDashboardProps) {
           status={tableQuery.status}
           total={activeCollection.data?.total ?? 0}
         />
-        <ReviewModerationPanel />
-        <MentorApplicationPanel />
+
+
         <AdminOperationsPanel />
       </div>
 
