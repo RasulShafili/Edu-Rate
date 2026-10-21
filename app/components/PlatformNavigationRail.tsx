@@ -11,7 +11,6 @@ import {
   HeartHandshake,
   Home,
   LogIn,
-  LayoutDashboard,
   Megaphone,
   Settings,
   ShieldCheck,
@@ -73,7 +72,6 @@ export function PlatformNavigationRail(props: PlatformNavigationRailProps) {
           <span className="platform-nav-group-label">{t("nav.group.account")}</span>
           {props.isAdmin && <NavigationLink href="/admin" label={t("nav.admin")} pathname={props.pathname} icon={ShieldCheck} reducedMotion={Boolean(reducedMotion)} />}
           <NavigationLink href="/profile" label={t("nav.profile")} pathname={props.pathname} icon={UserRound} reducedMotion={Boolean(reducedMotion)} />
-          {!props.isAdmin && <NavigationLink href="/workspace" label={t("nav.workspace.student")} pathname={props.pathname} icon={LayoutDashboard} reducedMotion={Boolean(reducedMotion)} />}
           <NavigationLink href="/settings" label={t("nav.settings")} pathname={props.pathname} icon={Settings} reducedMotion={Boolean(reducedMotion)} />
         </div>
       ) : (

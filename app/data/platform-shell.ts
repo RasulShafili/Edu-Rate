@@ -93,14 +93,6 @@ const routeContexts: Record<string, PlatformRouteContext> = {
       { href: "/support", key: "accountSupport" },
     ],
   },
-  "/workspace": {
-    key: "workspace",
-    labelKey: "nav.workspace",
-    shortcuts: [
-      { href: "/workspace#workspace-title", key: "workspaceOverview" },
-      { href: "/profile", key: "profileSummary" },
-    ],
-  },
   "/settings": {
     key: "settings",
     labelKey: "nav.settings",
@@ -148,7 +140,6 @@ const searchKeyByHref: Record<string, string> = {
   "/feed": "feed",
   "/clubs": "clubs",
   "/profile": "profile",
-  "/workspace": "workspace",
   "/settings": "settings",
   "/auth": "auth",
 };
@@ -169,9 +160,7 @@ export const platformSearchItems = [
       ? "profil hesab məlumat"
       : route.href === "/settings"
         ? "parametrlər bildiriş seçim"
-        : route.href === "/workspace"
-          ? "iş paneli tələbə"
-          : "daxil ol qeydiyyat hesab",
+        : "daxil ol qeydiyyat hesab",
   })),
 ].map((item) => ({ ...item, key: searchKeyByHref[item.href] ?? "home" }));
 

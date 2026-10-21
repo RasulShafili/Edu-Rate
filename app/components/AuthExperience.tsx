@@ -732,6 +732,5 @@ function isAuthField(value: string): value is AuthField {
 
 function getRoleHome(role: string | undefined, fallback: string) {
   if (role === "owner_admin" || role === "admin" || role === "assistant_admin") return "/admin";
-  if (role === "teacher" || role === "mentor") return "/workspace";
   return fallback;
 }
