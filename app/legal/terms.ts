@@ -20,7 +20,6 @@ export const termsOfUse: LegalDocSet = {
         title: "2. Kimlər istifadə edə bilər",
         blocks: [
           { ul: [
-            "Platformadan 16 yaşı tamam olmuş şəxslər istifadə edə bilər. Qeydiyyatla 16 yaşının tamam olduğunu təsdiq edirsən.",
             "Tələbə hesabı universitetin tələbələri üçündür.",
             "Hər şəxs yalnız bir hesab aça bilər. Başqasının adından, saxta və ya yanıltıcı məlumatla hesab açmaq qadağandır.",
             "Əvvəllər qaydaları pozduğu üçün hesabı bağlanmış şəxs icazəsiz yeni hesab aça bilməz.",
@@ -175,7 +174,6 @@ export const termsOfUse: LegalDocSet = {
         title: "2. Who may use the Platform",
         blocks: [
           { ul: [
-            "The Platform may be used by people aged 16 and over. By registering you confirm that you are at least 16.",
             "Student accounts are for students of the university.",
             "Each person may have only one account. Creating an account in someone else's name or with false or misleading information is prohibited.",
             "A person whose account was closed for breaking the rules may not open a new account without permission.",
@@ -330,7 +328,6 @@ export const termsOfUse: LegalDocSet = {
         title: "2. Кто может пользоваться Платформой",
         blocks: [
           { ul: [
-            "Платформой могут пользоваться лица от 16 лет. Регистрируясь, вы подтверждаете, что вам исполнилось 16 лет.",
             "Студенческий аккаунт предназначен для студентов университета.",
             "Одно лицо может иметь только один аккаунт. Запрещено создавать аккаунт от чужого имени или с ложными либо вводящими в заблуждение данными.",
             "Лицо, чей аккаунт был закрыт за нарушения, не может без разрешения создать новый.",

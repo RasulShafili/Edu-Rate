@@ -193,29 +193,22 @@ export const privacyPolicy: LegalDocSet = {
         ],
       },
       {
-        id: "age",
-        title: "12. Yaş həddi",
-        blocks: [
-          { p: "Platforma 16 yaşı tamam olmuş şəxslər üçündür. Qeydiyyat zamanı 16 yaşının tamam olduğunu təsdiq edirsən. 16 yaşından kiçik şəxsin qanuni nümayəndəsinin razılığı olmadan qeydiyyatdan keçdiyini öyrənsək, hesabı bağlayıb məlumatları silirik. Valideyn və ya qanuni nümayəndə bu barədə edurate111@gmail.com ünvanına yaza bilər." },
-        ],
-      },
-      {
         id: "cookies",
-        title: "13. Kukilər və brauzer yaddaşı",
+        title: "12. Kukilər və brauzer yaddaşı",
         blocks: [
           { p: "Girişi saxlamaq üçün yalnız zəruri sessiya kukisi və dil seçimi üçün funksional kuki istifadə olunur." },
         ],
       },
       {
         id: "changes",
-        title: "14. Siyasətdəki dəyişikliklər",
+        title: "13. Siyasətdəki dəyişikliklər",
         blocks: [
           { p: "Siyasəti platformanın funksiyaları və ya qanunvericilik dəyişdikcə yeniləyə bilərik. Hər versiyanın tarixi səhifənin yuxarısında göstərilir. Mahiyyətcə vacib dəyişikliklərdə növbəti girişində yenilənmiş sənədləri yenidən qəbul etməyin istənəcək; qəbul etmədən hesabından çıxa və ya onu silə bilərsən." },
         ],
       },
       {
         id: "contact",
-        title: "15. Əlaqə",
+        title: "14. Əlaqə",
         blocks: [
           { p: "Operator: Rəsul Şəfili (EduRate, fərdi layihə). E-poçt: edurate111@gmail.com. Platforma daxilində: «Dəstək» bölməsi, «Məxfilik və fərdi məlumatlar» mövzusu." },
         ],
@@ -408,29 +401,22 @@ export const privacyPolicy: LegalDocSet = {
         ],
       },
       {
-        id: "age",
-        title: "12. Minimum age",
-        blocks: [
-          { p: "The Platform is intended for people aged 16 and over. At registration you confirm that you are at least 16. If we learn that a person under 16 has registered without the consent of a legal representative, we close the account and delete the data. A parent or legal representative can contact us at edurate111@gmail.com." },
-        ],
-      },
-      {
         id: "cookies",
-        title: "13. Cookies and browser storage",
+        title: "12. Cookies and browser storage",
         blocks: [
           { p: "We use a strictly necessary cookie to keep you signed in and a functional cookie for your language." },
         ],
       },
       {
         id: "changes",
-        title: "14. Changes to this policy",
+        title: "13. Changes to this policy",
         blocks: [
           { p: "We may update this policy as the Platform's features or the law change. The date of each version is shown at the top of the page. For material changes you will be asked to accept the updated documents at your next visit; if you do not accept, you can sign out or delete your account." },
         ],
       },
       {
         id: "contact",
-        title: "15. Contact",
+        title: "14. Contact",
         blocks: [
           { p: "Operator: Rasul Shafili (EduRate, personal project). E-mail: edurate111@gmail.com. On the Platform: “Support”, topic “Privacy and personal data”." },
         ],
@@ -623,29 +609,22 @@ export const privacyPolicy: LegalDocSet = {
         ],
       },
       {
-        id: "age",
-        title: "12. Возрастное ограничение",
-        blocks: [
-          { p: "Платформа предназначена для лиц от 16 лет. При регистрации вы подтверждаете, что вам исполнилось 16 лет. Если мы узнаем, что лицо младше 16 лет зарегистрировалось без согласия законного представителя, мы закроем аккаунт и удалим данные. Родитель или законный представитель может написать на edurate111@gmail.com." },
-        ],
-      },
-      {
         id: "cookies",
-        title: "13. Cookie и хранилище браузера",
+        title: "12. Cookie и хранилище браузера",
         blocks: [
           { p: "Мы используем строго необходимый cookie для входа и функциональный cookie для языка." },
         ],
       },
       {
         id: "changes",
-        title: "14. Изменения политики",
+        title: "13. Изменения политики",
         blocks: [
           { p: "Мы можем обновлять политику при изменении функций Платформы или законодательства. Дата каждой версии указана вверху страницы. При существенных изменениях при следующем визите вас попросят принять обновлённые документы; если вы не согласны, вы можете выйти или удалить аккаунт." },
         ],
       },
       {
         id: "contact",
-        title: "15. Контакты",
+        title: "14. Контакты",
         blocks: [
           { p: "Оператор: Расул Шафили (EduRate, личный проект). E-mail: edurate111@gmail.com. На Платформе: раздел «Поддержка», тема «Конфиденциальность и персональные данные»." },
         ],
