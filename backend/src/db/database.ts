@@ -333,7 +333,24 @@ export async function deleteUser(id: string): Promise<boolean> {
      WHERE id=$1 AND deleted_at IS NULL`,
     [id],
   );
-  return (result.rowCount ?? 0) > 0;
+  const deleted = (result.rowCount ?? 0) > 0;
+  if (deleted) {
+    // Silinmiş istifadəçi klubların üzv siyahısında "Silinmiş istifadəçi" kimi
+    // qalmasın: üzvlükləri silinir, klubların üzv sayı yenidən hesablanır.
+    const memberships = await databasePool.query(
+      "DELETE FROM club_memberships WHERE user_id=$1 RETURNING club_id",
+      [id],
+    );
+    const clubIds = [...new Set(memberships.rows.map((row: { club_id: unknown }) => String(row.club_id)))];
+    if (clubIds.length) {
+      await databasePool.query(
+        `UPDATE clubs SET member_count=(SELECT COUNT(*)::int FROM club_memberships WHERE club_id=clubs.id), updated_at=NOW()
+         WHERE id::text = ANY($1::text[])`,
+        [clubIds],
+      );
+    }
+  }
+  return deleted;
 }
 
 /** İstifadəçi hüquqi sənədlərin yeni versiyasını qəbul edir (yenidən razılıq). */

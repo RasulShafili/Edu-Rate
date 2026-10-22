@@ -276,7 +276,7 @@ export async function listClubs(): Promise<ClubRecord[]> {
     coverUrl:(await getMedia("club",club.id))?.secureUrl,
   }))).then((items)=>items.sort((a, b) => a.name.localeCompare(b.name, "az")));
   const result = await databasePool.query(`SELECT clubs.*, media_assets.secure_url AS cover_url,
-    (SELECT COUNT(*)::int FROM club_memberships WHERE club_id=clubs.id) AS member_count
+    (SELECT COUNT(*)::int FROM club_memberships cm JOIN users cmu ON cmu.id=cm.user_id WHERE cm.club_id=clubs.id AND cmu.deleted_at IS NULL) AS member_count
     FROM clubs LEFT JOIN media_assets ON media_assets.owner_type='club' AND media_assets.owner_id=clubs.id::text ORDER BY name ASC`);
   return result.rows.map(mapClub);
 }
@@ -287,7 +287,7 @@ export async function findClub(idOrSlug: string): Promise<ClubRecord | null> {
     return club ? {...club,memberCount:[...memoryMemberships].filter((key)=>key.endsWith(`:${club.slug}`)).length,eventCount:club.events.length,coverUrl:(await getMedia("club",club.id))?.secureUrl} : null;
   }
   const result = await databasePool.query(`SELECT clubs.*, media_assets.secure_url AS cover_url,
-    (SELECT COUNT(*)::int FROM club_memberships WHERE club_id=clubs.id) AS member_count
+    (SELECT COUNT(*)::int FROM club_memberships cm JOIN users cmu ON cmu.id=cm.user_id WHERE cm.club_id=clubs.id AND cmu.deleted_at IS NULL) AS member_count
     FROM clubs LEFT JOIN media_assets ON media_assets.owner_type='club' AND media_assets.owner_id=clubs.id::text WHERE clubs.id::text = $1 OR clubs.slug = $1 LIMIT 1`, [idOrSlug]);
   return result.rows[0] ? mapClub(result.rows[0]) : null;
 }
@@ -388,7 +388,7 @@ export async function listClubMembers(clubId: string): Promise<ClubMemberRecord[
   const result = await databasePool.query(`SELECT users.id,users.name,club_memberships.role,clubs.created_by,media_assets.secure_url avatar_url
     FROM club_memberships JOIN clubs ON clubs.id=club_memberships.club_id JOIN users ON users.id=club_memberships.user_id
     LEFT JOIN media_assets ON media_assets.owner_type='avatar' AND media_assets.owner_id=users.id::text
-    WHERE club_memberships.club_id=$1 ORDER BY (club_memberships.role='leader') DESC,club_memberships.created_at ASC`, [club.id]);
+    WHERE club_memberships.club_id=$1 AND users.deleted_at IS NULL ORDER BY (club_memberships.role='leader') DESC,club_memberships.created_at ASC`, [club.id]);
   return result.rows.map((row) => ({ id:String(row.id),name:String(row.name),role:row.role as "leader"|"member",isCreator:String(row.created_by)===String(row.id),avatarUrl:row.avatar_url?String(row.avatar_url):undefined }));
 }
 
@@ -474,7 +474,7 @@ export async function listMyClubMemberships(userId: string): Promise<ClubRecord[
   }
   const result = await databasePool.query(
     `SELECT clubs.*, media_assets.secure_url AS cover_url,
-       (SELECT COUNT(*)::int FROM club_memberships all_members WHERE all_members.club_id=clubs.id) AS member_count
+       (SELECT COUNT(*)::int FROM club_memberships cm JOIN users cmu ON cmu.id=cm.user_id WHERE cm.club_id=clubs.id AND cmu.deleted_at IS NULL) AS member_count
      FROM club_memberships JOIN clubs ON clubs.id = club_memberships.club_id
      LEFT JOIN media_assets ON media_assets.owner_type='club' AND media_assets.owner_id=clubs.id::text
      WHERE club_memberships.user_id = $1 ORDER BY club_memberships.created_at DESC`,
@@ -499,7 +499,7 @@ export async function joinClub(id: string, userId: string): Promise<ClubRecord> 
     await client.query("BEGIN");
     await client.query("INSERT INTO club_memberships (club_id, user_id) VALUES ($1, $2)", [club.id, userId]);
     const result = await client.query(`UPDATE clubs SET
-      member_count = (SELECT COUNT(*)::int FROM club_memberships WHERE club_id=$1),
+      member_count = (SELECT COUNT(*)::int FROM club_memberships cm JOIN users cmu ON cmu.id=cm.user_id WHERE cm.club_id=$1 AND cmu.deleted_at IS NULL),
       updated_at = NOW() WHERE id = $1 RETURNING *`, [club.id]);
     await client.query("COMMIT");
     return mapClub(result.rows[0]);
@@ -533,7 +533,7 @@ export async function leaveClub(id: string, userId: string): Promise<ClubRecord>
     const deleted = await client.query("DELETE FROM club_memberships WHERE club_id = $1 AND user_id = $2", [club.id, userId]);
     if (!deleted.rowCount) throw new ApiError(404, "MEMBERSHIP_NOT_FOUND", "Klub üzvlüyü tapılmadı.");
     const result = await client.query(`UPDATE clubs SET
-      member_count = (SELECT COUNT(*)::int FROM club_memberships WHERE club_id=$1),
+      member_count = (SELECT COUNT(*)::int FROM club_memberships cm JOIN users cmu ON cmu.id=cm.user_id WHERE cm.club_id=$1 AND cmu.deleted_at IS NULL),
       updated_at = NOW() WHERE id = $1 RETURNING *`, [club.id]);
     await client.query("COMMIT");
     return mapClub(result.rows[0]);
